@@ -47,6 +47,14 @@ Backend de l'application **Codabli**, développé en **Spring Boot 3.3.2** et **
   4. Calcul automatique de frais de port (5.00€ si présence d'au moins un article physique).
   5. Vidage de panier automatique après confirmation.
 
+### 🎒 8. Mallette Pédagogique (`/api/ressources-pedagogiques`)
+* Catalogue de matériel pédagogique (fiches, guides, vidéos, audio, documents) réservés aux enseignants.
+* **Sécurité & Visibilité** :
+  * `GET` pour `enseignant`, `professionnel_education`, `admin` et `comite_lecture`. Filtrage dynamique : les rôles hors-staff ne peuvent voir que les ressources actives (`actif = true`).
+  * `POST/PUT` réservés aux rôles `admin` et `comite_lecture`.
+  * `DELETE` réservé exclusivement aux administrateurs (`admin`).
+
+
 ---
 
 ## 🚀 Lancement local

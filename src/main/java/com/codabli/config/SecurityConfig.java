@@ -52,6 +52,11 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/produits/**")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/ressources-pedagogiques/**")
+                                                .hasAnyRole("enseignant", "professionnel_education", "admin",
+                                                                "comite_lecture")
+                                                .requestMatchers("/api/ressources-pedagogiques/**")
+                                                .hasAnyRole("admin", "comite_lecture")
                                                 .requestMatchers(
                                                                 "/v3/api-docs/**",
                                                                 "/swagger-ui/**",

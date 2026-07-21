@@ -126,6 +126,8 @@ La couverture de test est implémentée en JUnit / Spring Boot Test, intégrant 
 * `ConteDanseControllerTest` : Tests d'API (MockMvc) pour la sécurisation des endpoints de création, de modification et de suppression.
 * `ProduitServiceTest` / `PanierServiceTest` / `CommandeServiceTest` : Tests unitaires des couches services de la boutique (gestion de stock, snapshotting, etc.).
 * `CommandeControllerTest` : Tests d'intégration d'API (MockMvc) vérifiant la sécurité des endpoints de commande (utilisateurs authentifiés vs admins).
+* `RessourcePedagogiqueServiceTest` : Tests unitaires du service Mallette Pédagogique (rôles, filtrage actif, exceptions).
+* `RessourcePedagogiqueControllerTest` : Tests d'intégration d'API (MockMvc) pour la Mallette Pédagogique (droits par rôles, rejets sur inactif et interdiction de suppression).
 
 ---
 
@@ -144,4 +146,19 @@ Gestion complète du cycle de vente de produits physiques ou numériques.
   * `/api/adresses-livraison/**` : Sécurisé par JWT. Modification autorisée uniquement pour le propriétaire de l'adresse.
   * `POST /api/commandes` : Sécurisé par JWT. Bloque la commande en cas de stock insuffisant, décrémente le stock, snapshot le prix du produit et vide le panier.
   * `PATCH /api/admin/commandes/{id}/statut` : Modification de l'état de la commande (ex: `en_attente`, `payee`, `expediee`, `annulee`) réservée à l'administrateur.
+
+---
+
+### 8. Mallette Pédagogique (`/api/ressources-pedagogiques`)
+
+Bibliothèque de ressources pédagogiques (fiches, guides, vidéos, audio, documents) mise à disposition des enseignants.
+* **Entités du module** :
+  * `RessourcePedagogique` : `id` (UUID), `titre`, `description`, `type` (enum `TypeRessource` : `fiche`, `guide`, `video`, `audio`, `document`), `fichierUrl`, `thematique`, `niveauScolaire`, `dateAjout` (`OffsetDateTime`), `actif` (boolean).
+* **Sécurité & Règles Métier** :
+  * `GET /api/ressources-pedagogiques/**` : Accessible aux rôles `enseignant`, `professionnel_education`, `admin` et `comite_lecture`.
+    * Les enseignants et professionnels de l'éducation accèdent uniquement aux ressources actives (`actif = true`). Les admins et comités de lecture accèdent à toutes les ressources (actives/inactives).
+    * Ce filtrage de visibilité est validé au niveau requêtes paginées ET au niveau service par ID (renvoie `AccessDeniedException` si un enseignant demande une ressource inactive).
+  * `POST/PUT /api/ressources-pedagogiques/**` : Réservé aux rôles `admin` et `comite_lecture`.
+  * `DELETE /api/ressources-pedagogiques/{id}` : Réservé au rôle `admin` uniquement (`comite_lecture` n'a pas les droits de suppression).
+
 
