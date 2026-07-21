@@ -1,0 +1,214 @@
+{
+    "info": {
+        "_postman_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+        "name": "Codabli - Nouveaux Modules",
+        "description": "Scénarii de test pour les modules Actualités, Contes Dansés et Recherche",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Actualités",
+            "item": [
+                {
+                    "name": "1.1 Créer une actualité (Admin)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"titre\": \"Lancement de l'application Codabli !\",\n  \"resume\": \"Découvrez toutes les nouvelles fonctionnalités.\",\n  \"contenu\": \"<p>Voici le détail de notre lancement officiel...</p>\",\n  \"publie\": true\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/actualites",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "actualites"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "1.2 Lister les actualités (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/actualites?page=0&size=10",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "actualites"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. Contes Dansés",
+            "item": [
+                {
+                    "name": "2.1 Créer un conte (Élève/Connecté)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{eleve_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"titre\": \"Mon premier conte magique\",\n  \"description\": \"L'histoire d'un lapin qui voulait voler.\",\n  \"thematique\": \"Animaux magiques\",\n  \"langueOriginale\": \"fr\",\n  \"fichierVideoUrl\": \"https://s3.codabli.fr/videos/lapin.mp4\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/contes-danses",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "contes-danses"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2.2 Modifier son propre conte (Auteur)",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{eleve_token}}"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"titre\": \"Mon premier conte magique (modifié)\",\n  \"description\": \"L'histoire d'un lapin qui voulait voler, avec une nouvelle fin.\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/contes-danses/{{conte_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "contes-danses",
+                                "{{conte_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "2.3 Lister le catalogue de contes (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/contes-danses?page=0&size=10",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "contes-danses"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "0"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Recherche globale",
+            "item": [
+                {
+                    "name": "3.1 Rechercher tous azimuts (Public)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/recherche?q=magique",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "recherche"
+                            ],
+                            "query": [
+                                {
+                                    "key": "q",
+                                    "value": "magique"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8080"
+        },
+        {
+            "key": "admin_token",
+            "value": "TOKEN_ICI"
+        },
+        {
+            "key": "eleve_token",
+            "value": "TOKEN_ICI"
+        },
+        {
+            "key": "conte_id",
+            "value": "UUID_ICI"
+        }
+    ]
+}

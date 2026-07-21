@@ -1,0 +1,595 @@
+{
+    "tables": [
+        {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "contenu",
+                    "type": "text",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_creation",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_mise_a_jour",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_publication",
+                    "type": "timestamp with time zone",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "image_url",
+                    "type": "text",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "publie",
+                    "type": "boolean",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "resume",
+                    "type": "text",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "titre",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "auteur_id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                }
+            ],
+            "table_name": "actualites",
+            "constraints": [
+                {
+                    "type": "PRIMARY KEY",
+                    "column": "id",
+                    "references": null
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "auteur_id",
+                    "references": {
+                        "table": "utilisateurs",
+                        "column": "id"
+                    }
+                }
+            ]
+        },
+        {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_creation",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "image_url",
+                    "type": "text",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "statut_moderation",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "texte_associe",
+                    "type": "text",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "type",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "conte_id",
+                    "type": "uuid",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "createur_id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                }
+            ],
+            "table_name": "cartes_a_conte",
+            "constraints": [
+                {
+                    "type": "PRIMARY KEY",
+                    "column": "id",
+                    "references": null
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "conte_id",
+                    "references": {
+                        "table": "contes_danses",
+                        "column": "id"
+                    }
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "createur_id",
+                    "references": {
+                        "table": "utilisateurs",
+                        "column": "id"
+                    }
+                }
+            ]
+        },
+        {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "annee_scolaire",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_creation",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "niveau",
+                    "type": "character varying",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "nom",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "ecole_id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "enseignant_id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                }
+            ],
+            "table_name": "classes",
+            "constraints": [
+                {
+                    "type": "PRIMARY KEY",
+                    "column": "id",
+                    "references": null
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "ecole_id",
+                    "references": {
+                        "table": "ecoles",
+                        "column": "id"
+                    }
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "enseignant_id",
+                    "references": {
+                        "table": "utilisateurs",
+                        "column": "id"
+                    }
+                }
+            ]
+        },
+        {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "acces",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_creation",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_publication",
+                    "type": "timestamp with time zone",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "fichier_audio_url",
+                    "type": "text",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "fichier_texte_url",
+                    "type": "text",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "fichier_video_url",
+                    "type": "text",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "isbn",
+                    "type": "character varying",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "langue_originale",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "statut",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "thematique",
+                    "type": "character varying",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "titre",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "classe_id",
+                    "type": "uuid",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "createur_id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "ecole_id",
+                    "type": "uuid",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "valide_par_comite_id",
+                    "type": "uuid",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "valide_par_enseignant_id",
+                    "type": "uuid",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "description",
+                    "type": "text",
+                    "nullable": true,
+                    "default_value": null
+                }
+            ],
+            "table_name": "contes_danses",
+            "constraints": [
+                {
+                    "type": "PRIMARY KEY",
+                    "column": "id",
+                    "references": null
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "classe_id",
+                    "references": {
+                        "table": "classes",
+                        "column": "id"
+                    }
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "createur_id",
+                    "references": {
+                        "table": "utilisateurs",
+                        "column": "id"
+                    }
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "ecole_id",
+                    "references": {
+                        "table": "ecoles",
+                        "column": "id"
+                    }
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "valide_par_comite_id",
+                    "references": {
+                        "table": "utilisateurs",
+                        "column": "id"
+                    }
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "valide_par_enseignant_id",
+                    "references": {
+                        "table": "utilisateurs",
+                        "column": "id"
+                    }
+                }
+            ]
+        },
+        {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_creation",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_mise_a_jour",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "niveau_abonnement",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "nom",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "pays",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "statut",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "ville",
+                    "type": "character varying",
+                    "nullable": true,
+                    "default_value": null
+                }
+            ],
+            "table_name": "ecoles",
+            "constraints": [
+                {
+                    "type": "PRIMARY KEY",
+                    "column": "id",
+                    "references": null
+                }
+            ]
+        },
+        {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_inscription",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "classe_id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "eleve_id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                }
+            ],
+            "table_name": "inscriptions_classes",
+            "constraints": [
+                {
+                    "type": "PRIMARY KEY",
+                    "column": "id",
+                    "references": null
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "classe_id",
+                    "references": {
+                        "table": "classes",
+                        "column": "id"
+                    }
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "eleve_id",
+                    "references": {
+                        "table": "utilisateurs",
+                        "column": "id"
+                    }
+                }
+            ]
+        },
+        {
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "uuid",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_creation",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_mise_a_jour",
+                    "type": "timestamp with time zone",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "date_naissance",
+                    "type": "date",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "email",
+                    "type": "character varying",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "keycloak_id",
+                    "type": "character varying",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "langue_preferee",
+                    "type": "character varying",
+                    "nullable": true,
+                    "default_value": null
+                },
+                {
+                    "name": "nom",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "prenom",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "role",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "statut",
+                    "type": "character varying",
+                    "nullable": false,
+                    "default_value": null
+                },
+                {
+                    "name": "ecole_id",
+                    "type": "uuid",
+                    "nullable": true,
+                    "default_value": null
+                }
+            ],
+            "table_name": "utilisateurs",
+            "constraints": [
+                {
+                    "type": "PRIMARY KEY",
+                    "column": "id",
+                    "references": null
+                },
+                {
+                    "type": "FOREIGN KEY",
+                    "column": "ecole_id",
+                    "references": {
+                        "table": "ecoles",
+                        "column": "id"
+                    }
+                }
+            ]
+        }
+    ],
+    "database_name": "codabli_dev"
+}
