@@ -6,7 +6,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.codabli.entity.enums.StatutModeration;
+
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -57,4 +60,10 @@ public interface CarteAConteRepository extends JpaRepository<CarteAConte, UUID> 
             )
             """)
     List<CarteAConte> findByEnseignantClasses(@Param("enseignantId") UUID enseignantId);
+
+    /**
+     * Trouve une carte par ID et statut de modération.
+     * Utilisé par la galerie publique pour ne retourner que les cartes validées.
+     */
+    Optional<CarteAConte> findByIdAndStatutModeration(UUID id, StatutModeration statutModeration);
 }
