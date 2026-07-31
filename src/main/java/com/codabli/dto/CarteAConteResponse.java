@@ -33,6 +33,9 @@ public class CarteAConteResponse {
 
     private StatutModeration statutModeration;
 
+    /** Motif renseigné lors d'un refus ou d'une demande de correction (MOD-03/04) */
+    private String motifModeration;
+
     private OffsetDateTime dateCreation;
 
     private UUID conteId;

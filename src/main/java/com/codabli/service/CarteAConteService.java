@@ -99,8 +99,8 @@ public class CarteAConteService {
 
         List<CarteAConte> cartes;
 
-        if (roles.contains("admin")) {
-            // Admin : visibilite totale
+        if (estModerateurGlobal(roles)) {
+            // Admin / super_admin / moderateur : visibilite totale
             cartes = carteAConteRepository.findAll();
 
         } else if (roles.contains("enseignant")) {
@@ -123,41 +123,83 @@ public class CarteAConteService {
     }
 
     // ────────────────────────────────────────────────────────────────
-    // VALIDER — verification fine de la relation enseignant-classe-eleve
+    // MODERATION — valider / refuser / demander correction / retirer
+    // Verification fine de la relation enseignant-classe-eleve, sauf pour
+    // les roles admin / super_admin / moderateur qui ont un droit total
+    // (cf. CDC 4.4 "les admins ont un droit total").
     // ────────────────────────────────────────────────────────────────
 
     /**
-     * Valide une carte a conte (change statutModeration → valide).
-     *
-     * Verification en deux etapes :
-     * 1. @PreAuthorize("hasRole('enseignant')") dans le controller
-     * → seul un enseignant peut appeler cet endpoint
-     * 2. ICI : on verifie que le createur de la carte est inscrit
-     * dans une classe de l'enseignant connecte
-     * → empeche un enseignant de valider les cartes d'un eleve
-     * qui n'est pas dans sa classe
+     * Valide une carte a conte (MOD-02 : la creation devient publiable).
      */
     public CarteAConteResponse valider(UUID carteId, Jwt jwt) {
-        Utilisateur enseignant = getUtilisateurFromJwt(jwt);
+        return changerStatut(carteId, jwt, com.codabli.entity.enums.StatutModeration.valide, null);
+    }
+
+    /**
+     * Refuse une carte a conte (MOD-03 : le motif est enregistre).
+     */
+    public CarteAConteResponse refuser(UUID carteId, String motif, Jwt jwt) {
+        return changerStatut(carteId, jwt, com.codabli.entity.enums.StatutModeration.refuse, motif);
+    }
+
+    /**
+     * Demande une correction a l'auteur de la carte (MOD-04 : la creation
+     * revient au deposant).
+     */
+    public CarteAConteResponse demanderCorrection(UUID carteId, String motif, Jwt jwt) {
+        return changerStatut(carteId, jwt, com.codabli.entity.enums.StatutModeration.a_corriger, motif);
+    }
+
+    /**
+     * Retire une carte precedemment validee/publiee (MOD-05).
+     * Reserve aux roles a droit total (admin/super_admin/moderateur) : un
+     * enseignant ne doit pas pouvoir depublier une creation deja validee.
+     */
+    public CarteAConteResponse retirer(UUID carteId, Jwt jwt) {
+        Collection<String> roles = extractRoles(jwt);
+        if (!estModerateurGlobal(roles)) {
+            throw new AccessDeniedException(
+                    "Seuls les administrateurs et moderateurs peuvent retirer une creation publiee");
+        }
+        return changerStatut(carteId, jwt, com.codabli.entity.enums.StatutModeration.retire, null);
+    }
+
+    /**
+     * Change le statut de moderation d'une carte, avec verification fine :
+     * - admin / super_admin / moderateur → droit total sur toutes les cartes
+     * - enseignant → uniquement les cartes des eleves de SES classes
+     */
+    private CarteAConteResponse changerStatut(UUID carteId, Jwt jwt,
+            com.codabli.entity.enums.StatutModeration nouveauStatut, String motif) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Collection<String> roles = extractRoles(jwt);
 
         CarteAConte carte = carteAConteRepository.findById(carteId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Carte a conte non trouvee avec l'ID: " + carteId));
 
-        // Verification fine : l'eleve createur est-il dans une classe de cet enseignant
-        // ?
-        UUID createurId = carte.getCreateur().getId();
-        boolean estDansSaClasse = inscriptionClasseRepository
-                .existsByEleveIdAndClasseEnseignantId(createurId, enseignant.getId());
+        if (!estModerateurGlobal(roles)) {
+            // Enseignant : verification fine, l'eleve createur doit etre dans une
+            // classe de cet enseignant
+            UUID createurId = carte.getCreateur().getId();
+            boolean estDansSaClasse = inscriptionClasseRepository
+                    .existsByEleveIdAndClasseEnseignantId(createurId, utilisateur.getId());
 
-        if (!estDansSaClasse) {
-            throw new AccessDeniedException(
-                    "Vous ne pouvez valider que les cartes des eleves de vos classes");
+            if (!estDansSaClasse) {
+                throw new AccessDeniedException(
+                        "Vous ne pouvez moderer que les cartes des eleves de vos classes");
+            }
         }
 
-        carte.setStatutModeration(com.codabli.entity.enums.StatutModeration.valide);
+        carte.setStatutModeration(nouveauStatut);
+        carte.setMotifModeration(motif);
         CarteAConte saved = carteAConteRepository.save(carte);
         return toResponse(saved);
+    }
+
+    private boolean estModerateurGlobal(Collection<String> roles) {
+        return roles.contains("admin") || roles.contains("super_admin") || roles.contains("moderateur");
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -198,6 +240,7 @@ public class CarteAConteService {
                 .imageUrl(carte.getImageUrl())
                 .texteAssocie(carte.getTexteAssocie())
                 .statutModeration(carte.getStatutModeration())
+                .motifModeration(carte.getMotifModeration())
                 .dateCreation(carte.getDateCreation())
                 .conteId(carte.getConte() != null ? carte.getConte().getId() : null)
                 .createurId(carte.getCreateur().getId())

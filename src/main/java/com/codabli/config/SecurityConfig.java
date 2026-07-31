@@ -52,7 +52,13 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/recherche")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.POST, "/api/contact")
+                                                .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/produits/**")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/partenaires/**")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/abonnements/offres/**")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/ressources-pedagogiques/**")
                                                 .hasAnyRole("enseignant", "professionnel_education", "admin",
@@ -64,7 +70,7 @@ public class SecurityConfig {
                                                                 "/swagger-ui/**",
                                                                 "/swagger-ui.html")
                                                 .permitAll()
-                                                .requestMatchers("/api/admin/**").hasRole("admin")
+                                                .requestMatchers("/api/admin/**").hasAnyRole("admin", "super_admin")
                                                 .anyRequest().authenticated())
                                 .oauth2ResourceServer(oauth2 -> oauth2
                                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(keycloakJwtConverter)));

@@ -3,8 +3,7 @@ package com.codabli.entity;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-import com.codabli.entity.enums.StatutModeration;
-import com.codabli.entity.enums.TypeCarte;
+import com.codabli.entity.enums.StatutAbonnement;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,43 +23,48 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Souscription d'un utilisateur a une offre d'abonnement (CDC 8.14,
+ * ABO-02/03/04).
+ */
 @Entity
-@Table(name = "cartes_a_conte")
+@Table(name = "abonnements")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CarteAConte {
+public class Abonnement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "conte_id")
-    private ConteDanse conte;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
+    private Utilisateur utilisateur;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "createur_id", nullable = false)
-    private Utilisateur createur;
+    @JoinColumn(name = "offre_id", nullable = false)
+    private OffreAbonnement offre;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
-    private TypeCarte type;
+    @Column(nullable = false, length = 16)
+    private StatutAbonnement statut;
 
-    @Column(name = "image_url", columnDefinition = "text")
-    private String imageUrl;
+    @Column(name = "date_debut", nullable = false)
+    private OffsetDateTime dateDebut;
 
-    @Column(name = "texte_associe", columnDefinition = "text")
-    private String texteAssocie;
+    @Column(name = "date_fin", nullable = false)
+    private OffsetDateTime dateFin;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "statut_moderation", nullable = false, length = 32)
-    private StatutModeration statutModeration;
+    @Column(name = "renouvellement_automatique", nullable = false)
+    @Builder.Default
+    private boolean renouvellementAutomatique = true;
 
-    @Column(name = "motif_moderation", columnDefinition = "text")
-    private String motifModeration;
+    /** URL de la facture (document externe, aucune generation PDF cote backend). */
+    @Column(name = "facture_url", columnDefinition = "text")
+    private String factureUrl;
 
     @Column(name = "date_creation", nullable = false)
     private OffsetDateTime dateCreation;
@@ -70,8 +74,8 @@ public class CarteAConte {
         if (dateCreation == null) {
             dateCreation = OffsetDateTime.now();
         }
-        if (statutModeration == null) {
-            statutModeration = StatutModeration.soumis;
+        if (statut == null) {
+            statut = StatutAbonnement.actif;
         }
     }
 }

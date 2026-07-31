@@ -3,8 +3,7 @@ package com.codabli.entity;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-import com.codabli.entity.enums.StatutModeration;
-import com.codabli.entity.enums.TypeCarte;
+import com.codabli.entity.enums.CategorieContact;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -24,43 +23,47 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Demande envoyée via le formulaire de contact (CDC 8.21, CNT-01/02).
+ * Le formulaire est public : "utilisateur" est optionnel, un visiteur non
+ * connecté peut envoyer une demande en renseignant directement son nom/email.
+ */
 @Entity
-@Table(name = "cartes_a_conte")
+@Table(name = "demandes_contact")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CarteAConte {
+public class DemandeContact {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "conte_id")
-    private ConteDanse conte;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "createur_id", nullable = false)
-    private Utilisateur createur;
+    @JoinColumn(name = "utilisateur_id")
+    private Utilisateur utilisateur;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private TypeCarte type;
+    private CategorieContact categorie;
 
-    @Column(name = "image_url", columnDefinition = "text")
-    private String imageUrl;
+    @Column(nullable = false, length = 150)
+    private String nom;
 
-    @Column(name = "texte_associe", columnDefinition = "text")
-    private String texteAssocie;
+    @Column(nullable = false, length = 255)
+    private String email;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "statut_moderation", nullable = false, length = 32)
-    private StatutModeration statutModeration;
+    @Column(nullable = false, length = 255)
+    private String sujet;
 
-    @Column(name = "motif_moderation", columnDefinition = "text")
-    private String motifModeration;
+    @Column(nullable = false, columnDefinition = "text")
+    private String message;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean traite = false;
 
     @Column(name = "date_creation", nullable = false)
     private OffsetDateTime dateCreation;
@@ -69,9 +72,6 @@ public class CarteAConte {
     void prePersist() {
         if (dateCreation == null) {
             dateCreation = OffsetDateTime.now();
-        }
-        if (statutModeration == null) {
-            statutModeration = StatutModeration.soumis;
         }
     }
 }

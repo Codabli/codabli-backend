@@ -5,7 +5,9 @@ public enum RoleUtilisateur {
     enseignant,
     parent,
     professionnel_education,
+    moderateur,
     admin,
+    super_admin,
     comite_lecture,
     traducteur,
     ambassadeur

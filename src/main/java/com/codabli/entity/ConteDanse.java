@@ -61,6 +61,29 @@ public class ConteDanse {
     @Column(name = "langue_originale", nullable = false, length = 10)
     private String langueOriginale;
 
+    /** Image de couverture affichee dans le catalogue (CON-01/04). */
+    @Column(name = "couverture_url", columnDefinition = "text")
+    private String couvertureUrl;
+
+    @Column(length = 100)
+    private String pays;
+
+    @Column(length = 150)
+    private String culture;
+
+    @Column(name = "age_min")
+    private Integer ageMin;
+
+    @Column(name = "age_max")
+    private Integer ageMax;
+
+    @Column(name = "duree_minutes")
+    private Integer dureeMinutes;
+
+    /** Credits libres : auteur, illustrateur, traducteur, voix, musicien... (RG-05). */
+    @Column(columnDefinition = "text")
+    private String credits;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private StatutConte statut;

@@ -2,6 +2,7 @@ package com.codabli.controller;
 
 import com.codabli.dto.ConteDanseRequest;
 import com.codabli.dto.ConteDanseResponse;
+import com.codabli.entity.enums.AccesConte;
 import com.codabli.service.ConteDanseService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -41,13 +42,22 @@ public class ConteDanseController {
 
     /**
      * GET /api/contes-danses
-     * Catalogue public des contes publies, pagine.
+     * Catalogue public des contes publies, pagine (CON-01).
+     * Filtres optionnels (CON-03) : ?langue=fr&pays=Liban&thematique=amitie&acces=gratuit&age=8
      * Parametres : ?page=0&size=10
      */
     @GetMapping
     public ResponseEntity<Page<ConteDanseResponse>> lister(
+            @RequestParam(required = false) String langue,
+            @RequestParam(required = false) String pays,
+            @RequestParam(required = false) String thematique,
+            @RequestParam(required = false) AccesConte acces,
+            @RequestParam(required = false) Integer age,
             @PageableDefault(size = 10) Pageable pageable) {
-        Page<ConteDanseResponse> contes = conteDanseService.listerPublies(pageable);
+        boolean aucunFiltre = langue == null && pays == null && thematique == null && acces == null && age == null;
+        Page<ConteDanseResponse> contes = aucunFiltre
+                ? conteDanseService.listerPublies(pageable)
+                : conteDanseService.filtrerPublies(langue, pays, thematique, acces, age, pageable);
         return ResponseEntity.ok(contes);
     }
 

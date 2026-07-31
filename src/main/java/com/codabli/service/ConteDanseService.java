@@ -6,6 +6,7 @@ import com.codabli.entity.Classe;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.Ecole;
 import com.codabli.entity.Utilisateur;
+import com.codabli.entity.enums.AccesConte;
 import com.codabli.entity.enums.StatutConte;
 import com.codabli.repository.ConteDanseRepository;
 import com.codabli.repository.UtilisateurRepository;
@@ -58,6 +59,13 @@ public class ConteDanseService {
                 .description(request.getDescription())
                 .thematique(request.getThematique())
                 .langueOriginale(request.getLangueOriginale())
+                .couvertureUrl(request.getCouvertureUrl())
+                .pays(request.getPays())
+                .culture(request.getCulture())
+                .ageMin(request.getAgeMin())
+                .ageMax(request.getAgeMax())
+                .dureeMinutes(request.getDureeMinutes())
+                .credits(request.getCredits())
                 .fichierTexteUrl(request.getFichierTexteUrl())
                 .fichierAudioUrl(request.getFichierAudioUrl())
                 .fichierVideoUrl(request.getFichierVideoUrl())
@@ -95,6 +103,13 @@ public class ConteDanseService {
         conte.setTitre(request.getTitre());
         conte.setDescription(request.getDescription());
         conte.setThematique(request.getThematique());
+        conte.setCouvertureUrl(request.getCouvertureUrl());
+        conte.setPays(request.getPays());
+        conte.setCulture(request.getCulture());
+        conte.setAgeMin(request.getAgeMin());
+        conte.setAgeMax(request.getAgeMax());
+        conte.setDureeMinutes(request.getDureeMinutes());
+        conte.setCredits(request.getCredits());
         conte.setFichierTexteUrl(request.getFichierTexteUrl());
         conte.setFichierAudioUrl(request.getFichierAudioUrl());
         conte.setFichierVideoUrl(request.getFichierVideoUrl());
@@ -143,6 +158,18 @@ public class ConteDanseService {
     }
 
     // ────────────────────────────────────────────────────────────────
+    // FILTRER — public, CON-03 (age, langue, pays, thematique, acces)
+    // ────────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Page<ConteDanseResponse> filtrerPublies(String langue, String pays, String thematique,
+            AccesConte acces, Integer age, Pageable pageable) {
+        return conteDanseRepository
+                .filtrerPublies(StatutConte.publie, langue, pays, thematique, acces, age, pageable)
+                .map(this::toResponse);
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // DETAIL — public
     // ────────────────────────────────────────────────────────────────
 
@@ -176,7 +203,7 @@ public class ConteDanseService {
     private void verifierAuteurOuAdmin(ConteDanse conte, Utilisateur utilisateur, Jwt jwt) {
         Collection<String> roles = extractRoles(jwt);
         boolean estAuteur = conte.getCreateur().getId().equals(utilisateur.getId());
-        boolean estAdmin = roles.contains("admin");
+        boolean estAdmin = roles.contains("admin") || roles.contains("super_admin") || roles.contains("moderateur");
 
         if (!estAuteur && !estAdmin) {
             throw new AccessDeniedException(
@@ -207,6 +234,13 @@ public class ConteDanseService {
                 .description(conte.getDescription())
                 .thematique(conte.getThematique())
                 .langueOriginale(conte.getLangueOriginale())
+                .couvertureUrl(conte.getCouvertureUrl())
+                .pays(conte.getPays())
+                .culture(conte.getCulture())
+                .ageMin(conte.getAgeMin())
+                .ageMax(conte.getAgeMax())
+                .dureeMinutes(conte.getDureeMinutes())
+                .credits(conte.getCredits())
                 .statut(conte.getStatut())
                 .acces(conte.getAcces())
                 .isbn(conte.getIsbn())

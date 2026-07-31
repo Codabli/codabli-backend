@@ -52,6 +52,16 @@ public class ProduitService {
     }
 
     // ────────────────────────────────────────────────────────────────
+    // RECHERCHE — utilisee par RechercheController (REC-01)
+    // ────────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Page<ProduitResponse> rechercher(String query, Pageable pageable) {
+        return produitRepository.rechercherActifs(query, pageable)
+                .map(this::toResponse);
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // DETAIL — public
     // ────────────────────────────────────────────────────────────────
 

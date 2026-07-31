@@ -58,6 +58,24 @@ public class GalerieService {
     }
 
     // ────────────────────────────────────────────────────────────────
+    // RECHERCHE — utilisee par RechercheController (REC-01)
+    // ────────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Page<GalerieItemResponse> rechercher(String query, Pageable pageable) {
+        return carteAConteRepository.rechercherValidees(StatutModeration.valide, query, pageable)
+                .map(carte -> GalerieItemResponse.builder()
+                        .id(carte.getId())
+                        .type(carte.getType())
+                        .imageUrl(carte.getImageUrl())
+                        .texteAssocie(carte.getTexteAssocie())
+                        .dateCreation(carte.getDateCreation())
+                        .createurPrenom(carte.getCreateur().getPrenom())
+                        .miseEnAvant(false)
+                        .build());
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // DETAIL CARTE — public
     // ────────────────────────────────────────────────────────────────
 

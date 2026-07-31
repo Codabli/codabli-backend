@@ -1,6 +1,7 @@
 package com.codabli.repository;
 
 import com.codabli.entity.ConteDanse;
+import com.codabli.entity.enums.AccesConte;
 import com.codabli.entity.enums.StatutConte;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,5 +46,30 @@ public interface ConteDanseRepository extends JpaRepository<ConteDanse, UUID> {
             """)
     Page<ConteDanse> rechercherPublies(@Param("statut") StatutConte statut,
             @Param("q") String query,
+            Pageable pageable);
+
+    /**
+     * Filtre les contes publies (CON-03) : age, langue, pays, thematique et
+     * niveau d'acces. Chaque parametre nul est ignore (filtre non applique).
+     */
+    @Query("""
+            SELECT c FROM ConteDanse c
+            WHERE c.statut = :statut
+            AND (:langue IS NULL OR c.langueOriginale = :langue)
+            AND (:pays IS NULL OR LOWER(c.pays) = LOWER(:pays))
+            AND (:thematique IS NULL OR LOWER(c.thematique) LIKE LOWER(CONCAT('%', :thematique, '%')))
+            AND (:acces IS NULL OR c.acces = :acces)
+            AND (:age IS NULL OR (
+                (c.ageMin IS NULL OR c.ageMin <= :age)
+                AND (c.ageMax IS NULL OR c.ageMax >= :age)
+            ))
+            ORDER BY c.datePublication DESC
+            """)
+    Page<ConteDanse> filtrerPublies(@Param("statut") StatutConte statut,
+            @Param("langue") String langue,
+            @Param("pays") String pays,
+            @Param("thematique") String thematique,
+            @Param("acces") AccesConte acces,
+            @Param("age") Integer age,
             Pageable pageable);
 }

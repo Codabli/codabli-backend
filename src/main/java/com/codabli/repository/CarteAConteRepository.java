@@ -1,6 +1,8 @@
 package com.codabli.repository;
 
 import com.codabli.entity.CarteAConte;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -66,4 +68,19 @@ public interface CarteAConteRepository extends JpaRepository<CarteAConte, UUID> 
      * Utilisé par la galerie publique pour ne retourner que les cartes validées.
      */
     Optional<CarteAConte> findByIdAndStatutModeration(UUID id, StatutModeration statutModeration);
+
+    /**
+     * Recherche par mot-cle (texte associe) parmi les cartes validées.
+     * Utilisée par la recherche transversale (REC-01), mêmes règles de
+     * visibilité que la galerie publique.
+     */
+    @Query("""
+            SELECT c FROM CarteAConte c
+            WHERE c.statutModeration = :statut
+            AND LOWER(c.texteAssocie) LIKE LOWER(CONCAT('%', :q, '%'))
+            """)
+    Page<CarteAConte> rechercherValidees(
+            @Param("statut") StatutModeration statut,
+            @Param("q") String query,
+            Pageable pageable);
 }

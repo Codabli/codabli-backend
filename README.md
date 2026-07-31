@@ -17,7 +17,7 @@ Backend de l'application **Codabli**, développé en **Spring Boot 3.3.2** et **
 ## 📂 Modules Fonctionnels Implémentés
 
 ### 🔐 1. Sécurité & Utilisateurs
-* Double inscription et synchronisation locale depuis le jeton **Keycloak** (JWT). Mappage des rôles du Realm (`admin`, `eleve`, `enseignant`, `parent`, etc.).
+* Double inscription et synchronisation locale depuis le jeton **Keycloak** (JWT). Mappage des rôles du Realm : `eleve`, `enseignant`, `parent`, `professionnel_education`, `moderateur`, `admin`, `super_admin`, `comite_lecture`, `traducteur`, `ambassadeur`.
 * Habilitation fine à 2 niveaux : `@PreAuthorize` au niveau contrôleur & validation logique métier spécifique dans les services.
 
 ### 🏫 2. Scolarité (Écoles, Classes & Inscriptions)
@@ -28,16 +28,20 @@ Backend de l'application **Codabli**, développé en **Spring Boot 3.3.2** et **
 * Flux d'actualités avec pagination et filtrage par statut de publication. CRUD complet restreint aux administrateurs.
 
 ### 📖 4. Contes Dansés (`/api/contes-danses`)
-* Catalogue des contes avec pièces jointes (texte, audio et vidéo). Création par tout utilisateur connecté, modification restreinte à l'auteur ou l'admin.
+* Catalogue des contes avec pièces jointes (texte, audio et vidéo), couverture, pays, culture, tranche d'âge, durée et crédits. Filtres combinables (`langue`, `pays`, `thematique`, `acces`, `age`). Création par tout utilisateur connecté, modification restreinte à l'auteur ou à `admin`/`super_admin`/`moderateur`.
+* **Multilingue** (`/api/contes-danses/{id}/traductions`) : chaque conte peut avoir plusieurs traductions suivant un cycle `a_traduire → en_cours → relecture → validee → publiee → archivee`, géré par `traducteur`/`comite_lecture`/`admin`/`super_admin`. Seules les traductions `publiee` sont visibles publiquement.
 
 ### 🎨 5. Cartes à Conte & Modération (`/api/cartes-a-conte`)
 * Création d'éléments de contes (personnages, lieux, objets).
-* **Flux de modération** : les élèves créent leurs cartes, les enseignants valident ou rejettent les cartes uniquement pour les élèves inscrits dans leurs propres classes, et les admins ont un droit total.
+* **Flux de modération complet** (9 statuts CDC) : les élèves soumettent leurs cartes ; les enseignants valident, refusent ou demandent une correction uniquement pour les élèves de leurs propres classes ; `admin`/`super_admin`/`moderateur` ont un droit total, y compris le retrait d'une création déjà publiée.
 
-### 🔍 6. Recherche Transversale (`/api/recherche`)
-* Endpoint unique permettant d'effectuer des recherches globales insensibles à la casse simultanément dans les actualités et les contes.
+### 📝 6. Fiches d'Activités (`/api/fiches-activites`)
+* Fiches pédagogiques structurées (objectif, âge, durée, matériel, consignes, déroulement, compétences, adaptations, crédits, PDF). Mêmes règles de visibilité que la Mallette Pédagogique.
 
-### 🛒 7. Boutique & E-Commerce (Produits, Panier & Commandes)
+### 🔍 7. Recherche Transversale (`/api/recherche`)
+* Endpoint unique permettant d'effectuer des recherches globales insensibles à la casse dans les actualités, les contes dansés, les cartes à conte validées, les produits et les partenaires actifs.
+
+### 🛒 8. Boutique & E-Commerce (Produits, Panier & Commandes)
 * **Produits** : Gestion des articles physiques et numériques (GET public, modification admin).
 * **Panier** : Gestion persistée par utilisateur connecté avec calcul automatique des totaux.
 * **Commande** : Passage de commande transactionnel avec :
@@ -47,13 +51,24 @@ Backend de l'application **Codabli**, développé en **Spring Boot 3.3.2** et **
   4. Calcul automatique de frais de port (5.00€ si présence d'au moins un article physique).
   5. Vidage de panier automatique après confirmation.
 
-### 🎒 8. Mallette Pédagogique (`/api/ressources-pedagogiques`)
+### 🎒 9. Mallette Pédagogique (`/api/ressources-pedagogiques`)
 * Catalogue de matériel pédagogique (fiches, guides, vidéos, audio, documents) réservés aux enseignants.
 * **Sécurité & Visibilité** :
   * `GET` pour `enseignant`, `professionnel_education`, `admin` et `comite_lecture`. Filtrage dynamique : les rôles hors-staff ne peuvent voir que les ressources actives (`actif = true`).
   * `POST/PUT` réservés aux rôles `admin` et `comite_lecture`.
   * `DELETE` réservé exclusivement aux administrateurs (`admin`).
 
+### 🤝 10. Partenaires (`/api/partenaires`)
+* Vitrine publique des partenaires (institutionnels, fondations, culturels, associations, citoyens contributeurs). `GET` public filtré sur `actif = true`, écriture réservée `admin`/`super_admin`.
+
+### 💳 11. Abonnements (`/api/abonnements`)
+* Catalogue d'offres (`/api/abonnements/offres`, public en lecture, géré par `admin`/`super_admin`) et souscriptions utilisateur : souscrire, renouveler, résilier, changer d'offre. Aucune passerelle de paiement réelle — la souscription active directement l'abonnement, comme pour les commandes de la boutique.
+
+### 👶 12. Profils Enfants (`/api/profils-enfants`)
+* Sous-profils légers rattachés au compte d'un `parent`/`professionnel_education` (pseudonyme, autorisation parentale datée et révocable), distincts du rôle `eleve` qui reste un compte Keycloak complet.
+
+### ✉️ 13. Contact (`/api/contact`)
+* Formulaire de contact public avec accusé de réception, catégorisation des demandes, et traitement par `admin`/`super_admin`.
 
 ---
 

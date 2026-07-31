@@ -33,6 +33,22 @@ public class ConteDanseRequest {
     @Size(max = 10)
     private String langueOriginale;
 
+    private String couvertureUrl;
+
+    @Size(max = 100)
+    private String pays;
+
+    @Size(max = 150)
+    private String culture;
+
+    private Integer ageMin;
+
+    private Integer ageMax;
+
+    private Integer dureeMinutes;
+
+    private String credits;
+
     private String fichierTexteUrl;
 
     private String fichierAudioUrl;

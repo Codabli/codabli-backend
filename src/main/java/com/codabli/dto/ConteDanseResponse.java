@@ -30,6 +30,20 @@ public class ConteDanseResponse {
 
     private String langueOriginale;
 
+    private String couvertureUrl;
+
+    private String pays;
+
+    private String culture;
+
+    private Integer ageMin;
+
+    private Integer ageMax;
+
+    private Integer dureeMinutes;
+
+    private String credits;
+
     private StatutConte statut;
 
     private AccesConte acces;
