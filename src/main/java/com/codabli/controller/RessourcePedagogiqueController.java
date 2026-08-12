@@ -18,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -104,5 +105,28 @@ public class RessourcePedagogiqueController {
 
         ressourcePedagogiqueService.supprimer(id, jwt);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * POST /api/ressources-pedagogiques/{id}/favori — RES-04.
+     */
+    @PostMapping("/{id}/favori")
+    @PreAuthorize("hasAnyRole('enseignant', 'professionnel_education', 'admin', 'comite_lecture')")
+    public ResponseEntity<Void> ajouterFavori(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        ressourcePedagogiqueService.ajouterFavori(id, jwt);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/favori")
+    @PreAuthorize("hasAnyRole('enseignant', 'professionnel_education', 'admin', 'comite_lecture')")
+    public ResponseEntity<Void> retirerFavori(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        ressourcePedagogiqueService.retirerFavori(id, jwt);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/mes-favoris")
+    @PreAuthorize("hasAnyRole('enseignant', 'professionnel_education', 'admin', 'comite_lecture')")
+    public ResponseEntity<List<RessourcePedagogiqueResponse>> mesFavoris(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(ressourcePedagogiqueService.mesFavoris(jwt));
     }
 }

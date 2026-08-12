@@ -56,6 +56,8 @@ public class ConteDanseResponse {
 
     private String fichierVideoUrl;
 
+    private String motifModeration;
+
     private OffsetDateTime dateCreation;
 
     private OffsetDateTime datePublication;

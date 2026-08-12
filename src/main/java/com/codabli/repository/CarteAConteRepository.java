@@ -83,4 +83,6 @@ public interface CarteAConteRepository extends JpaRepository<CarteAConte, UUID> 
             @Param("statut") StatutModeration statut,
             @Param("q") String query,
             Pageable pageable);
+
+    long countByStatutModeration(StatutModeration statut);
 }

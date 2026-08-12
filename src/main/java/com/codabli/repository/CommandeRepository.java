@@ -1,6 +1,7 @@
 package com.codabli.repository;
 
 import com.codabli.entity.Commande;
+import com.codabli.entity.enums.StatutCommande;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +13,6 @@ import java.util.UUID;
 public interface CommandeRepository extends JpaRepository<Commande, UUID> {
 
     Page<Commande> findByUtilisateurIdOrderByDateCommandeDesc(UUID utilisateurId, Pageable pageable);
+
+    long countByStatut(StatutCommande statut);
 }

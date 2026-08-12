@@ -20,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service metier pour les contes danses.
@@ -130,6 +132,155 @@ public class ConteDanseService {
 
         ConteDanse saved = conteDanseRepository.save(conte);
         return toResponse(saved);
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // WORKFLOW DE MODERATION (RG-01) — soumettre / valider / refuser
+    //
+    // Cycle : brouillon --soumettre--> en_revision_enseignant
+    //         --valider(enseignant)--> en_revision_comite
+    //         --valider(comite_lecture)--> publie
+    // admin/super_admin ont un droit total : valider() publie directement
+    // depuis n'importe quel statut. refuser() est possible a tout moment
+    // par un role habilite.
+    // ────────────────────────────────────────────────────────────────
+
+    /**
+     * L'auteur soumet son brouillon (ou un conte refuse corrige) a la
+     * moderation.
+     */
+    public ConteDanseResponse soumettre(UUID id, Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        ConteDanse conte = getOrThrow(id);
+
+        if (!conte.getCreateur().getId().equals(utilisateur.getId())) {
+            throw new AccessDeniedException("Seul l'auteur peut soumettre son conte a la moderation");
+        }
+        if (conte.getStatut() != StatutConte.brouillon && conte.getStatut() != StatutConte.refuse) {
+            throw new IllegalStateException(
+                    "Seul un conte en brouillon ou refuse peut etre soumis a la moderation");
+        }
+
+        conte.setStatut(StatutConte.en_revision_enseignant);
+        conte.setMotifModeration(null);
+        ConteDanse saved = conteDanseRepository.save(conte);
+        return toResponse(saved);
+    }
+
+    /**
+     * Fait progresser un conte dans le cycle de validation :
+     * - enseignant : en_revision_enseignant -> en_revision_comite (limite a
+     * ses propres classes si le conte est rattache a une classe)
+     * - comite_lecture : en_revision_comite -> publie
+     * - admin/super_admin : droit total, publie directement
+     */
+    public ConteDanseResponse valider(UUID id, Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Collection<String> roles = extractRoles(jwt);
+        ConteDanse conte = getOrThrow(id);
+
+        if (roles.contains("admin") || roles.contains("super_admin")) {
+            publier(conte, utilisateur);
+        } else if (roles.contains("comite_lecture")) {
+            if (conte.getStatut() != StatutConte.en_revision_comite) {
+                throw new IllegalStateException(
+                        "Ce conte n'est pas en attente de validation du comite de lecture");
+            }
+            publier(conte, utilisateur);
+        } else if (roles.contains("enseignant")) {
+            if (conte.getStatut() != StatutConte.en_revision_enseignant) {
+                throw new IllegalStateException(
+                        "Ce conte n'est pas en attente de validation enseignant");
+            }
+            if (conte.getClasse() != null
+                    && !conte.getClasse().getEnseignant().getId().equals(utilisateur.getId())) {
+                throw new AccessDeniedException("Vous ne pouvez valider que les contes de vos classes");
+            }
+            conte.setValideParEnseignant(utilisateur);
+            conte.setStatut(StatutConte.en_revision_comite);
+        } else {
+            throw new AccessDeniedException("Role non autorise a valider un conte danse");
+        }
+
+        ConteDanse saved = conteDanseRepository.save(conte);
+        return toResponse(saved);
+    }
+
+    /**
+     * Refuse un conte, quel que soit son statut de revision en cours (MOD-03,
+     * le motif est enregistre).
+     */
+    public ConteDanseResponse refuser(UUID id, String motif, Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Collection<String> roles = extractRoles(jwt);
+        ConteDanse conte = getOrThrow(id);
+
+        boolean autorise = roles.contains("admin") || roles.contains("super_admin")
+                || roles.contains("comite_lecture");
+        if (!autorise && roles.contains("enseignant") && conte.getStatut() == StatutConte.en_revision_enseignant
+                && (conte.getClasse() == null
+                        || conte.getClasse().getEnseignant().getId().equals(utilisateur.getId()))) {
+            autorise = true;
+        }
+        if (!autorise) {
+            throw new AccessDeniedException("Vous n'etes pas autorise a refuser ce conte danse");
+        }
+
+        conte.setStatut(StatutConte.refuse);
+        conte.setMotifModeration(motif);
+        ConteDanse saved = conteDanseRepository.save(conte);
+        return toResponse(saved);
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // MES CONTES — l'auteur retrouve ses propres contes, quel que soit
+    // leur statut (brouillon, en revision, publie, refuse)
+    // ────────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<ConteDanseResponse> mesContes(Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        return conteDanseRepository.findByCreateurId(utilisateur.getId()).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // FILE D'ATTENTE DE MODERATION — selon le role de l'appelant
+    // ────────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<ConteDanseResponse> listerEnAttente(Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Collection<String> roles = extractRoles(jwt);
+
+        List<ConteDanse> contes;
+        if (roles.contains("admin") || roles.contains("super_admin")) {
+            contes = conteDanseRepository.findByStatutIn(
+                    List.of(StatutConte.en_revision_enseignant, StatutConte.en_revision_comite));
+        } else if (roles.contains("comite_lecture")) {
+            contes = conteDanseRepository.findByStatut(StatutConte.en_revision_comite);
+        } else if (roles.contains("enseignant")) {
+            contes = conteDanseRepository.findByStatutAndEnseignant(
+                    StatutConte.en_revision_enseignant, utilisateur.getId());
+        } else {
+            throw new AccessDeniedException("Role non autorise a consulter la file de moderation");
+        }
+
+        return contes.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    private void publier(ConteDanse conte, Utilisateur validateur) {
+        conte.setStatut(StatutConte.publie);
+        conte.setValideParComite(validateur);
+        conte.setDatePublication(OffsetDateTime.now());
+        conte.setMotifModeration(null);
+    }
+
+    private ConteDanse getOrThrow(UUID id) {
+        return conteDanseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Conte danse non trouve avec l'ID: " + id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -247,6 +398,7 @@ public class ConteDanseService {
                 .fichierTexteUrl(conte.getFichierTexteUrl())
                 .fichierAudioUrl(conte.getFichierAudioUrl())
                 .fichierVideoUrl(conte.getFichierVideoUrl())
+                .motifModeration(conte.getMotifModeration())
                 .dateCreation(conte.getDateCreation())
                 .datePublication(conte.getDatePublication())
                 .createurId(conte.getCreateur().getId())

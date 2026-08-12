@@ -21,4 +21,6 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, UUID> 
     List<Utilisateur> findByRole(RoleUtilisateur role);
 
     List<Utilisateur> findByStatut(String statut);
+
+    long countByRole(RoleUtilisateur role);
 }

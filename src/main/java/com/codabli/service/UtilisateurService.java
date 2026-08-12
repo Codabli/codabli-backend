@@ -6,6 +6,7 @@ import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.RoleUtilisateur;
 import com.codabli.repository.UtilisateurRepository;
 import jakarta.persistence.EntityManager;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,15 +26,18 @@ public class UtilisateurService {
     private final KeycloakAdminService keycloakAdminService;
     private final UtilisateurMapper utilisateurMapper;
     private final EntityManager entityManager;
+    private final JournalActiviteService journalActiviteService;
 
     public UtilisateurService(UtilisateurRepository utilisateurRepository,
             KeycloakAdminService keycloakAdminService,
             UtilisateurMapper utilisateurMapper,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            JournalActiviteService journalActiviteService) {
         this.utilisateurRepository = utilisateurRepository;
         this.keycloakAdminService = keycloakAdminService;
         this.utilisateurMapper = utilisateurMapper;
         this.entityManager = entityManager;
+        this.journalActiviteService = journalActiviteService;
     }
 
     /**
@@ -124,6 +128,33 @@ public class UtilisateurService {
     }
 
     /**
+     * Anonymise un utilisateur au lieu de le supprimer : revoque l'acces
+     * Keycloak et efface les donnees personnelles, tout en conservant la
+     * ligne locale (integrite referentielle avec les contenus qu'il a pu
+     * creer). Action sensible historisee (SUP-03).
+     */
+    public UtilisateurResponse anonymiserUser(UUID id, Jwt jwt) {
+        Utilisateur utilisateur = utilisateurRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
+
+        if (utilisateur.getKeycloakId() != null) {
+            keycloakAdminService.deleteUser(utilisateur.getKeycloakId());
+        }
+
+        utilisateur.setKeycloakId(null);
+        utilisateur.setNom("Utilisateur");
+        utilisateur.setPrenom("Anonymisé");
+        utilisateur.setEmail(null);
+        utilisateur.setDateNaissance(null);
+        utilisateur.setStatut("inactif");
+
+        Utilisateur saved = utilisateurRepository.save(utilisateur);
+        journalActiviteService.enregistrer(jwt, "ANONYMISATION_UTILISATEUR", "Utilisateur " + id,
+                "Acces revoque et donnees personnelles effacees");
+        return utilisateurMapper.toResponse(saved);
+    }
+
+    /**
      * Lists all users (admin operation).
      */
     @Transactional(readOnly = true)
@@ -145,8 +176,9 @@ public class UtilisateurService {
 
     /**
      * Deletes a user from both Keycloak and the local database (admin operation).
+     * Action sensible historisee dans le journal d'activite (SUP-03).
      */
-    public void deleteUser(UUID id) {
+    public void deleteUser(UUID id, Jwt jwt) {
         Utilisateur utilisateur = utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
 
@@ -156,13 +188,16 @@ public class UtilisateurService {
         }
 
         utilisateurRepository.delete(utilisateur);
+        journalActiviteService.enregistrer(jwt, "SUPPRESSION_UTILISATEUR",
+                "Utilisateur " + id, utilisateur.getPrenom() + " " + utilisateur.getNom() + " (" + utilisateur.getEmail() + ")");
     }
 
     /**
      * Changes the status of a user (admin operation).
      * Valid statuses: "actif", "inactif", "suspendu"
+     * Action sensible historisee dans le journal d'activite (SUP-03).
      */
-    public UtilisateurResponse changeUserStatus(UUID id, String newStatus) {
+    public UtilisateurResponse changeUserStatus(UUID id, String newStatus, Jwt jwt) {
         Utilisateur utilisateur = utilisateurRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
 
@@ -172,8 +207,11 @@ public class UtilisateurService {
                     "Statut invalide: " + newStatus + ". Valeurs acceptées: " + validStatuses);
         }
 
+        String ancienStatut = utilisateur.getStatut();
         utilisateur.setStatut(newStatus);
         Utilisateur saved = utilisateurRepository.save(utilisateur);
+        journalActiviteService.enregistrer(jwt, "CHANGEMENT_STATUT_UTILISATEUR",
+                "Utilisateur " + id, ancienStatut + " -> " + newStatus);
         return utilisateurMapper.toResponse(saved);
     }
 

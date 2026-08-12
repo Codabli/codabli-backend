@@ -4,6 +4,8 @@ import com.codabli.dto.UtilisateurResponse;
 import com.codabli.entity.enums.RoleUtilisateur;
 import com.codabli.service.UtilisateurService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -54,9 +56,19 @@ public class UtilisateurController {
      * database.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
-        utilisateurService.deleteUser(id);
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        utilisateurService.deleteUser(id, jwt);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * PATCH /api/admin/utilisateurs/{id}/anonymiser — alternative a la
+     * suppression : revoque l'acces et efface les donnees personnelles sans
+     * casser l'integrite referentielle des contenus lies.
+     */
+    @PatchMapping("/{id}/anonymiser")
+    public ResponseEntity<UtilisateurResponse> anonymiserUser(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(utilisateurService.anonymiserUser(id, jwt));
     }
 
     /**
@@ -67,12 +79,13 @@ public class UtilisateurController {
     @PatchMapping("/{id}/statut")
     public ResponseEntity<UtilisateurResponse> changeStatus(
             @PathVariable UUID id,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal Jwt jwt) {
         String newStatus = body.get("statut");
         if (newStatus == null || newStatus.isBlank()) {
             throw new IllegalArgumentException("Le champ 'statut' est obligatoire");
         }
-        UtilisateurResponse response = utilisateurService.changeUserStatus(id, newStatus);
+        UtilisateurResponse response = utilisateurService.changeUserStatus(id, newStatus, jwt);
         return ResponseEntity.ok(response);
     }
 }

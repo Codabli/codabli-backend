@@ -117,7 +117,14 @@ Les contes dansés constituent le cœur de la bibliothèque culturelle de l'éco
       "classeId": "6da95f64-5717-4562-b3fc-2c963f66dfa9"
     }
     ```
-* **Cycle de validation** : Le conte peut progresser vers les statuts `en_revision_enseignant` ou `en_revision_comite` avant de passer à `publie` ou `refuse`.
+* **Cycle de validation (workflow complet)** :
+  1. `PATCH /api/contes-danses/{id}/soumettre` — l'auteur soumet son `brouillon` (ou son conte `refuse` corrigé) → `en_revision_enseignant`.
+  2. `PATCH /api/contes-danses/{id}/valider` — un enseignant (limité aux contes de ses propres classes) fait passer le conte en `en_revision_comite`.
+  3. `PATCH /api/contes-danses/{id}/valider` — un membre du `comite_lecture` publie le conte → `publie` (`datePublication` renseignée).
+  4. `admin`/`super_admin` disposent d'un droit total : `valider` publie directement depuis n'importe quel statut.
+  5. `PATCH /api/contes-danses/{id}/refuser` — possible à toute étape par un rôle habilité, corps optionnel `{ "motif": "..." }` (conservé dans `motifModeration`).
+  * `GET /api/contes-danses/mes-contes` : l'auteur retrouve tous ses contes quel que soit leur statut.
+  * `GET /api/contes-danses/en-attente` : file d'attente filtrée par rôle (enseignant → ses classes ; comité de lecture → `en_revision_comite` ; admin/super_admin → tout ce qui est en révision).
 * **Accessibilité publique** : Seuls les contes possédant le statut `publie` sont exposés aux visiteurs anonymes (`GET /api/contes-danses`).
 * **Filtres du catalogue public (`GET /api/contes-danses`)** : le catalogue accepte des paramètres de requête optionnels, combinables, pour affiner la recherche :
   * `langue` (ex : `fr`), `pays` (ex : `Liban`), `thematique` (recherche partielle), `acces` (`gratuit` ou `payant`), `age` (retient les contes dont la tranche `ageMin`/`ageMax` couvre cet âge).
@@ -153,6 +160,8 @@ Chaque Conte Dansé peut exister en plusieurs langues, chacune suivant son propr
 
 ## 🃏 5. Cartes à Conte & Galerie d'Art
 Il s'agit du parcours d'expression des élèves et de sa valorisation publique.
+
+> ℹ️ Cette « Galerie d'Art » (vitrine des cartes à conte validées) est distincte de la **Galerie des Arts immersive** (section 23, `/api/galerie-arts`) qui organise les fresques culturelles par pays.
 
 * **Création** : Un élève conçoit une scène et génère/soumet une carte (`POST /api/cartes-a-conte`). Le système extrait automatiquement son identifiant depuis le JWT pour l'enregistrer comme créateur de la carte. Celle-ci prend le statut **`soumis`**.
   * **Exemple de Requête JSON** :
@@ -408,6 +417,136 @@ Un unique endpoint interroge simultanément **cinq** sources de contenus publics
 La recherche est optimisée par des clauses `LIKE` insensibles à la casse sur les champs textuels pertinents (titre, résumé, texte associé, nom, description, présentation).
 
 > ⚠️ Les **Ressources Pédagogiques** et **Fiches d'Activités** sont volontairement exclues de cette recherche publique : leur accès est réservé à certains rôles (`enseignant`, `professionnel_education`, `admin`, `comite_lecture`), et les inclure dans un endpoint public reviendrait à contourner cette restriction.
+
+---
+
+## 🧾 15. Journal d'Activité (`GET /api/admin/journal-activite`)
+Historise les actions sensibles de l'administration (CDC 8.23, SUP-03). Réservé à `super_admin`.
+
+* Actions actuellement tracées : `SUPPRESSION_UTILISATEUR`, `CHANGEMENT_STATUT_UTILISATEUR`, `ANONYMISATION_UTILISATEUR`, `RETRAIT_CARTE_A_CONTE`.
+* Chaque entrée conserve : l'acteur (utilisateur connecté ayant déclenché l'action), l'action, la cible, un détail libre, et la date.
+* Le service `JournalActiviteService.enregistrer(...)` peut être appelé depuis n'importe quel autre service pour tracer une nouvelle action sensible.
+
+---
+
+## 📔 16. Carnet de Lecture (`/api/profils-enfants/{profilEnfantId}/carnet-lecture`)
+Espace créatif personnel de l'enfant : une page par conte lu (CDC 8.17.1, CDL-01 à 17).
+
+* **Sécurité (RG-13)** : réservé au `responsable` (parent/professionnel_education) propriétaire du profil enfant, ou à `admin`/`super_admin`. Le `profilEnfantId` du chemin est systématiquement revérifié contre le JWT.
+* **Créer une page (`POST .../carnet-lecture`)** — les métadonnées du conte sont préremplies si `conteId` est fourni, mais jamais le contenu personnel :
+  ```json
+  {
+    "conteId": "66666666-6666-6666-6666-600000000001",
+    "theme": "Amitié, courage",
+    "resume": "L'histoire parle d'un lutin qui cherche ses clés magiques...",
+    "motsPreferes": "constellation : un groupe d'étoiles qui dessine une forme",
+    "questionsReponses": "Mon personnage préféré : le lutin, parce qu'il est drôle."
+  }
+  ```
+* **Ajouter un élément (`POST .../{pageId}/elements`)** — personnage, lieu, objet magique ou création libre (dessin/collage/import), un seul type générique couvrant ces sous-listes du CDC :
+  ```json
+  { "type": "personnage", "nom": "Le Lutin", "description": "Il aime chercher des trésors.", "imageUrl": "https://.../dessin1.png" }
+  ```
+* **Cycle de vie de la page** : `non_commencee` → `en_cours` (dès la première modification) → `terminee` (`PATCH .../{pageId}/terminer`, CDL-15 — ne rend pas la page publique, RG-01) → `archivee`.
+* **Carnet complet (`GET .../carnet-lecture`)** : toutes les pages de l'enfant (CDL-17).
+* **Export (CDL-16)** : le champ `fichierExportUrl` référence un document externe ; aucune génération PDF côté backend (cohérent avec le reste du projet).
+
+---
+
+## 🧳 17. Carnet de Voyage (`/api/profils-enfants/{profilEnfantId}/carnet-voyage`)
+Même principe que le Carnet de Lecture, associé à un pays/une fresque découverts (CDC 8.17.2, CDV-01 à 14).
+
+* **Créer une page (`POST .../carnet-voyage`)** :
+  ```json
+  {
+    "conteId": "66666666-6666-6666-6666-600000000002",
+    "identiteNotes": "Le Liban est un pays au bord de la mer Méditerranée.",
+    "natureNotes": "Il y a des montagnes et des cèdres.",
+    "experienceNotes": "J'ai appris à dire bonjour en arabe : marhaba !"
+  }
+  ```
+* **Éléments (`POST .../{pageId}/elements`)** : `element_naturel`, `element_culturel`, `personnage`, `objet` ou `creation`.
+* Mêmes règles que le Carnet de Lecture : contenu texte libre écrit par l'enfant (RG-10), statuts de page (RG-12), confidentialité (RG-13).
+
+---
+
+## 🎨 18. Mallette d'Artistes (`GET /api/profils-enfants/{profilEnfantId}/mallette-artistes`)
+Vue agrégée de l'espace créatif d'un profil enfant (CDC 8.16).
+
+> ℹ️ **Point d'architecture** : dans le CDC, la Mallette d'Artistes inclut aussi « Mes Contes Dansés » et « Mes Cartes à Contes ». Dans ce backend, ces créations appartiennent à un compte `Utilisateur` complet (ex. `eleve`), pas au `ProfilEnfant` (sous-profil léger sans session propre) — il n'existe donc pas de lien direct entre les deux. La Mallette agrège ici ce qui est réellement rattaché au profil enfant : ses deux carnets, ses créations (dessins/collages/imports) et ses pages prêtes à imprimer.
+
+Réponse : `carnetLecture`, `carnetVoyage`, `creations` (liste combinée des éléments de type `creation` des deux carnets), `pagesLectureAImprimer` et `pagesVoyageAImprimer` (pages au statut `terminee`).
+
+---
+
+## 📊 19. Statistiques (`GET /api/admin/statistiques`)
+Tableau de bord agrégé pour l'administration (CDC section 15). Réservé à `admin`/`super_admin`.
+
+Compteurs globaux uniquement (aucune donnée individuelle sur un utilisateur ou un enfant, conformément aux règles de protection des données) : utilisateurs par rôle, écoles/classes, contes par statut, cartes par statut, ressources/fiches, produits/commandes par statut, partenaires, offres/abonnements par statut, profils enfants, pages de carnets (total + terminées), actualités publiées, demandes de contact (total + non traitées).
+
+---
+
+## 🎥 20. Webinaires (`/api/webinaires`)
+Catalogue et inscriptions pour les professionnels de l'éducation (CDC PRO-06).
+
+* **Catalogue (`GET /api/webinaires`)** : public, uniquement les webinaires actifs, triés par date de début.
+* **S'inscrire (`POST /api/webinaires/{id}/inscriptions`)** : utilisateur authentifié. Bloque si déjà inscrit, ou si la `capaciteMax` est atteinte.
+* **Mes inscriptions (`GET /api/webinaires/mes-inscriptions`)** : liste avec `presenceConfirmee` et `attestationUrl` (référence externe, pas de génération de document).
+* **Gestion (`POST/PUT/DELETE /api/webinaires`)** : réservée `admin`/`super_admin`.
+
+---
+
+## 🧑‍🏫 21. Coaching (`/api/coaching`)
+Offres et réservations de créneaux individuels (CDC PRO-07).
+
+* **Offres (`GET /api/coaching/offres`)** : public. Gestion (`POST/PUT/DELETE .../offres`) réservée `admin`/`super_admin`.
+* **Réserver (`POST /api/coaching/reservations`)** :
+  ```json
+  { "offreCoachingId": "...", "dateCreneau": "2026-09-10T14:00:00Z" }
+  ```
+* **Changer le statut (`PATCH .../reservations/{id}/statut`)** : le propriétaire de la réservation peut seulement l'`annulee` ; seul `admin`/`super_admin` peut la passer à `confirmee` ou `terminee`.
+* Aucune passerelle de paiement réelle, cohérent avec Boutique/Abonnements.
+
+---
+
+## 📋 22. Évaluations Pédagogiques (`/api/evaluations-pedagogiques`)
+Grilles d'observation et bilans rédigés par un enseignant (CDC PRO-05).
+
+* **Créer (`POST /api/evaluations-pedagogiques`)** : réservé `enseignant`/`professionnel_education`/`admin`/`super_admin`. Peut être rattachée à une `classeId` et/ou un `eleveId`.
+* **Accès** : limité à l'auteur (`GET /mes-evaluations`, `GET/PUT/DELETE /{id}`) ou à `admin`/`super_admin`.
+* Le champ `fichierExportUrl` référence un export externe (PRO-05 "Export"), sans génération de document côté backend.
+
+---
+
+## 🌟 23. Mise en Avant (`GET /api/mise-en-avant`)
+Mécanisme générique de mise en avant sur la page d'accueil (CDC ACC-04), couvrant plusieurs types de contenus sans dupliquer le mécanisme par entité.
+
+* Une entrée référence sa cible par `typeCible` (`actualite`, `conte_danse`, `produit`, `abonnement`, `partenaire`, `evenement`) + `cibleId`, avec une fenêtre de diffusion (`dateDebut`/`dateFin`) et un `ordreAffichage`.
+* `GET /api/mise-en-avant` (public) ne retourne que les entrées actives et actuellement dans leur fenêtre de diffusion.
+* Gestion (`POST/PUT/DELETE`) réservée `admin`/`super_admin`.
+
+---
+
+## 🖼️ 24. Galerie des Arts Immersive (`/api/galerie-arts`)
+Socle structurel du musée culturel virtuel (CDC 8.11) : le hall donne accès à des salles par pays, chacune avec sa fresque principale et ses hotspots.
+
+* **Hall (`GET /api/galerie-arts/salles`)** : public, salles actives triées par `ordreAffichage` (GAL-01/02).
+* **Détail d'une salle (`GET /api/galerie-arts/salles/{id}`)** : renvoie la salle avec sa fresque imbriquée et les hotspots de celle-ci (GAL-03/06/08).
+* **Hotspot** : deux niveaux de lecture distincts — `explicationDecouverte` (6-8 ans, "Je découvre") et `explicationApprofondie` (9-13 ans, "J'en apprends plus") — conformément à GAL-10.
+* **Gestion (`admin`/`super_admin`)** : `POST/PUT/DELETE` sur `/salles`, `/fresques` (une fresque par salle, contrainte unique) et `/fresques/{id}/hotspots`.
+* **Hors périmètre de cette passe** (documenté comme restant à faire) :
+  * Navigation immersive 2,5D et interactions visuelles (relèvent du frontend).
+  * Collecte d'autocollants, missions, mini-jeux notés — gamification, traitée séparément.
+  * Soumission et modération des créations complémentaires d'une salle (GAL-23/24/25).
+
+---
+
+## 🕵️ 25. Anonymisation Utilisateur (`PATCH /api/admin/utilisateurs/{id}/anonymiser`)
+Alternative à la suppression définitive (`DELETE`), pour respecter l'intégrité référentielle des contenus créés par l'utilisateur (contes, cartes, évaluations...) tout en révoquant son accès.
+
+* Révoque le compte Keycloak (`keycloakId` mis à `null`).
+* Efface `nom`, `prenom`, `email`, `dateNaissance` ; passe `statut` à `inactif`.
+* Action historisée dans le Journal d'Activité (section 15).
 
 ---
 ---
@@ -708,6 +847,127 @@ classDiagram
         +OffsetDateTime dateCreation
     }
 
+    class JournalActivite {
+        +UUID id
+        +String action
+        +String cible
+        +String details
+        +OffsetDateTime dateAction
+    }
+
+    class PageCarnetLecture {
+        +UUID id
+        +String titre
+        +String auteur
+        +String resume
+        +String motsPreferes
+        +String questionsReponses
+        +StatutPageCarnet statut
+    }
+
+    class ElementCarnetLecture {
+        +UUID id
+        +TypeElementCarnetLecture type
+        +String nom
+        +String description
+        +String imageUrl
+    }
+
+    class PageCarnetVoyage {
+        +UUID id
+        +String pays
+        +String identiteNotes
+        +String natureNotes
+        +String societeNotes
+        +String cultureNotes
+        +String experienceNotes
+        +StatutPageCarnet statut
+    }
+
+    class ElementCarnetVoyage {
+        +UUID id
+        +TypeElementCarnetVoyage type
+        +String nom
+        +String description
+        +String imageUrl
+    }
+
+    class RessourceFavorite {
+        +UUID id
+        +OffsetDateTime dateCreation
+    }
+
+    class Webinaire {
+        +UUID id
+        +String titre
+        +OffsetDateTime dateDebut
+        +String lienUrl
+        +Integer capaciteMax
+        +boolean actif
+    }
+
+    class InscriptionWebinaire {
+        +UUID id
+        +boolean presenceConfirmee
+        +String attestationUrl
+        +OffsetDateTime dateInscription
+    }
+
+    class OffreCoaching {
+        +UUID id
+        +String titre
+        +Integer dureeMinutes
+        +BigDecimal tarif
+        +boolean actif
+    }
+
+    class ReservationCoaching {
+        +UUID id
+        +OffsetDateTime dateCreneau
+        +StatutReservationCoaching statut
+    }
+
+    class EvaluationPedagogique {
+        +UUID id
+        +String titre
+        +String competencesEvaluees
+        +String observations
+        +String bilan
+        +LocalDate dateEvaluation
+    }
+
+    class MiseEnAvant {
+        +UUID id
+        +TypeCibleMiseEnAvant typeCible
+        +UUID cibleId
+        +OffsetDateTime dateDebut
+        +OffsetDateTime dateFin
+        +boolean actif
+    }
+
+    class SalleGalerie {
+        +UUID id
+        +String pays
+        +String introduction
+        +int ordreAffichage
+        +boolean actif
+    }
+
+    class Fresque {
+        +UUID id
+        +String titre
+        +String imageUrl
+        +String introduction
+    }
+
+    class Hotspot {
+        +UUID id
+        +String titre
+        +String explicationDecouverte
+        +String explicationApprofondie
+        +String imageUrl
+    }
+
     class Produit {
         +UUID id
         +String nom
@@ -769,6 +1029,25 @@ classDiagram
     Abonnement "0..*" --> "1" Utilisateur : souscrit par
     ProfilEnfant "0..*" --> "1" Utilisateur : géré par (responsable)
     DemandeContact "0..*" --> "0..1" Utilisateur : envoyée par (optionnel)
+    JournalActivite "0..*" --> "0..1" Utilisateur : declenchee par (acteur)
+    PageCarnetLecture "0..*" --> "1" ProfilEnfant : appartient à
+    PageCarnetLecture "0..*" --> "0..1" ConteDanse : rattachee à
+    ElementCarnetLecture "0..*" --> "1" PageCarnetLecture : compose
+    PageCarnetVoyage "0..*" --> "1" ProfilEnfant : appartient à
+    PageCarnetVoyage "0..*" --> "0..1" ConteDanse : rattachee à
+    ElementCarnetVoyage "0..*" --> "1" PageCarnetVoyage : compose
+    RessourceFavorite "0..*" --> "1" Utilisateur : ajoutee par
+    RessourceFavorite "0..*" --> "1" RessourcePedagogique : reference
+    InscriptionWebinaire "0..*" --> "1" Webinaire : inscrit à
+    InscriptionWebinaire "0..*" --> "1" Utilisateur : inscrit par
+    ReservationCoaching "0..*" --> "1" OffreCoaching : reserve
+    ReservationCoaching "0..*" --> "1" Utilisateur : reserve par
+    EvaluationPedagogique "0..*" --> "1" Utilisateur : redigee par (enseignant)
+    EvaluationPedagogique "0..*" --> "0..1" Classe : concerne
+    EvaluationPedagogique "0..*" --> "0..1" Utilisateur : concerne (eleve)
+    Fresque "1" --> "1" SalleGalerie : illustre
+    Fresque "0..*" --> "0..1" ConteDanse : associee à
+    Hotspot "0..*" --> "1" Fresque : appartient à
     Panier "1" --> "1" Utilisateur : appartient à
     LignePanier "0..*" --> "1" Panier : contient
     LignePanier "0..*" --> "1" Produit : référence
@@ -910,4 +1189,70 @@ sequenceDiagram
         DB-->>API: Transactions terminées
         API-->>Client: 201 Created (Commande enregistrée)
     end
+```
+
+---
+
+### 5. Cycle de Modération d'un Conte Dansé
+Ce diagramme montre comment un conte progresse de brouillon à publication, via l'enseignant puis le comité de lecture, avec un droit total pour l'administrateur.
+
+```mermaid
+sequenceDiagram
+    actor Auteur as Auteur (utilisateur connecté)
+    actor Enseignant as Enseignant (classe uniquement)
+    actor Comite as Comité de lecture
+    participant API as CodaBli API (Spring Boot)
+    participant DB as PostgreSQL (Local)
+
+    Auteur->>API: POST /api/contes-danses (conte)
+    API->>DB: Sauvegarde (Statut: brouillon)
+    API-->>Auteur: 201 Created
+
+    Auteur->>API: PATCH /api/contes-danses/{id}/soumettre
+    API->>DB: Statut: en_revision_enseignant
+    API-->>Auteur: 200 OK
+
+    Enseignant->>API: PATCH /api/contes-danses/{id}/valider
+    Note over API: Verifie que le conte est rattache<br/>a une classe de cet enseignant
+    API->>DB: Statut: en_revision_comite (valideParEnseignant renseigne)
+    API-->>Enseignant: 200 OK
+
+    Comite->>API: PATCH /api/contes-danses/{id}/valider
+    API->>DB: Statut: publie (datePublication = maintenant)
+    API-->>Comite: 200 OK
+
+    Note over API, DB: Le conte apparait desormais dans le catalogue public (GET /api/contes-danses)
+```
+
+---
+
+### 6. Création d'une Page de Carnet de Lecture
+Ce diagramme illustre la préparation automatique des métadonnées du conte, la rédaction du contenu par l'enfant, et la finalisation d'une page.
+
+```mermaid
+sequenceDiagram
+    actor Parent as Parent (responsable du profil enfant)
+    participant API as CodaBli API (Spring Boot)
+    participant DB as PostgreSQL (Local)
+
+    Parent->>API: POST /api/profils-enfants/{id}/carnet-lecture { conteId }
+    Note over API: Verifie que le parent est bien<br/>le responsable du profil enfant (RG-13)
+    API->>DB: Recupere le Conte Danse
+    API->>DB: Cree PageCarnetLecture (titre/auteur/couverture/langue preremplis)
+    DB-->>API: Page creee (Statut: non_commencee)
+    API-->>Parent: 201 Created
+
+    Parent->>API: PUT .../{pageId} { resume, motsPreferes, questionsReponses }
+    Note over API: Le texte est celui saisi par l'enfant (RG-10),<br/>jamais genere par le backend
+    API->>DB: Statut: en_cours
+    API-->>Parent: 200 OK
+
+    Parent->>API: POST .../{pageId}/elements { type: personnage, nom, imageUrl }
+    API->>DB: Ajoute ElementCarnetLecture a la page
+    API-->>Parent: 201 Created
+
+    Parent->>API: PATCH .../{pageId}/terminer
+    API->>DB: Statut: terminee
+    Note over API, DB: La page reste privee (RG-01) — aucune publication automatique
+    API-->>Parent: 200 OK
 ```

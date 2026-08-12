@@ -2,9 +2,13 @@ package com.codabli.service;
 
 import com.codabli.dto.RessourcePedagogiqueRequest;
 import com.codabli.dto.RessourcePedagogiqueResponse;
+import com.codabli.entity.RessourceFavorite;
 import com.codabli.entity.RessourcePedagogique;
+import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.TypeRessource;
+import com.codabli.repository.RessourceFavoriteRepository;
 import com.codabli.repository.RessourcePedagogiqueRepository;
+import com.codabli.repository.UtilisateurRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -14,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service de gestion des ressources de la mallette pédagogique.
@@ -23,9 +28,55 @@ import java.util.UUID;
 public class RessourcePedagogiqueService {
 
     private final RessourcePedagogiqueRepository ressourcePedagogiqueRepository;
+    private final RessourceFavoriteRepository ressourceFavoriteRepository;
+    private final UtilisateurRepository utilisateurRepository;
 
-    public RessourcePedagogiqueService(RessourcePedagogiqueRepository ressourcePedagogiqueRepository) {
+    public RessourcePedagogiqueService(RessourcePedagogiqueRepository ressourcePedagogiqueRepository,
+            RessourceFavoriteRepository ressourceFavoriteRepository,
+            UtilisateurRepository utilisateurRepository) {
         this.ressourcePedagogiqueRepository = ressourcePedagogiqueRepository;
+        this.ressourceFavoriteRepository = ressourceFavoriteRepository;
+        this.utilisateurRepository = utilisateurRepository;
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // FAVORIS — RES-04
+    // ────────────────────────────────────────────────────────────────
+
+    public void ajouterFavori(UUID ressourceId, Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        if (ressourceFavoriteRepository.findByUtilisateurIdAndRessourceId(utilisateur.getId(), ressourceId).isPresent()) {
+            return;
+        }
+        RessourcePedagogique ressource = ressourcePedagogiqueRepository.findById(ressourceId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Ressource pedagogique non trouvee avec l'ID: " + ressourceId));
+
+        RessourceFavorite favori = RessourceFavorite.builder()
+                .utilisateur(utilisateur)
+                .ressource(ressource)
+                .build();
+        ressourceFavoriteRepository.save(favori);
+    }
+
+    public void retirerFavori(UUID ressourceId, Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        ressourceFavoriteRepository.findByUtilisateurIdAndRessourceId(utilisateur.getId(), ressourceId)
+                .ifPresent(ressourceFavoriteRepository::delete);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RessourcePedagogiqueResponse> mesFavoris(Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        return ressourceFavoriteRepository.findByUtilisateurId(utilisateur.getId()).stream()
+                .map(f -> toResponse(f.getRessource()))
+                .collect(Collectors.toList());
+    }
+
+    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
+        return utilisateurRepository.findByKeycloakId(jwt.getSubject())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Utilisateur non trouve pour keycloakId: " + jwt.getSubject()));
     }
 
     // ────────────────────────────────────────────────────────────────

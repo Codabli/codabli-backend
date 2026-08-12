@@ -39,15 +39,18 @@ public class CarteAConteService {
     private final InscriptionClasseRepository inscriptionClasseRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final EntityManager entityManager;
+    private final JournalActiviteService journalActiviteService;
 
     public CarteAConteService(CarteAConteRepository carteAConteRepository,
             InscriptionClasseRepository inscriptionClasseRepository,
             UtilisateurRepository utilisateurRepository,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            JournalActiviteService journalActiviteService) {
         this.carteAConteRepository = carteAConteRepository;
         this.inscriptionClasseRepository = inscriptionClasseRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.entityManager = entityManager;
+        this.journalActiviteService = journalActiviteService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -162,7 +165,11 @@ public class CarteAConteService {
             throw new AccessDeniedException(
                     "Seuls les administrateurs et moderateurs peuvent retirer une creation publiee");
         }
-        return changerStatut(carteId, jwt, com.codabli.entity.enums.StatutModeration.retire, null);
+        CarteAConteResponse response = changerStatut(carteId, jwt,
+                com.codabli.entity.enums.StatutModeration.retire, null);
+        journalActiviteService.enregistrer(jwt, "RETRAIT_CARTE_A_CONTE", "Carte " + carteId,
+                "Creation retiree apres publication");
+        return response;
     }
 
     /**

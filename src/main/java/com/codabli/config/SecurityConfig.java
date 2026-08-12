@@ -60,6 +60,19 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/abonnements/offres/**")
                                                 .permitAll()
+                                                // Routes specifiques (authentifiees) evaluees AVANT le
+                                                // wildcard public pour eviter qu'il ne les capture.
+                                                .requestMatchers(HttpMethod.GET, "/api/webinaires/mes-inscriptions")
+                                                .authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/webinaires",
+                                                                "/api/webinaires/*")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/coaching/offres/**")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/mise-en-avant")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/galerie-arts/**")
+                                                .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/ressources-pedagogiques/**")
                                                 .hasAnyRole("enseignant", "professionnel_education", "admin",
                                                                 "comite_lecture")

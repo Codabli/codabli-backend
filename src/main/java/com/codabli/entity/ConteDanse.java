@@ -112,6 +112,10 @@ public class ConteDanse {
     @JoinColumn(name = "valide_par_comite_id")
     private Utilisateur valideParComite;
 
+    /** Motif renseigne lors d'un refus (MOD-03). */
+    @Column(name = "motif_moderation", columnDefinition = "text")
+    private String motifModeration;
+
     @Column(name = "date_creation", nullable = false)
     private OffsetDateTime dateCreation;
 

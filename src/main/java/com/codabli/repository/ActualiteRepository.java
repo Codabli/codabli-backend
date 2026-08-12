@@ -26,6 +26,8 @@ public interface ActualiteRepository extends JpaRepository<Actualite, UUID> {
      */
     Page<Actualite> findByPublieTrueOrderByDatePublicationDesc(Pageable pageable);
 
+    long countByPublieTrue();
+
     /**
      * Recherche dans les actualites publiees par mot-cle (titre ou resume).
      */

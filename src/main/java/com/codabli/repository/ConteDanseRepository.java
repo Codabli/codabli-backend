@@ -72,4 +72,29 @@ public interface ConteDanseRepository extends JpaRepository<ConteDanse, UUID> {
             @Param("acces") AccesConte acces,
             @Param("age") Integer age,
             Pageable pageable);
+
+    /**
+     * Contes a un statut precis (utilise pour la file d'attente du comite de
+     * lecture et des admins).
+     */
+    List<ConteDanse> findByStatut(StatutConte statut);
+
+    /**
+     * Contes a l'un des statuts fournis (file d'attente globale admin/super_admin).
+     */
+    List<ConteDanse> findByStatutIn(List<StatutConte> statuts);
+
+    /**
+     * Contes a un statut precis, rattaches a une classe dont l'enseignant est
+     * celui fourni. Utilise pour la file d'attente de validation enseignant.
+     */
+    @Query("""
+            SELECT c FROM ConteDanse c
+            WHERE c.statut = :statut
+            AND c.classe.enseignant.id = :enseignantId
+            """)
+    List<ConteDanse> findByStatutAndEnseignant(@Param("statut") StatutConte statut,
+            @Param("enseignantId") UUID enseignantId);
+
+    long countByStatut(StatutConte statut);
 }

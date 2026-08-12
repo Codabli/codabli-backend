@@ -15,6 +15,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -112,5 +114,68 @@ public class ConteDanseController {
             @AuthenticationPrincipal Jwt jwt) {
         conteDanseService.supprimer(id, jwt);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * GET /api/contes-danses/mes-contes
+     * Retrouve les contes de l'auteur connecte, quel que soit leur statut
+     * (brouillon, en revision, publie, refuse).
+     */
+    @GetMapping("/mes-contes")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<ConteDanseResponse>> mesContes(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(conteDanseService.mesContes(jwt));
+    }
+
+    /**
+     * GET /api/contes-danses/en-attente
+     * File d'attente de moderation, filtree selon le role de l'appelant
+     * (enseignant : ses classes ; comite_lecture : en revision comite ;
+     * admin/super_admin : tout ce qui est en revision).
+     */
+    @GetMapping("/en-attente")
+    @PreAuthorize("hasAnyRole('enseignant', 'comite_lecture', 'admin', 'super_admin')")
+    public ResponseEntity<List<ConteDanseResponse>> listerEnAttente(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(conteDanseService.listerEnAttente(jwt));
+    }
+
+    /**
+     * PATCH /api/contes-danses/{id}/soumettre
+     * L'auteur soumet son brouillon (ou son conte refuse corrige) a la
+     * moderation.
+     */
+    @PatchMapping("/{id}/soumettre")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ConteDanseResponse> soumettre(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(conteDanseService.soumettre(id, jwt));
+    }
+
+    /**
+     * PATCH /api/contes-danses/{id}/valider
+     * Fait progresser le conte dans le cycle de validation (enseignant ->
+     * comite de lecture -> publie). admin/super_admin publient directement.
+     */
+    @PatchMapping("/{id}/valider")
+    @PreAuthorize("hasAnyRole('enseignant', 'comite_lecture', 'admin', 'super_admin')")
+    public ResponseEntity<ConteDanseResponse> valider(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(conteDanseService.valider(id, jwt));
+    }
+
+    /**
+     * PATCH /api/contes-danses/{id}/refuser
+     * Refuse le conte. Corps optionnel : { "motif": "..." }
+     */
+    @PatchMapping("/{id}/refuser")
+    @PreAuthorize("hasAnyRole('enseignant', 'comite_lecture', 'admin', 'super_admin')")
+    public ResponseEntity<ConteDanseResponse> refuser(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body,
+            @AuthenticationPrincipal Jwt jwt) {
+        String motif = body != null ? body.get("motif") : null;
+        return ResponseEntity.ok(conteDanseService.refuser(id, motif, jwt));
     }
 }

@@ -19,4 +19,6 @@ public interface DemandeContactRepository extends JpaRepository<DemandeContact, 
      * Reservee a l'administration.
      */
     Page<DemandeContact> findAllByOrderByDateCreationDesc(Pageable pageable);
+
+    long countByTraite(boolean traite);
 }
