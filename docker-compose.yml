@@ -1,0 +1,83 @@
+# Infrastructure de développement local pour le backend Codabli.
+#
+#   docker compose up -d      -> démarre PostgreSQL + Keycloak
+#   docker compose down       -> arrête (les données sont conservées dans les volumes)
+#   docker compose down -v    -> arrête ET supprime les données (repart de zéro)
+#
+# Le backend Spring Boot NE tourne PAS dans Docker : il se lance sur l'hôte
+# avec `./mvnw spring-boot:run` et joint ces services via localhost.
+# C'est volontaire : cela garantit que l'`issuer` des jetons Keycloak
+# (http://localhost:8081/realms/codabli) correspond à celui attendu par l'app.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: codabli-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Le port 5432 de l'hôte est déjà occupé par un autre projet :
+    # on expose PostgreSQL sur 5442 côté hôte (5432 dans le conteneur).
+    ports:
+      - "5442:5432"
+    volumes:
+      - codabli-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.2
+    container_name: codabli-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HTTP_PORT: 8080
+      KC_HEALTH_ENABLED: "true"
+      # Injecté dans le conteneur pour que l'import du realm résolve
+      # le placeholder ${KEYCLOAK_CLIENT_SECRET} du fichier realm-codabli.json.
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    # Console d'admin Keycloak : http://localhost:8081  (admin / admin)
+    # L'app attend Keycloak sur 8081 (voir application.yml -> issuer-uri).
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./keycloak/realm-codabli.json:/opt/keycloak/data/import/realm-codabli.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Service OPTIONNEL : lance le backend dans un conteneur Maven+JDK 17,
+  # utile si aucun JDK n'est installé sur l'hôte (seul un JRE l'est ici).
+  # NON démarré par `docker compose up` : il faut le profil "app" ->
+  #   docker compose --profile app up -d
+  # Utilise le réseau de l'hôte pour joindre postgres (5442) et keycloak (8081)
+  # via localhost, exactement comme le ferait un lancement natif `./mvnw`.
+  backend:
+    image: maven:3.9-eclipse-temurin-17
+    container_name: codabli-backend
+    profiles: ["app"]
+    network_mode: host
+    working_dir: /app
+    command: ["mvn", "-B", "spring-boot:run"]
+    environment:
+      # Surcharge les valeurs par défaut d'application.yml avec celles du .env,
+      # pour rester cohérent avec les identifiants de PostgreSQL et Keycloak.
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+    volumes:
+      - .:/app
+      - codabli-m2:/root/.m2
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  codabli-pgdata:
+  codabli-m2:
+    name: codabli-m2
