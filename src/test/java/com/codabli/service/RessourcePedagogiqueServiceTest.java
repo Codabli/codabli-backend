@@ -44,14 +44,17 @@ class RessourcePedagogiqueServiceTest {
 
     @BeforeEach
     void setUp() {
+        // JWT partages par plusieurs tests : chaque test n'en utilise qu'un ou
+        // deux, donc les stubs sont declares lenient() pour ne pas declencher
+        // UnnecessaryStubbingException (Mockito strict) sur ceux non utilises.
         teacherJwt = mock(Jwt.class);
-        when(teacherJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("enseignant")));
+        lenient().when(teacherJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("enseignant")));
 
         comiteJwt = mock(Jwt.class);
-        when(comiteJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("comite_lecture")));
+        lenient().when(comiteJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("comite_lecture")));
 
         adminJwt = mock(Jwt.class);
-        when(adminJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("admin")));
+        lenient().when(adminJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("admin")));
     }
 
     @Test

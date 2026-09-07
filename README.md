@@ -110,11 +110,22 @@ docker compose down -v              # arrêter ET repartir de zéro (efface DB +
 
 ## 🧪 Exécution des tests
 
+> ⚠️ **Prérequis : PostgreSQL doit être démarré.** Les tests de contrôleurs sont
+> des `@SpringBootTest` : ils chargent le contexte Spring complet et se
+> connectent à la base sur `localhost:5442`. Sans base, ils échouent tous avec
+> `Connection to localhost:5442 refused`. Démarre l'infrastructure avant :
+> ```bash
+> docker compose up -d postgres
+> ```
+
 Pour lancer la suite de tests unitaires et d'intégration (nécessite un JDK 17+) :
 ```bash
 ./mvnw test
 ```
 *(Vous pouvez également importer le projet sous IntelliJ IDEA pour compiler et exécuter les tests directement depuis l'IDE)*.
+
+👉 **Guide complet des tests** (organisation, exécution sans JDK, inventaire,
+conventions, dépannage) : **[TESTS.md](TESTS.md)**.
 
 ---
 
@@ -141,3 +152,4 @@ documenté dans **[MODULES.md](MODULES.md)**.
 Documentation complémentaire :
 * [`DOC_FONCTIONNELLE.md`](DOC_FONCTIONNELLE.md) — spécification fonctionnelle détaillée.
 * [`FICHE_TECHNIQUE.md`](FICHE_TECHNIQUE.md) — fiche technique (entités, sécurité, endpoints).
+* [`TESTS.md`](TESTS.md) — guide d'exécution et d'organisation des tests.
