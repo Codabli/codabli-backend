@@ -1,5 +1,8 @@
 target/
 *.class
+
+# Secrets / config locale (le modèle .env.example reste versionné)
+.env
 .idea/
 .settings/
 .classpath

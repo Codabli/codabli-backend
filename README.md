@@ -14,117 +14,130 @@ Backend de l'application **Codabli**, développé en **Spring Boot 3.3.2** et **
 
 ---
 
-## 📂 Modules Fonctionnels Implémentés
-
-### 🔐 1. Sécurité & Utilisateurs
-* Double inscription et synchronisation locale depuis le jeton **Keycloak** (JWT). Mappage des rôles du Realm : `eleve`, `enseignant`, `parent`, `professionnel_education`, `moderateur`, `admin`, `super_admin`, `comite_lecture`, `traducteur`, `ambassadeur`.
-* Habilitation fine à 2 niveaux : `@PreAuthorize` au niveau contrôleur & validation logique métier spécifique dans les services.
-
-### 🏫 2. Scolarité (Écoles, Classes & Inscriptions)
-* Gestion des établissements scolaires (`Ecole`) et des classes (`Classe`) avec code d'invitation unique.
-* Table d'inscription des élèves dans les classes.
-
-### 📰 3. Actualités (`/api/actualites`)
-* Flux d'actualités avec pagination et filtrage par statut de publication. CRUD complet restreint aux administrateurs.
-
-### 📖 4. Contes Dansés (`/api/contes-danses`)
-* Catalogue des contes avec pièces jointes (texte, audio et vidéo), couverture, pays, culture, tranche d'âge, durée et crédits. Filtres combinables (`langue`, `pays`, `thematique`, `acces`, `age`). Création par tout utilisateur connecté, modification restreinte à l'auteur ou à `admin`/`super_admin`/`moderateur`.
-* **Workflow de publication** : `soumettre` (auteur) → `valider` par l'enseignant de la classe (`en_revision_enseignant` → `en_revision_comite`) → `valider` par le comité de lecture (→ `publie`) ; `admin`/`super_admin` publient directement. `refuser` disponible à chaque étape avec motif. `GET /mes-contes` et `GET /en-attente` pour suivre le cycle.
-* **Multilingue** (`/api/contes-danses/{id}/traductions`) : chaque conte peut avoir plusieurs traductions suivant un cycle `a_traduire → en_cours → relecture → validee → publiee → archivee`, géré par `traducteur`/`comite_lecture`/`admin`/`super_admin`. Seules les traductions `publiee` sont visibles publiquement.
-
-### 🎨 5. Cartes à Conte & Modération (`/api/cartes-a-conte`)
-* Création d'éléments de contes (personnages, lieux, objets).
-* **Flux de modération complet** (9 statuts CDC) : les élèves soumettent leurs cartes ; les enseignants valident, refusent ou demandent une correction uniquement pour les élèves de leurs propres classes ; `admin`/`super_admin`/`moderateur` ont un droit total, y compris le retrait d'une création déjà publiée.
-
-### 📝 6. Fiches d'Activités (`/api/fiches-activites`)
-* Fiches pédagogiques structurées (objectif, âge, durée, matériel, consignes, déroulement, compétences, adaptations, crédits, PDF). Mêmes règles de visibilité que la Mallette Pédagogique.
-
-### 🔍 7. Recherche Transversale (`/api/recherche`)
-* Endpoint unique permettant d'effectuer des recherches globales insensibles à la casse dans les actualités, les contes dansés, les cartes à conte validées, les produits et les partenaires actifs.
-
-### 🛒 8. Boutique & E-Commerce (Produits, Panier & Commandes)
-* **Produits** : Gestion des articles physiques et numériques (GET public, modification admin).
-* **Panier** : Gestion persistée par utilisateur connecté avec calcul automatique des totaux.
-* **Commande** : Passage de commande transactionnel avec :
-  1. Décrémentation automatique des stocks physiques (déclenche `StockInsuffisantException` / 409 Conflict si stock insuffisant).
-  2. Snapshotting (historisation) des prix unitaires et noms de produits pour conserver l'historique financier.
-  3. Intégration d'adresses de livraison (gestion d'adresse par défaut).
-  4. Calcul automatique de frais de port (5.00€ si présence d'au moins un article physique).
-  5. Vidage de panier automatique après confirmation.
-
-### 🎒 9. Mallette Pédagogique (`/api/ressources-pedagogiques`)
-* Catalogue de matériel pédagogique (fiches, guides, vidéos, audio, documents) réservés aux enseignants.
-* **Sécurité & Visibilité** :
-  * `GET` pour `enseignant`, `professionnel_education`, `admin` et `comite_lecture`. Filtrage dynamique : les rôles hors-staff ne peuvent voir que les ressources actives (`actif = true`).
-  * `POST/PUT` réservés aux rôles `admin` et `comite_lecture`.
-  * `DELETE` réservé exclusivement aux administrateurs (`admin`).
-* **Favoris** (RES-04) : `POST`/`DELETE .../{id}/favori` et `GET .../mes-favoris`.
-
-### 🤝 10. Partenaires (`/api/partenaires`)
-* Vitrine publique des partenaires (institutionnels, fondations, culturels, associations, citoyens contributeurs). `GET` public filtré sur `actif = true`, écriture réservée `admin`/`super_admin`.
-
-### 💳 11. Abonnements (`/api/abonnements`)
-* Catalogue d'offres (`/api/abonnements/offres`, public en lecture, géré par `admin`/`super_admin`) et souscriptions utilisateur : souscrire, renouveler, résilier, changer d'offre. Aucune passerelle de paiement réelle — la souscription active directement l'abonnement, comme pour les commandes de la boutique.
-
-### 👶 12. Profils Enfants (`/api/profils-enfants`)
-* Sous-profils légers rattachés au compte d'un `parent`/`professionnel_education` (pseudonyme, autorisation parentale datée et révocable), distincts du rôle `eleve` qui reste un compte Keycloak complet.
-
-### ✉️ 13. Contact (`/api/contact`)
-* Formulaire de contact public avec accusé de réception, catégorisation des demandes, et traitement par `admin`/`super_admin`.
-
-### 🧾 14. Journal d'Activité (`/api/admin/journal-activite`)
-* Historisation des actions sensibles (suppression/anonymisation/changement de statut d'un utilisateur, retrait d'une création publiée). Consultation réservée à `super_admin`.
-
-### 📔 15. Carnet de Lecture & Carnet de Voyage (`/api/profils-enfants/{id}/carnet-lecture`, `.../carnet-voyage`)
-* Espaces créatifs personnels de l'enfant : pages rattachées à un Conte Dansé (résumé, mots préférés, questions personnelles — carnet de lecture) ou à un pays/une fresque (identité, nature, société, culture, expérience — carnet de voyage), avec des éléments typés (personnages/lieux/objets/créations pour la lecture ; éléments naturels/culturels/personnages/objets/créations pour le voyage).
-* Tout le contenu de texte libre est écrit par l'enfant : le backend ne génère jamais un résumé, une réponse ou une description à sa place (RG-10). Seules les métadonnées objectives du conte (titre, auteur, couverture, langue, pays) peuvent être préremplies.
-* Confidentialité (RG-13) : accès réservé au responsable (`parent`/`professionnel_education`) propriétaire du profil enfant, ou à `admin`/`super_admin`.
-* **Mallette d'Artistes** (`/api/profils-enfants/{id}/mallette-artistes`) : vue agrégée des deux carnets, des créations (dessins/collages/imports) et des pages prêtes à imprimer.
-
-### 📊 16. Statistiques (`/api/admin/statistiques`)
-* Tableau de bord agrégé (comptes par rôle, contes/cartes par statut, commandes, abonnements, pages de carnets, demandes de contact...). Réservé à `admin`/`super_admin`. Aucune donnée individuelle sur un enfant.
-
-### 🎥 17. Webinaires (`/api/webinaires`)
-* Catalogue public, inscription/désinscription pour tout utilisateur authentifié, `GET /mes-inscriptions`, limite de capacité optionnelle. Gestion réservée `admin`/`super_admin`.
-
-### 🧑‍🏫 18. Coaching (`/api/coaching`)
-* Catalogue d'offres public (`/offres`), réservation de créneau par tout utilisateur authentifié, `GET /reservations/mes-reservations`. Le propriétaire peut annuler sa réservation ; seul `admin`/`super_admin` peut la confirmer ou la clôturer.
-
-### 📋 19. Évaluations Pédagogiques (`/api/evaluations-pedagogiques`)
-* Grilles d'observation/compétences/bilan rédigées par un enseignant pour une classe et/ou un élève. Accès limité à l'auteur (ou `admin`/`super_admin`).
-
-### 🌟 20. Mise en Avant (`/api/mise-en-avant`)
-* Mécanisme générique de mise en avant sur la page d'accueil (actualité, conte, produit, abonnement, partenaire, événement) avec fenêtre de diffusion (`dateDebut`/`dateFin`) et ordre d'affichage. `GET` public ne retourne que les entrées actives et dans leur fenêtre. Gestion réservée `admin`/`super_admin`.
-
-### 🖼️ 21. Galerie des Arts immersive (`/api/galerie-arts`)
-* Socle structurel du musée culturel virtuel : salles par pays (hall), chacune avec sa fresque principale et ses hotspots (deux niveaux de lecture "Je découvre" 6-8 ans / "J'en apprends plus" 9-13 ans). `GET` public, gestion réservée `admin`/`super_admin`.
-* **Hors périmètre de cette passe** : navigation immersive 2,5D (frontend), collecte d'autocollants et mini-jeux notés (gamification, traités séparément), soumission/modération des créations complémentaires d'une salle (GAL-23/24/25).
-
-### 👤 Anonymisation utilisateur (`PATCH /api/admin/utilisateurs/{id}/anonymiser`)
-* Alternative à la suppression définitive : révoque l'accès Keycloak et efface les données personnelles tout en conservant la ligne locale (intégrité référentielle avec les contenus créés par l'utilisateur).
-
----
-
 ## 🚀 Lancement local
 
-### Pré-requis
-1. Disposer d'une base de données PostgreSQL nommée `codabli_dev`.
-2. Avoir une instance Keycloak configurée (realm `codabli`).
+L'environnement de développement (PostgreSQL + Keycloak déjà configurés) est
+fourni via **Docker Compose**. Aucune configuration manuelle de la base ou du
+realm n'est nécessaire : tout est provisionné automatiquement.
 
-### Exécution
+### Pré-requis
+* **Docker** + **Docker Compose** (obligatoire — fournit PostgreSQL et Keycloak).
+* **JDK 17 ou +** *(optionnel)* — seulement pour le lancement natif via `./mvnw`.
+  Si tu n'as qu'un JRE, utilise la variante « tout Docker » ci-dessous.
+* Maven n'a **pas** besoin d'être installé : le wrapper `./mvnw` s'en charge.
+
+### Services & ports
+
+| Service        | URL / port hôte                         | Identifiants          |
+| -------------- | --------------------------------------- | --------------------- |
+| API backend    | http://localhost:8082                   | —                     |
+| Swagger UI     | http://localhost:8082/swagger-ui.html   | —                     |
+| PostgreSQL     | `localhost:5442` (base `codabli_dev`)   | `codabli` / `codabli` |
+| Keycloak admin | http://localhost:8081                   | `admin` / `admin`     |
+
+> ℹ️ PostgreSQL est exposé sur **5442** (et non 5432) car le port 5432 de l'hôte
+> est susceptible d'être déjà occupé par un autre projet. `application.yml` est
+> configuré en conséquence.
+
+### 0. Créer le fichier `.env`
+
+Les identifiants (base, Keycloak, secret du client) sont lus depuis un fichier
+`.env` **non versionné**. Copie le modèle avant tout :
+
 ```bash
-mvn spring-boot:run
+cp .env.example .env
 ```
 
-L'API est ensuite accessible sur : `http://localhost:8080`.
-La documentation Swagger est disponible sur: `http://localhost:8080/swagger-ui.html`
+Les valeurs par défaut conviennent pour un environnement de dev local.
+
+### 1. Démarrer l'infrastructure
+
+```bash
+docker compose up -d
+```
+
+Cela lance PostgreSQL et Keycloak. Le realm `codabli` (rôles, client
+`codabli-backend`, service account) est importé automatiquement au premier
+démarrage.
+
+### 2. Démarrer le backend
+
+**Option A — natif (recommandé, nécessite un JDK 17+)**
+```bash
+./mvnw spring-boot:run
+```
+
+**Option B — tout Docker (aucun JDK requis)**
+```bash
+docker compose --profile app up -d
+```
+Le backend est alors compilé et exécuté dans un conteneur Maven+JDK 17.
+
+L'API est accessible sur **http://localhost:8082**, la documentation Swagger sur
+**http://localhost:8082/swagger-ui.html**.
+
+### 3. Se connecter
+
+Un compte administrateur de test est créé automatiquement dans Keycloak :
+
+| Email               | Mot de passe | Rôles                |
+| ------------------- | ------------ | -------------------- |
+| `admin@codabli.dev` | `Admin1234!` | `admin`, `super_admin` |
+
+Pour obtenir un jeton via l'API :
+```bash
+curl -X POST http://localhost:8082/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@codabli.dev","password":"Admin1234!"}'
+```
+
+> Ce compte existe dans Keycloak mais pas dans la base locale : les endpoints
+> protégés par rôle (`/api/admin/**`, etc.) fonctionnent avec son jeton, mais
+> `GET /api/auth/me` renverra 404 tant qu'aucune ligne locale ne lui correspond.
+> Pour un compte pleinement lié (Keycloak **et** base locale), crée-le via
+> `POST /api/auth/register` — c'est le parcours d'inscription normal.
+
+### Commandes utiles
+
+```bash
+docker compose logs -f keycloak     # suivre les logs Keycloak
+docker compose logs -f backend      # logs du backend (si lancé en Docker)
+docker compose down                 # arrêter (les données sont conservées)
+docker compose down -v              # arrêter ET repartir de zéro (efface DB + realm)
+```
 
 ---
 
 ## 🧪 Exécution des tests
 
-Pour lancer la suite de tests unitaires et d'intégration :
+Pour lancer la suite de tests unitaires et d'intégration (nécessite un JDK 17+) :
 ```bash
-mvn test
+./mvnw test
 ```
 *(Vous pouvez également importer le projet sous IntelliJ IDEA pour compiler et exécuter les tests directement depuis l'IDE)*.
+
+---
+
+## 🩺 Dépannage
+
+* **`release version 17 not supported` au build** : seul un **JRE** est installé,
+  pas de JDK (pas de `javac`). Installe un JDK — p. ex. sur Ubuntu/WSL :
+  `sudo apt install openjdk-21-jdk` — ou utilise l'**option B** (tout Docker),
+  qui n'exige aucun JDK sur l'hôte.
+* **Port 5432 déjà utilisé** : c'est prévu — l'infra Codabli utilise **5442**.
+  Vérifie qu'aucun autre service ne squatte 5442, 8081 ou 8082.
+* **Keycloak « injoignable » juste après `up`** : son premier démarrage +
+  import du realm prend ~20-40 s. Surveille `docker compose logs -f keycloak`.
+* **Repartir totalement de zéro** : `docker compose down -v` supprime les
+  volumes (base et realm sont alors réimportés au prochain `up`).
+
+---
+
+## 📂 Modules fonctionnels
+
+Le détail des modules fonctionnels du backend et de leurs règles d'accès est
+documenté dans **[MODULES.md](MODULES.md)**.
+
+Documentation complémentaire :
+* [`DOC_FONCTIONNELLE.md`](DOC_FONCTIONNELLE.md) — spécification fonctionnelle détaillée.
+* [`FICHE_TECHNIQUE.md`](FICHE_TECHNIQUE.md) — fiche technique (entités, sécurité, endpoints).

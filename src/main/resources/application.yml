@@ -2,7 +2,7 @@ spring:
   application:
     name: codabli-backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/codabli_dev
+    url: jdbc:postgresql://localhost:5442/codabli_dev
     username: codabli
     password: codabli
     driver-class-name: org.postgresql.Driver
@@ -28,4 +28,4 @@ keycloak:
     server-url: http://localhost:8081
     realm: codabli
     client-id: codabli-backend
-    client-secret: ${KEYCLOAK_CLIENT_SECRET:8yhJXmWCDZkNwfenD0TyRPrYEE9NwK0H}
+    client-secret: ${KEYCLOAK_CLIENT_SECRET:changeme-dev-secret}
