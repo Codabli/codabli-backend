@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.2</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
 
@@ -18,8 +18,8 @@
     <description>Backend Spring Boot de Codabli</description>
 
     <properties>
-        <java.version>17</java.version>
-        <lombok.version>1.18.34</lombok.version>
+        <java.version>25</java.version>
+        <lombok.version>1.18.40</lombok.version>
     </properties>
 
     <dependencies>
