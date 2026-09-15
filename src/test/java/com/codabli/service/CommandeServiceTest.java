@@ -1,14 +1,8 @@
 package com.codabli.service;
 
-import com.codabli.dto.AdresseLivraisonResponse;
 import com.codabli.dto.CommandeResponse;
 import com.codabli.dto.CreerCommandeRequest;
-import com.codabli.entity.AdresseLivraison;
-import com.codabli.entity.Commande;
-import com.codabli.entity.LignePanier;
-import com.codabli.entity.Panier;
-import com.codabli.entity.Produit;
-import com.codabli.entity.Utilisateur;
+import com.codabli.entity.*;
 import com.codabli.entity.enums.TypeProduit;
 import com.codabli.repository.AdresseLivraisonRepository;
 import com.codabli.repository.CommandeRepository;
@@ -26,7 +20,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,7 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class CommandeServiceTest {
+class CommandeServiceTest {
 
     @Mock
     private CommandeRepository commandeRepository;
