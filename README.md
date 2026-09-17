@@ -1,12 +1,12 @@
 # 💻 Codabli Backend
 
-Backend de l'application **Codabli**, développé en **Spring Boot 3.3.2** et **Java 17**. Ce service assure la gestion des utilisateurs, de la scolarité, du catalogue de contes, de l'actualité, de la modération des cartes créées par les étudiants ainsi que d'une boutique e-commerce.
+Backend de l'application **Codabli**, développé en **Spring Boot 4.1.1** et **Java 25**. Ce service assure la gestion des utilisateurs, de la scolarité, du catalogue de contes, de l'actualité, de la modération des cartes créées par les étudiants ainsi que d'une boutique e-commerce.
 
 ---
 
 ## 🛠️ Stack Technique
 
-* **Framework principal** : Spring Boot 3.3.2
+* **Framework principal** : Spring Boot 4.1.1
 * **Persistance** : Spring Data JPA / Hibernate / PostgreSQL
 * **Sécurité & IAM** : Spring Security & Keycloak (OAuth2 Resource Server)
 * **Outillage & Doc** : Lombok, Springdoc OpenAPI (Swagger UI)
@@ -22,7 +22,7 @@ realm n'est nécessaire : tout est provisionné automatiquement.
 
 ### Pré-requis
 * **Docker** + **Docker Compose** (obligatoire — fournit PostgreSQL et Keycloak).
-* **JDK 17 ou +** *(optionnel)* — seulement pour le lancement natif via `./mvnw`.
+* **JDK 25 ou +** *(optionnel)* — seulement pour le lancement natif via `./mvnw`.
   Si tu n'as qu'un JRE, utilise la variante « tout Docker » ci-dessous.
 * Maven n'a **pas** besoin d'être installé : le wrapper `./mvnw` s'en charge.
 
@@ -62,7 +62,7 @@ démarrage.
 
 ### 2. Démarrer le backend
 
-**Option A — natif (recommandé, nécessite un JDK 17+)**
+**Option A — natif (recommandé, nécessite un JDK 25+)**
 ```bash
 ./mvnw spring-boot:run
 ```
@@ -71,7 +71,7 @@ démarrage.
 ```bash
 docker compose --profile app up -d
 ```
-Le backend est alors compilé et exécuté dans un conteneur Maven+JDK 17.
+Le backend est alors compilé et exécuté dans un conteneur Maven+JDK 25.
 
 L'API est accessible sur **http://localhost:8082**, la documentation Swagger sur
 **http://localhost:8082/swagger-ui.html**.
@@ -118,7 +118,7 @@ docker compose down -v              # arrêter ET repartir de zéro (efface DB +
 > docker compose up -d postgres
 > ```
 
-Pour lancer la suite de tests unitaires et d'intégration (nécessite un JDK 17+) :
+Pour lancer la suite de tests unitaires et d'intégration (nécessite un JDK 25+) :
 ```bash
 ./mvnw test
 ```
@@ -131,9 +131,9 @@ conventions, dépannage) : **[TESTS.md](TESTS.md)**.
 
 ## 🩺 Dépannage
 
-* **`release version 17 not supported` au build** : seul un **JRE** est installé,
+* **`release version 25 not supported` au build** : seul un **JRE** est installé,
   pas de JDK (pas de `javac`). Installe un JDK — p. ex. sur Ubuntu/WSL :
-  `sudo apt install openjdk-21-jdk` — ou utilise l'**option B** (tout Docker),
+  `sudo apt install openjdk-25-jdk` — ou utilise l'**option B** (tout Docker),
   qui n'exige aucun JDK sur l'hôte.
 * **Port 5432 déjà utilisé** : c'est prévu — l'infra Codabli utilise **5442**.
   Vérifie qu'aucun autre service ne squatte 5442, 8081 ou 8082.

@@ -17,11 +17,11 @@ import java.util.UUID;
 
 /**
  * Controller pour les cartes a conte.
- *
+ * </p>
  * Autorisation a deux niveaux :
  * 1. @PreAuthorize → verifie le role (grossier)
  * 2. Le service → verifie la relation (fin)
- *
+ * </p>
  * Exemples :
  * - POST : seul un eleve peut creer → @PreAuthorize("hasRole('eleve')")
  * - GET : eleve/enseignant/admin avec filtrage dans le service

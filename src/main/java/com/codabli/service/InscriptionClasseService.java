@@ -18,20 +18,20 @@ public class InscriptionClasseService {
     private final EntityManager entityManager;
 
     public InscriptionClasseService(InscriptionClasseRepository inscriptionClasseRepository,
-            EntityManager entityManager) {
+                                    EntityManager entityManager) {
         this.inscriptionClasseRepository = inscriptionClasseRepository;
         this.entityManager = entityManager;
     }
 
     public InscriptionClasseResponse inscrire(InscriptionClasseRequest request) {
-        Utilisateur eleve = entityManager.find(Utilisateur.class, request.getEleveId());
+        Utilisateur eleve = entityManager.find(Utilisateur.class, request.eleveId());
         if (eleve == null) {
-            throw new ResourceNotFoundException("Eleve non trouve avec l'ID: " + request.getEleveId());
+            throw new ResourceNotFoundException("Eleve non trouve avec l'ID: " + request.eleveId());
         }
 
-        Classe classe = entityManager.find(Classe.class, request.getClasseId());
+        Classe classe = entityManager.find(Classe.class, request.classeId());
         if (classe == null) {
-            throw new ResourceNotFoundException("Classe non trouvee avec l'ID: " + request.getClasseId());
+            throw new ResourceNotFoundException("Classe non trouvee avec l'ID: " + request.classeId());
         }
 
         InscriptionClasse inscription = InscriptionClasse.builder()
@@ -41,14 +41,13 @@ public class InscriptionClasseService {
 
         InscriptionClasse saved = inscriptionClasseRepository.save(inscription);
 
-        return InscriptionClasseResponse.builder()
-                .id(saved.getId())
-                .eleveId(eleve.getId())
-                .eleveNom(eleve.getNom())
-                .elevePrenom(eleve.getPrenom())
-                .classeId(classe.getId())
-                .classeNom(classe.getNom())
-                .dateInscription(saved.getDateInscription())
-                .build();
+        return new InscriptionClasseResponse(
+                saved.getId(),
+                eleve.getId(),
+                eleve.getNom(),
+                eleve.getPrenom(),
+                classe.getId(),
+                classe.getNom(),
+                saved.getDateInscription());
     }
 }

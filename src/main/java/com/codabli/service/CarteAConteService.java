@@ -17,15 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les cartes a conte.
- *
+ * <p>
  * Autorisation a deux niveaux :
  * 1. Niveau role (grossier) : gere par @PreAuthorize dans le controller
  * 2. Niveau relation (fin) : gere ICI dans le service, sur la ressource precise
- *
+ * <p>
  * Le JWT Keycloak fournit deux informations cles :
  * - jwt.getSubject() → keycloakId de l'utilisateur connecte
  * - realm_access.roles → liste des roles (deja convertis en ROLE_xxx par
@@ -42,10 +41,10 @@ public class CarteAConteService {
     private final JournalActiviteService journalActiviteService;
 
     public CarteAConteService(CarteAConteRepository carteAConteRepository,
-            InscriptionClasseRepository inscriptionClasseRepository,
-            UtilisateurRepository utilisateurRepository,
-            EntityManager entityManager,
-            JournalActiviteService journalActiviteService) {
+                              InscriptionClasseRepository inscriptionClasseRepository,
+                              UtilisateurRepository utilisateurRepository,
+                              EntityManager entityManager,
+                              JournalActiviteService journalActiviteService) {
         this.carteAConteRepository = carteAConteRepository;
         this.inscriptionClasseRepository = inscriptionClasseRepository;
         this.utilisateurRepository = utilisateurRepository;
@@ -66,14 +65,14 @@ public class CarteAConteService {
 
         CarteAConte carte = CarteAConte.builder()
                 .createur(createur)
-                .type(request.getType())
-                .imageUrl(request.getImageUrl())
-                .texteAssocie(request.getTexteAssocie())
+                .type(request.type())
+                .imageUrl(request.imageUrl())
+                .texteAssocie(request.texteAssocie())
                 .build();
 
         // Rattacher a un conte existant si conteId est fourni
-        if (request.getConteId() != null) {
-            ConteDanse conte = entityManager.getReference(ConteDanse.class, request.getConteId());
+        if (request.conteId() != null) {
+            ConteDanse conte = entityManager.getReference(ConteDanse.class, request.conteId());
             carte.setConte(conte);
         }
 
@@ -91,7 +90,7 @@ public class CarteAConteService {
      * - enseignant → cartes des eleves de ses classes (jointure)
      * - eleve → ses propres cartes uniquement
      * - autre → AccessDeniedException
-     *
+     * <p>
      * On extrait le role depuis les authorities du JWT (deja converties
      * par KeycloakJwtConverter en "ROLE_admin", "ROLE_enseignant", etc.)
      */
@@ -122,7 +121,7 @@ public class CarteAConteService {
 
         return cartes.stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -178,7 +177,7 @@ public class CarteAConteService {
      * - enseignant → uniquement les cartes des eleves de SES classes
      */
     private CarteAConteResponse changerStatut(UUID carteId, Jwt jwt,
-            com.codabli.entity.enums.StatutModeration nouveauStatut, String motif) {
+                                              com.codabli.entity.enums.StatutModeration nouveauStatut, String motif) {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
         Collection<String> roles = extractRoles(jwt);
 
@@ -241,18 +240,17 @@ public class CarteAConteService {
      * Convertit une entite CarteAConte en DTO de reponse.
      */
     private CarteAConteResponse toResponse(CarteAConte carte) {
-        return CarteAConteResponse.builder()
-                .id(carte.getId())
-                .type(carte.getType())
-                .imageUrl(carte.getImageUrl())
-                .texteAssocie(carte.getTexteAssocie())
-                .statutModeration(carte.getStatutModeration())
-                .motifModeration(carte.getMotifModeration())
-                .dateCreation(carte.getDateCreation())
-                .conteId(carte.getConte() != null ? carte.getConte().getId() : null)
-                .createurId(carte.getCreateur().getId())
-                .createurNom(carte.getCreateur().getNom())
-                .createurPrenom(carte.getCreateur().getPrenom())
-                .build();
+        return new CarteAConteResponse(
+                carte.getId(),
+                carte.getType(),
+                carte.getImageUrl(),
+                carte.getTexteAssocie(),
+                carte.getStatutModeration(),
+                carte.getMotifModeration(),
+                carte.getDateCreation(),
+                carte.getConte() != null ? carte.getConte().getId() : null,
+                carte.getCreateur().getId(),
+                carte.getCreateur().getNom(),
+                carte.getCreateur().getPrenom());
     }
 }

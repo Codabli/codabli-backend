@@ -6,7 +6,7 @@ Ce document récapitule l'ensemble des modules, entités, APIs et configurations
 
 ## 🛠️ Architecture Technique & Dépendances
 
-Le backend est développé sous **Spring Boot 3.3.2** et **Java 17** avec les technologies clés suivantes :
+Le backend est développé sous **Spring Boot 4.1.1** et **Java 25** avec les technologies clés suivantes :
 1. **Spring Data JPA & PostgreSQL** : Persistance des données locales (base `codabli_dev`).
 2. **Spring Security & Keycloak (OAuth2 Resource Server & Admin Client)** : Authentification unifiée et contrôle d'accès. Retrait des tokens JWT et synchronisation logique des utilisateurs dans la base locale.
 3. **Lombok** : Réduction du code boilerplate (builders, getters/setters).

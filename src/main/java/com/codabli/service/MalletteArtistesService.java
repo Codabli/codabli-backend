@@ -16,13 +16,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Vue agregee "Mallette d'Artistes" (CDC 8.16) : rassemble les deux
  * carnets d'un profil enfant et met en avant ses creations et ses pages
  * pretes a imprimer.
- *
+ * <p>
  * Reutilise CarnetLectureService/CarnetVoyageService pour la lecture des
  * pages, ce qui garantit la meme verification de propriete (RG-13) sans
  * dupliquer la logique de securite.
@@ -36,8 +35,8 @@ public class MalletteArtistesService {
     private final ProfilEnfantRepository profilEnfantRepository;
 
     public MalletteArtistesService(CarnetLectureService carnetLectureService,
-            CarnetVoyageService carnetVoyageService,
-            ProfilEnfantRepository profilEnfantRepository) {
+                                   CarnetVoyageService carnetVoyageService,
+                                   ProfilEnfantRepository profilEnfantRepository) {
         this.carnetLectureService = carnetLectureService;
         this.carnetVoyageService = carnetVoyageService;
         this.profilEnfantRepository = profilEnfantRepository;
@@ -53,43 +52,30 @@ public class MalletteArtistesService {
 
         List<CreationMalletteResponse> creations = new ArrayList<>();
         for (PageCarnetLectureResponse page : carnetLecture) {
-            page.getElements().stream()
-                    .filter(e -> e.getType() == TypeElementCarnetLecture.creation)
-                    .forEach(e -> creations.add(CreationMalletteResponse.builder()
-                            .source("carnet_lecture")
-                            .pageId(page.getId())
-                            .elementId(e.getId())
-                            .nom(e.getNom())
-                            .imageUrl(e.getImageUrl())
-                            .build()));
+            page.elements().stream()
+                    .filter(e -> e.type() == TypeElementCarnetLecture.creation)
+                    .forEach(e -> creations.add(new CreationMalletteResponse("carnet_lecture", page.id(), e.id(), e.nom(), e.imageUrl())));
         }
         for (PageCarnetVoyageResponse page : carnetVoyage) {
-            page.getElements().stream()
-                    .filter(e -> e.getType() == TypeElementCarnetVoyage.creation)
-                    .forEach(e -> creations.add(CreationMalletteResponse.builder()
-                            .source("carnet_voyage")
-                            .pageId(page.getId())
-                            .elementId(e.getId())
-                            .nom(e.getNom())
-                            .imageUrl(e.getImageUrl())
-                            .build()));
+            page.elements().stream()
+                    .filter(e -> e.type() == TypeElementCarnetVoyage.creation)
+                    .forEach(e -> creations.add(new CreationMalletteResponse("carnet_voyage", page.id(), e.id(), e.nom(), e.imageUrl())));
         }
 
         List<PageCarnetLectureResponse> pagesLectureAImprimer = carnetLecture.stream()
-                .filter(p -> p.getStatut() == StatutPageCarnet.terminee)
-                .collect(Collectors.toList());
+                .filter(p -> p.statut() == StatutPageCarnet.terminee)
+                .toList();
         List<PageCarnetVoyageResponse> pagesVoyageAImprimer = carnetVoyage.stream()
-                .filter(p -> p.getStatut() == StatutPageCarnet.terminee)
-                .collect(Collectors.toList());
+                .filter(p -> p.statut() == StatutPageCarnet.terminee)
+                .toList();
 
-        return MalletteArtistesResponse.builder()
-                .profilEnfantId(profilEnfantId)
-                .pseudonyme(profil.getPseudonyme())
-                .carnetLecture(carnetLecture)
-                .carnetVoyage(carnetVoyage)
-                .creations(creations)
-                .pagesLectureAImprimer(pagesLectureAImprimer)
-                .pagesVoyageAImprimer(pagesVoyageAImprimer)
-                .build();
+        return new MalletteArtistesResponse(
+                profilEnfantId,
+                profil.getPseudonyme(),
+                carnetLecture,
+                carnetVoyage,
+                creations,
+                pagesLectureAImprimer,
+                pagesVoyageAImprimer);
     }
 }

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -26,15 +25,15 @@ public class ClasseService {
     }
 
     public ClasseResponse creer(ClasseRequest request) {
-        Ecole ecole = entityManager.getReference(Ecole.class, request.getEcoleId());
-        Utilisateur enseignant = entityManager.getReference(Utilisateur.class, request.getEnseignantId());
+        Ecole ecole = entityManager.getReference(Ecole.class, request.ecoleId());
+        Utilisateur enseignant = entityManager.getReference(Utilisateur.class, request.enseignantId());
 
         Classe classe = Classe.builder()
                 .ecole(ecole)
                 .enseignant(enseignant)
-                .nom(request.getNom())
-                .niveau(request.getNiveau())
-                .anneeScolaire(request.getAnneeScolaire())
+                .nom(request.nom())
+                .niveau(request.niveau())
+                .anneeScolaire(request.anneeScolaire())
                 .build();
 
         Classe saved = classeRepository.save(classe);
@@ -45,18 +44,19 @@ public class ClasseService {
     public List<ClasseResponse> listerTout() {
         return classeRepository.findAll().stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private ClasseResponse toResponse(Classe classe) {
-        return ClasseResponse.builder()
-                .id(classe.getId())
-                .nom(classe.getNom())
-                .niveau(classe.getNiveau())
-                .anneeScolaire(classe.getAnneeScolaire())
-                .ecoleId(classe.getEcole().getId())
-                .enseignantId(classe.getEnseignant().getId())
-                .dateCreation(classe.getDateCreation())
-                .build();
+        return new ClasseResponse(
+                classe.getId(),
+                classe.getNom(),
+                classe.getNiveau(),
+                classe.getAnneeScolaire(),
+                classe.getEcole().getId(),
+                classe.getEcole().getNom(),
+                classe.getEnseignant().getId(),
+                classe.getEnseignant().getNom(),
+                classe.getDateCreation());
     }
 }

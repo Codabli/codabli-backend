@@ -1,14 +1,8 @@
 package com.codabli.service;
 
-import com.codabli.dto.AdresseLivraisonResponse;
 import com.codabli.dto.CommandeResponse;
 import com.codabli.dto.CreerCommandeRequest;
-import com.codabli.entity.AdresseLivraison;
-import com.codabli.entity.Commande;
-import com.codabli.entity.LignePanier;
-import com.codabli.entity.Panier;
-import com.codabli.entity.Produit;
-import com.codabli.entity.Utilisateur;
+import com.codabli.entity.*;
 import com.codabli.entity.enums.TypeProduit;
 import com.codabli.repository.AdresseLivraisonRepository;
 import com.codabli.repository.CommandeRepository;
@@ -26,7 +20,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,7 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class CommandeServiceTest {
+class CommandeServiceTest {
 
     @Mock
     private CommandeRepository commandeRepository;
@@ -106,9 +99,7 @@ public class CommandeServiceTest {
                 .build();
         mockPanier.getLignes().add(ligne);
 
-        CreerCommandeRequest request = CreerCommandeRequest.builder()
-                .adresseLivraisonId(mockAdresse.getId())
-                .build();
+        CreerCommandeRequest request = new CreerCommandeRequest(mockAdresse.getId());
 
         when(jwt.getSubject()).thenReturn("keycloak-user-123");
         when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
@@ -125,9 +116,9 @@ public class CommandeServiceTest {
         CommandeResponse response = commandeService.creerCommande(request, jwt);
 
         assertNotNull(response);
-        assertEquals(new BigDecimal("40.00"), response.getSousTotal());
-        assertEquals(new BigDecimal("5.00"), response.getFraisLivraison());
-        assertEquals(new BigDecimal("45.00"), response.getTotal());
+        assertEquals(new BigDecimal("40.00"), response.sousTotal());
+        assertEquals(new BigDecimal("5.00"), response.fraisLivraison());
+        assertEquals(new BigDecimal("45.00"), response.total());
         assertEquals(8, mockProduitPhysique.getStock());
         assertTrue(mockPanier.getLignes().isEmpty());
         verify(commandeRepository, times(1)).save(any(Commande.class));
@@ -143,9 +134,7 @@ public class CommandeServiceTest {
                 .build();
         mockPanier.getLignes().add(ligne);
 
-        CreerCommandeRequest request = CreerCommandeRequest.builder()
-                .adresseLivraisonId(null)
-                .build();
+        CreerCommandeRequest request = new CreerCommandeRequest(null);
 
         when(jwt.getSubject()).thenReturn("keycloak-user-123");
         when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))

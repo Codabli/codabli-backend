@@ -45,7 +45,7 @@ public class RessourcePedagogiqueController {
             @RequestParam(required = false) String niveauScolaire,
             @RequestParam(required = false) Boolean actif,
             @AuthenticationPrincipal Jwt jwt,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault Pageable pageable) {
 
         Page<RessourcePedagogiqueResponse> resources = ressourcePedagogiqueService.lister(
                 type, thematique, niveauScolaire, actif, jwt, pageable);

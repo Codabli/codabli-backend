@@ -22,11 +22,10 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les abonnements (CDC 8.14, ABO-01 a 04).
- *
+ * <p>
  * Aucune passerelle de paiement n'est integree cote backend (comme pour les
  * Commandes de la boutique) : la souscription active directement
  * l'abonnement. Le champ factureUrl reference un document externe, sans
@@ -41,8 +40,8 @@ public class AbonnementService {
     private final UtilisateurRepository utilisateurRepository;
 
     public AbonnementService(OffreAbonnementRepository offreAbonnementRepository,
-            AbonnementRepository abonnementRepository,
-            UtilisateurRepository utilisateurRepository) {
+                             AbonnementRepository abonnementRepository,
+                             UtilisateurRepository utilisateurRepository) {
         this.offreAbonnementRepository = offreAbonnementRepository;
         this.abonnementRepository = abonnementRepository;
         this.utilisateurRepository = utilisateurRepository;
@@ -57,7 +56,7 @@ public class AbonnementService {
         List<OffreAbonnement> offres = publicCible != null
                 ? offreAbonnementRepository.findByActifTrueAndPublicCible(publicCible)
                 : offreAbonnementRepository.findByActifTrue();
-        return offres.stream().map(this::toOffreResponse).collect(Collectors.toList());
+        return offres.stream().map(this::toOffreResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -67,19 +66,19 @@ public class AbonnementService {
 
     public OffreAbonnementResponse creerOffre(OffreAbonnementRequest request) {
         OffreAbonnement offre = OffreAbonnement.builder()
-                .code(request.getCode())
-                .nom(request.getNom())
-                .description(request.getDescription())
-                .publicCible(request.getPublicCible())
-                .tarif(request.getTarif())
-                .duree(request.getDuree())
-                .limiteProfils(request.getLimiteProfils())
-                .limiteClasses(request.getLimiteClasses())
-                .stockageMo(request.getStockageMo())
-                .accesWebinaires(Boolean.TRUE.equals(request.getAccesWebinaires()))
-                .accesCoaching(Boolean.TRUE.equals(request.getAccesCoaching()))
-                .accesExports(Boolean.TRUE.equals(request.getAccesExports()))
-                .actif(request.getActif() == null || request.getActif())
+                .code(request.code())
+                .nom(request.nom())
+                .description(request.description())
+                .publicCible(request.publicCible())
+                .tarif(request.tarif())
+                .duree(request.duree())
+                .limiteProfils(request.limiteProfils())
+                .limiteClasses(request.limiteClasses())
+                .stockageMo(request.stockageMo())
+                .accesWebinaires(Boolean.TRUE.equals(request.accesWebinaires()))
+                .accesCoaching(Boolean.TRUE.equals(request.accesCoaching()))
+                .accesExports(Boolean.TRUE.equals(request.accesExports()))
+                .actif(request.actif() == null || request.actif())
                 .build();
 
         OffreAbonnement saved = offreAbonnementRepository.save(offre);
@@ -89,26 +88,26 @@ public class AbonnementService {
     public OffreAbonnementResponse modifierOffre(UUID id, OffreAbonnementRequest request) {
         OffreAbonnement offre = getOffreOrThrow(id);
 
-        offre.setCode(request.getCode());
-        offre.setNom(request.getNom());
-        offre.setDescription(request.getDescription());
-        offre.setPublicCible(request.getPublicCible());
-        offre.setTarif(request.getTarif());
-        offre.setDuree(request.getDuree());
-        offre.setLimiteProfils(request.getLimiteProfils());
-        offre.setLimiteClasses(request.getLimiteClasses());
-        offre.setStockageMo(request.getStockageMo());
-        if (request.getAccesWebinaires() != null) {
-            offre.setAccesWebinaires(request.getAccesWebinaires());
+        offre.setCode(request.code());
+        offre.setNom(request.nom());
+        offre.setDescription(request.description());
+        offre.setPublicCible(request.publicCible());
+        offre.setTarif(request.tarif());
+        offre.setDuree(request.duree());
+        offre.setLimiteProfils(request.limiteProfils());
+        offre.setLimiteClasses(request.limiteClasses());
+        offre.setStockageMo(request.stockageMo());
+        if (request.accesWebinaires() != null) {
+            offre.setAccesWebinaires(request.accesWebinaires());
         }
-        if (request.getAccesCoaching() != null) {
-            offre.setAccesCoaching(request.getAccesCoaching());
+        if (request.accesCoaching() != null) {
+            offre.setAccesCoaching(request.accesCoaching());
         }
-        if (request.getAccesExports() != null) {
-            offre.setAccesExports(request.getAccesExports());
+        if (request.accesExports() != null) {
+            offre.setAccesExports(request.accesExports());
         }
-        if (request.getActif() != null) {
-            offre.setActif(request.getActif());
+        if (request.actif() != null) {
+            offre.setActif(request.actif());
         }
 
         OffreAbonnement saved = offreAbonnementRepository.save(offre);
@@ -126,7 +125,7 @@ public class AbonnementService {
 
     public AbonnementResponse souscrire(AbonnementRequest request, Jwt jwt) {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        OffreAbonnement offre = getOffreOrThrow(request.getOffreId());
+        OffreAbonnement offre = getOffreOrThrow(request.offreId());
 
         if (!offre.isActif()) {
             throw new IllegalStateException("Cette offre n'est plus disponible a la souscription");
@@ -156,7 +155,7 @@ public class AbonnementService {
         return abonnementRepository.findByUtilisateurIdOrderByDateCreationDesc(utilisateur.getId())
                 .stream()
                 .map(this::toAbonnementResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -187,7 +186,7 @@ public class AbonnementService {
 
     public AbonnementResponse changerOffre(UUID id, AbonnementRequest request, Jwt jwt) {
         Abonnement abonnement = getAbonnementAvecDroit(id, jwt);
-        OffreAbonnement nouvelleOffre = getOffreOrThrow(request.getOffreId());
+        OffreAbonnement nouvelleOffre = getOffreOrThrow(request.offreId());
 
         if (!nouvelleOffre.isActif()) {
             throw new IllegalStateException("Cette offre n'est plus disponible a la souscription");
@@ -256,22 +255,21 @@ public class AbonnementService {
     }
 
     private OffreAbonnementResponse toOffreResponse(OffreAbonnement offre) {
-        return OffreAbonnementResponse.builder()
-                .id(offre.getId())
-                .code(offre.getCode())
-                .nom(offre.getNom())
-                .description(offre.getDescription())
-                .publicCible(offre.getPublicCible())
-                .tarif(offre.getTarif())
-                .duree(offre.getDuree())
-                .limiteProfils(offre.getLimiteProfils())
-                .limiteClasses(offre.getLimiteClasses())
-                .stockageMo(offre.getStockageMo())
-                .accesWebinaires(offre.isAccesWebinaires())
-                .accesCoaching(offre.isAccesCoaching())
-                .accesExports(offre.isAccesExports())
-                .actif(offre.isActif())
-                .build();
+        return new OffreAbonnementResponse(
+                offre.getId(),
+                offre.getCode(),
+                offre.getNom(),
+                offre.getDescription(),
+                offre.getPublicCible(),
+                offre.getTarif(),
+                offre.getDuree(),
+                offre.getLimiteProfils(),
+                offre.getLimiteClasses(),
+                offre.getStockageMo(),
+                offre.isAccesWebinaires(),
+                offre.isAccesCoaching(),
+                offre.isAccesExports(),
+                offre.isActif());
     }
 
     /**
@@ -285,17 +283,17 @@ public class AbonnementService {
             statutAffiche = StatutAbonnement.expire;
         }
 
-        return AbonnementResponse.builder()
-                .id(abonnement.getId())
-                .offreId(abonnement.getOffre().getId())
-                .offreNom(abonnement.getOffre().getNom())
-                .offreCode(abonnement.getOffre().getCode())
-                .statut(statutAffiche)
-                .dateDebut(abonnement.getDateDebut())
-                .dateFin(abonnement.getDateFin())
-                .renouvellementAutomatique(abonnement.isRenouvellementAutomatique())
-                .factureUrl(abonnement.getFactureUrl())
-                .dateCreation(abonnement.getDateCreation())
-                .build();
+        return new AbonnementResponse(abonnement.getId(),
+                abonnement.getOffre().getId(),
+                abonnement.getOffre().getNom(),
+                abonnement.getOffre().getCode(),
+                statutAffiche,
+                abonnement.getDateDebut(),
+                abonnement.getDateFin(),
+                abonnement.isRenouvellementAutomatique(),
+                abonnement.getFactureUrl(),
+                abonnement.getDateCreation());
+
+
     }
 }

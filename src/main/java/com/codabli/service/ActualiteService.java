@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Service metier pour les actualites.
- *
+ * <p>
  * Securite :
  * - Lecture (GET) : publique, filtree sur publie=true
  * - Ecriture (POST/PUT/DELETE) : reservee aux admins via @PreAuthorize dans le
@@ -31,7 +31,7 @@ public class ActualiteService {
     private final UtilisateurRepository utilisateurRepository;
 
     public ActualiteService(ActualiteRepository actualiteRepository,
-            UtilisateurRepository utilisateurRepository) {
+                            UtilisateurRepository utilisateurRepository) {
         this.actualiteRepository = actualiteRepository;
         this.utilisateurRepository = utilisateurRepository;
     }
@@ -45,11 +45,11 @@ public class ActualiteService {
 
         Actualite actualite = Actualite.builder()
                 .auteur(auteur)
-                .titre(request.getTitre())
-                .imageUrl(request.getImageUrl())
-                .resume(request.getResume())
-                .contenu(request.getContenu())
-                .publie(request.getPublie() != null && request.getPublie())
+                .titre(request.titre())
+                .imageUrl(request.imageUrl())
+                .resume(request.resume())
+                .contenu(request.contenu())
+                .publie(request.publie() != null && request.publie())
                 .build();
 
         // Si publie immediatement, fixer la date de publication
@@ -70,16 +70,16 @@ public class ActualiteService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Actualite non trouvee avec l'ID: " + id));
 
-        actualite.setTitre(request.getTitre());
-        actualite.setImageUrl(request.getImageUrl());
-        actualite.setResume(request.getResume());
-        actualite.setContenu(request.getContenu());
+        actualite.setTitre(request.titre());
+        actualite.setImageUrl(request.imageUrl());
+        actualite.setResume(request.resume());
+        actualite.setContenu(request.contenu());
 
         // Gestion du passage brouillon → publie
-        if (request.getPublie() != null) {
+        if (request.publie() != null) {
             boolean etaitPublie = actualite.isPublie();
-            actualite.setPublie(request.getPublie());
-            if (!etaitPublie && request.getPublie()) {
+            actualite.setPublie(request.publie());
+            if (!etaitPublie && request.publie()) {
                 actualite.setDatePublication(OffsetDateTime.now());
             }
         }
@@ -143,19 +143,18 @@ public class ActualiteService {
     }
 
     private ActualiteResponse toResponse(Actualite actualite) {
-        return ActualiteResponse.builder()
-                .id(actualite.getId())
-                .titre(actualite.getTitre())
-                .imageUrl(actualite.getImageUrl())
-                .resume(actualite.getResume())
-                .contenu(actualite.getContenu())
-                .publie(actualite.isPublie())
-                .datePublication(actualite.getDatePublication())
-                .dateCreation(actualite.getDateCreation())
-                .dateMiseAJour(actualite.getDateMiseAJour())
-                .auteurId(actualite.getAuteur().getId())
-                .auteurNom(actualite.getAuteur().getNom())
-                .auteurPrenom(actualite.getAuteur().getPrenom())
-                .build();
+        return new ActualiteResponse(
+                actualite.getId(),
+                actualite.getTitre(),
+                actualite.getImageUrl(),
+                actualite.getResume(),
+                actualite.getContenu(),
+                actualite.isPublie(),
+                actualite.getDatePublication(),
+                actualite.getDateCreation(),
+                actualite.getDateMiseAJour(),
+                actualite.getAuteur().getId(),
+                actualite.getAuteur().getNom(),
+                actualite.getAuteur().getPrenom());
     }
 }

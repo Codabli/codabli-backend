@@ -14,11 +14,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les traductions de Contes Danses (CDC 8.5, LAN-01/02/03).
- *
+ * <p>
  * Securite : la gestion des traductions (creation/modification/statut) est
  * reservee aux roles traducteur/comite_lecture/admin/super_admin via
  * @PreAuthorize dans le controller. La lecture publique ne retourne que les
@@ -33,8 +32,8 @@ public class ConteDanseTraductionService {
     private final EntityManager entityManager;
 
     public ConteDanseTraductionService(ConteDanseTraductionRepository traductionRepository,
-            ConteDanseRepository conteDanseRepository,
-            EntityManager entityManager) {
+                                       ConteDanseRepository conteDanseRepository,
+                                       EntityManager entityManager) {
         this.traductionRepository = traductionRepository;
         this.conteDanseRepository = conteDanseRepository;
         this.entityManager = entityManager;
@@ -49,7 +48,7 @@ public class ConteDanseTraductionService {
         return traductionRepository.findByConteIdAndStatut(conteId, StatutTraduction.publiee)
                 .stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -61,7 +60,7 @@ public class ConteDanseTraductionService {
         return traductionRepository.findByConteId(conteId)
                 .stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -75,12 +74,12 @@ public class ConteDanseTraductionService {
 
         ConteDanseTraduction traduction = ConteDanseTraduction.builder()
                 .conte(conte)
-                .langue(request.getLangue())
-                .variante(request.getVariante())
-                .texte(request.getTexte())
-                .audioUrl(request.getAudioUrl())
-                .videoUrl(request.getVideoUrl())
-                .sousTitresUrl(request.getSousTitresUrl())
+                .langue(request.langue())
+                .variante(request.variante())
+                .texte(request.texte())
+                .audioUrl(request.audioUrl())
+                .videoUrl(request.videoUrl())
+                .sousTitresUrl(request.sousTitresUrl())
                 .build();
 
         appliquerIntervenants(traduction, request);
@@ -96,12 +95,12 @@ public class ConteDanseTraductionService {
     public ConteDanseTraductionResponse modifier(UUID id, ConteDanseTraductionRequest request) {
         ConteDanseTraduction traduction = getOrThrow(id);
 
-        traduction.setLangue(request.getLangue());
-        traduction.setVariante(request.getVariante());
-        traduction.setTexte(request.getTexte());
-        traduction.setAudioUrl(request.getAudioUrl());
-        traduction.setVideoUrl(request.getVideoUrl());
-        traduction.setSousTitresUrl(request.getSousTitresUrl());
+        traduction.setLangue(request.langue());
+        traduction.setVariante(request.variante());
+        traduction.setTexte(request.texte());
+        traduction.setAudioUrl(request.audioUrl());
+        traduction.setVideoUrl(request.videoUrl());
+        traduction.setSousTitresUrl(request.sousTitresUrl());
 
         appliquerIntervenants(traduction, request);
 
@@ -146,11 +145,11 @@ public class ConteDanseTraductionService {
     // ────────────────────────────────────────────────────────────────
 
     private void appliquerIntervenants(ConteDanseTraduction traduction, ConteDanseTraductionRequest request) {
-        if (request.getTraducteurId() != null) {
-            traduction.setTraducteur(entityManager.getReference(Utilisateur.class, request.getTraducteurId()));
+        if (request.traducteurId() != null) {
+            traduction.setTraducteur(entityManager.getReference(Utilisateur.class, request.traducteurId()));
         }
-        if (request.getRelecteurId() != null) {
-            traduction.setRelecteur(entityManager.getReference(Utilisateur.class, request.getRelecteurId()));
+        if (request.relecteurId() != null) {
+            traduction.setRelecteur(entityManager.getReference(Utilisateur.class, request.relecteurId()));
         }
     }
 
@@ -161,22 +160,21 @@ public class ConteDanseTraductionService {
     }
 
     private ConteDanseTraductionResponse toResponse(ConteDanseTraduction traduction) {
-        return ConteDanseTraductionResponse.builder()
-                .id(traduction.getId())
-                .conteId(traduction.getConte().getId())
-                .langue(traduction.getLangue())
-                .variante(traduction.getVariante())
-                .texte(traduction.getTexte())
-                .audioUrl(traduction.getAudioUrl())
-                .videoUrl(traduction.getVideoUrl())
-                .sousTitresUrl(traduction.getSousTitresUrl())
-                .traducteurId(traduction.getTraducteur() != null ? traduction.getTraducteur().getId() : null)
-                .traducteurNom(traduction.getTraducteur() != null ? traduction.getTraducteur().getNom() : null)
-                .relecteurId(traduction.getRelecteur() != null ? traduction.getRelecteur().getId() : null)
-                .relecteurNom(traduction.getRelecteur() != null ? traduction.getRelecteur().getNom() : null)
-                .statut(traduction.getStatut())
-                .dateCreation(traduction.getDateCreation())
-                .dateMiseAJour(traduction.getDateMiseAJour())
-                .build();
+        return new ConteDanseTraductionResponse(
+                traduction.getId(),
+                traduction.getConte().getId(),
+                traduction.getLangue(),
+                traduction.getVariante(),
+                traduction.getTexte(),
+                traduction.getAudioUrl(),
+                traduction.getVideoUrl(),
+                traduction.getSousTitresUrl(),
+                traduction.getTraducteur() != null ? traduction.getTraducteur().getId() : null,
+                traduction.getTraducteur() != null ? traduction.getTraducteur().getNom() : null,
+                traduction.getRelecteur() != null ? traduction.getRelecteur().getId() : null,
+                traduction.getRelecteur() != null ? traduction.getRelecteur().getNom() : null,
+                traduction.getStatut(),
+                traduction.getDateCreation(),
+                traduction.getDateMiseAJour());
     }
 }

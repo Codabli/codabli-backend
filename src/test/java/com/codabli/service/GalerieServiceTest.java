@@ -69,14 +69,14 @@ class GalerieServiceTest {
     @Test
     void lister_shouldReturnOnlyValidCards() {
         Pageable pageable = PageRequest.of(0, 10);
-        GalerieItemResponse item = GalerieItemResponse.builder()
-                .id(carteValide.getId())
-                .type(TypeCarte.personnage)
-                .imageUrl("https://example.com/image.jpg")
-                .texteAssocie("Le petit prince")
-                .createurPrenom("Amine")
-                .miseEnAvant(false)
-                .build();
+        GalerieItemResponse item = new GalerieItemResponse(
+                carteValide.getId(),
+                TypeCarte.personnage,
+                "https://example.com/image.jpg",
+                "Le petit prince",
+                null,
+                "Amine",
+                false);
 
         Page<GalerieItemResponse> page = new PageImpl<>(List.of(item), pageable, 1);
         when(galerieMiseEnAvantRepository.findCartesForGalerie(
@@ -87,7 +87,7 @@ class GalerieServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        assertEquals("Le petit prince", result.getContent().get(0).getTexteAssocie());
+        assertEquals("Le petit prince", result.getContent().getFirst().texteAssocie());
         verify(galerieMiseEnAvantRepository).findCartesForGalerie(
                 eq(StatutModeration.valide), any(OffsetDateTime.class), eq(pageable));
     }
@@ -101,9 +101,9 @@ class GalerieServiceTest {
         GalerieItemResponse result = galerieService.getCarteGalerie(carteValide.getId());
 
         assertNotNull(result);
-        assertEquals(carteValide.getId(), result.getId());
-        assertEquals("Le petit prince", result.getTexteAssocie());
-        assertEquals("Amine", result.getCreateurPrenom());
+        assertEquals(carteValide.getId(), result.id());
+        assertEquals("Le petit prince", result.texteAssocie());
+        assertEquals("Amine", result.createurPrenom());
     }
 
     @Test
@@ -129,10 +129,7 @@ class GalerieServiceTest {
 
     @Test
     void ajouterMiseEnAvant_whenCarteValide_shouldSave() {
-        GalerieMiseEnAvantRequest request = GalerieMiseEnAvantRequest.builder()
-                .carteAConteId(carteValide.getId())
-                .ordreAffichage(1)
-                .build();
+        GalerieMiseEnAvantRequest request = new GalerieMiseEnAvantRequest(carteValide.getId(), null, 1);
 
         when(carteAConteRepository.findByIdAndStatutModeration(
                 carteValide.getId(), StatutModeration.valide))
@@ -152,19 +149,16 @@ class GalerieServiceTest {
         GalerieMiseEnAvantResponse result = galerieService.ajouterMiseEnAvant(request);
 
         assertNotNull(result);
-        assertEquals(carteValide.getId(), result.getCarteAConteId());
-        assertEquals(1, result.getOrdreAffichage());
-        assertTrue(result.isActif());
+        assertEquals(carteValide.getId(), result.carteAConteId());
+        assertEquals(1, result.ordreAffichage());
+        assertTrue(result.actif());
         verify(galerieMiseEnAvantRepository).save(any(GalerieMiseEnAvant.class));
     }
 
     @Test
     void ajouterMiseEnAvant_whenCarteNonValide_shouldThrow() {
         UUID nonValideId = UUID.randomUUID();
-        GalerieMiseEnAvantRequest request = GalerieMiseEnAvantRequest.builder()
-                .carteAConteId(nonValideId)
-                .ordreAffichage(1)
-                .build();
+        GalerieMiseEnAvantRequest request = new GalerieMiseEnAvantRequest(nonValideId, null, 1);
 
         when(carteAConteRepository.findByIdAndStatutModeration(
                 nonValideId, StatutModeration.valide))

@@ -2,10 +2,6 @@ package com.codabli.dto;
 
 import com.codabli.entity.enums.AccesConte;
 import com.codabli.entity.enums.StatutConte;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -14,66 +10,31 @@ import java.util.UUID;
  * DTO de sortie pour un conte danse.
  * Inclut les champs "createurNom" et "createurPrenom" pour le frontend.
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ConteDanseResponse {
-
-    private UUID id;
-
-    private String titre;
-
-    private String description;
-
-    private String thematique;
-
-    private String langueOriginale;
-
-    private String couvertureUrl;
-
-    private String pays;
-
-    private String culture;
-
-    private Integer ageMin;
-
-    private Integer ageMax;
-
-    private Integer dureeMinutes;
-
-    private String credits;
-
-    private StatutConte statut;
-
-    private AccesConte acces;
-
-    private String isbn;
-
-    private String fichierTexteUrl;
-
-    private String fichierAudioUrl;
-
-    private String fichierVideoUrl;
-
-    private String motifModeration;
-
-    private OffsetDateTime dateCreation;
-
-    private OffsetDateTime datePublication;
-
-    /** ID du createur */
-    private UUID createurId;
-
-    /** Nom du createur */
-    private String createurNom;
-
-    /** Prenom du createur */
-    private String createurPrenom;
-
-    /** ID de l'ecole associee */
-    private UUID ecoleId;
-
-    /** ID de la classe associee */
-    private UUID classeId;
+public record ConteDanseResponse(
+        UUID id,
+        String titre,
+        String description,
+        String thematique,
+        String langueOriginale,
+        String couvertureUrl,
+        String pays,
+        String culture,
+        Integer ageMin,
+        Integer ageMax,
+        Integer dureeMinutes,
+        String credits,
+        StatutConte statut,
+        AccesConte acces,
+        String isbn,
+        String fichierTexteUrl,
+        String fichierAudioUrl,
+        String fichierVideoUrl,
+        String motifModeration,
+        OffsetDateTime dateCreation,
+        OffsetDateTime datePublication,
+        UUID createurId,
+        String createurNom,
+        String createurPrenom,
+        UUID ecoleId,
+        UUID classeId) {
 }

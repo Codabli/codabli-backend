@@ -19,11 +19,10 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour le panier.
- *
+ * <p>
  * Securite :
  * - Toutes les operations sont authentifiees.
  * - L'utilisateur ne peut acceder qu'a son propre panier (verification via
@@ -38,8 +37,8 @@ public class PanierService {
     private final UtilisateurRepository utilisateurRepository;
 
     public PanierService(PanierRepository panierRepository,
-            ProduitRepository produitRepository,
-            UtilisateurRepository utilisateurRepository) {
+                         ProduitRepository produitRepository,
+                         UtilisateurRepository utilisateurRepository) {
         this.panierRepository = panierRepository;
         this.produitRepository = produitRepository;
         this.utilisateurRepository = utilisateurRepository;
@@ -64,9 +63,9 @@ public class PanierService {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
         Panier panier = getOrCreatePanier(utilisateur);
 
-        Produit produit = produitRepository.findById(request.getProduitId())
+        Produit produit = produitRepository.findById(request.produitId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Produit non trouve avec l'ID: " + request.getProduitId()));
+                        "Produit non trouve avec l'ID: " + request.produitId()));
 
         if (!produit.isActif()) {
             throw new IllegalArgumentException("Ce produit n'est plus disponible");
@@ -80,13 +79,13 @@ public class PanierService {
         if (ligneExistante.isPresent()) {
             // Incrementer la quantite
             LignePanier ligne = ligneExistante.get();
-            ligne.setQuantite(ligne.getQuantite() + request.getQuantite());
+            ligne.setQuantite(ligne.getQuantite() + request.quantite());
         } else {
             // Nouvelle ligne
             LignePanier nouvelleLigne = LignePanier.builder()
                     .panier(panier)
                     .produit(produit)
-                    .quantite(request.getQuantite())
+                    .quantite(request.quantite())
                     .build();
             panier.getLignes().add(nouvelleLigne);
         }
@@ -109,7 +108,7 @@ public class PanierService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Ligne de panier non trouvee avec l'ID: " + ligneId));
 
-        ligne.setQuantite(request.getQuantite());
+        ligne.setQuantite(request.quantite());
 
         Panier saved = panierRepository.save(panier);
         return toResponse(saved);
@@ -168,38 +167,36 @@ public class PanierService {
     private PanierResponse toResponse(Panier panier) {
         List<LignePanierResponse> lignes = panier.getLignes().stream()
                 .map(this::toLigneResponse)
-                .collect(Collectors.toList());
+                .toList();
 
         BigDecimal total = lignes.stream()
-                .map(LignePanierResponse::getSousTotal)
+                .map(LignePanierResponse::sousTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         int nombreArticles = panier.getLignes().stream()
                 .mapToInt(LignePanier::getQuantite)
                 .sum();
 
-        return PanierResponse.builder()
-                .id(panier.getId())
-                .lignes(lignes)
-                .total(total)
-                .nombreArticles(nombreArticles)
-                .dateCreation(panier.getDateCreation())
-                .dateMiseAJour(panier.getDateMiseAJour())
-                .build();
+        return new PanierResponse(
+                panier.getId(),
+                lignes,
+                total,
+                nombreArticles,
+                panier.getDateCreation(),
+                panier.getDateMiseAJour());
     }
 
     private LignePanierResponse toLigneResponse(LignePanier ligne) {
         BigDecimal sousTotal = ligne.getProduit().getPrix()
                 .multiply(BigDecimal.valueOf(ligne.getQuantite()));
 
-        return LignePanierResponse.builder()
-                .id(ligne.getId())
-                .produitId(ligne.getProduit().getId())
-                .produitNom(ligne.getProduit().getNom())
-                .produitImageUrl(ligne.getProduit().getImageUrl())
-                .produitPrix(ligne.getProduit().getPrix())
-                .quantite(ligne.getQuantite())
-                .sousTotal(sousTotal)
-                .build();
+        return new LignePanierResponse(
+                ligne.getId(),
+                ligne.getProduit().getId(),
+                ligne.getProduit().getNom(),
+                ligne.getProduit().getImageUrl(),
+                ligne.getProduit().getPrix(),
+                ligne.getQuantite(),
+                sousTotal);
     }
 }

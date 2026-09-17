@@ -15,7 +15,7 @@ import java.util.UUID;
 
 /**
  * Controller pour le catalogue des offres d'abonnement (CDC 8.14, ABO-01).
- *
+ * </p>
  * Securite :
  * - GET (catalogue) : public
  * - POST / PUT / DELETE (sous /api/admin/**) : reserves aux admins

@@ -19,12 +19,12 @@ import java.util.UUID;
 
 /**
  * Service métier pour la galerie d'art.
- *
+ * <p>
  * Sécurité :
  * - Lecture (GET galerie) : publique, filtrée sur statutModeration = valide
  * - Gestion mises en avant : réservée aux admins via SecurityConfig
  * (/api/admin/**)
- *
+ * <p>
  * Règle clé : une carte mise en avant dont le statut redevient non-valide
  * disparaît automatiquement de la galerie grâce au WHERE JPQL.
  */
@@ -36,7 +36,7 @@ public class GalerieService {
     private final CarteAConteRepository carteAConteRepository;
 
     public GalerieService(GalerieMiseEnAvantRepository galerieMiseEnAvantRepository,
-            CarteAConteRepository carteAConteRepository) {
+                          CarteAConteRepository carteAConteRepository) {
         this.galerieMiseEnAvantRepository = galerieMiseEnAvantRepository;
         this.carteAConteRepository = carteAConteRepository;
     }
@@ -64,15 +64,14 @@ public class GalerieService {
     @Transactional(readOnly = true)
     public Page<GalerieItemResponse> rechercher(String query, Pageable pageable) {
         return carteAConteRepository.rechercherValidees(StatutModeration.valide, query, pageable)
-                .map(carte -> GalerieItemResponse.builder()
-                        .id(carte.getId())
-                        .type(carte.getType())
-                        .imageUrl(carte.getImageUrl())
-                        .texteAssocie(carte.getTexteAssocie())
-                        .dateCreation(carte.getDateCreation())
-                        .createurPrenom(carte.getCreateur().getPrenom())
-                        .miseEnAvant(false)
-                        .build());
+                .map(carte -> new GalerieItemResponse(
+                        carte.getId(),
+                        carte.getType(),
+                        carte.getImageUrl(),
+                        carte.getTexteAssocie(),
+                        carte.getDateCreation(),
+                        carte.getCreateur().getPrenom(),
+                        false));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -91,15 +90,14 @@ public class GalerieService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Carte non trouvée ou non validée avec l'ID: " + id));
 
-        return GalerieItemResponse.builder()
-                .id(carte.getId())
-                .type(carte.getType())
-                .imageUrl(carte.getImageUrl())
-                .texteAssocie(carte.getTexteAssocie())
-                .dateCreation(carte.getDateCreation())
-                .createurPrenom(carte.getCreateur().getPrenom())
-                .miseEnAvant(false)
-                .build();
+        return new GalerieItemResponse(
+                carte.getId(),
+                carte.getType(),
+                carte.getImageUrl(),
+                carte.getTexteAssocie(),
+                carte.getDateCreation(),
+                carte.getCreateur().getPrenom(),
+                false);
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -112,14 +110,14 @@ public class GalerieService {
      */
     public GalerieMiseEnAvantResponse ajouterMiseEnAvant(GalerieMiseEnAvantRequest request) {
         CarteAConte carte = carteAConteRepository
-                .findByIdAndStatutModeration(request.getCarteAConteId(), StatutModeration.valide)
+                .findByIdAndStatutModeration(request.carteAConteId(), StatutModeration.valide)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Carte non trouvée ou non validée avec l'ID: " + request.getCarteAConteId()));
+                        "Carte non trouvée ou non validée avec l'ID: " + request.carteAConteId()));
 
         GalerieMiseEnAvant miseEnAvant = GalerieMiseEnAvant.builder()
                 .carteAConte(carte)
-                .dateFin(request.getDateFin())
-                .ordreAffichage(request.getOrdreAffichage())
+                .dateFin(request.dateFin())
+                .ordreAffichage(request.ordreAffichage())
                 .actif(true)
                 .build();
 
@@ -164,14 +162,13 @@ public class GalerieService {
                 ? m.getCarteAConte().getTexteAssocie()
                 : m.getCarteAConte().getType().name();
 
-        return GalerieMiseEnAvantResponse.builder()
-                .id(m.getId())
-                .carteAConteId(m.getCarteAConte().getId())
-                .titreCarte(titreCarte)
-                .dateDebut(m.getDateDebut())
-                .dateFin(m.getDateFin())
-                .ordreAffichage(m.getOrdreAffichage())
-                .actif(m.isActif())
-                .build();
+        return new GalerieMiseEnAvantResponse(
+                m.getId(),
+                m.getCarteAConte().getId(),
+                titreCarte,
+                m.getDateDebut(),
+                m.getDateFin(),
+                m.getOrdreAffichage(),
+                m.isActif());
     }
 }

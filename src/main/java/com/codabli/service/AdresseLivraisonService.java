@@ -12,11 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les adresses de livraison.
- *
+ * <p>
  * Securite :
  * - Toutes les operations sont authentifiees.
  * - L'utilisateur ne peut acceder qu'a ses propres adresses (verification via
@@ -30,7 +29,7 @@ public class AdresseLivraisonService {
     private final UtilisateurRepository utilisateurRepository;
 
     public AdresseLivraisonService(AdresseLivraisonRepository adresseLivraisonRepository,
-            UtilisateurRepository utilisateurRepository) {
+                                   UtilisateurRepository utilisateurRepository) {
         this.adresseLivraisonRepository = adresseLivraisonRepository;
         this.utilisateurRepository = utilisateurRepository;
     }
@@ -45,7 +44,7 @@ public class AdresseLivraisonService {
         return adresseLivraisonRepository.findByUtilisateurId(utilisateur.getId())
                 .stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -56,18 +55,18 @@ public class AdresseLivraisonService {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
 
         // Si cette adresse est par defaut, retirer le flag des autres
-        if (request.getParDefaut() != null && request.getParDefaut()) {
+        if (request.parDefaut() != null && request.parDefaut()) {
             resetParDefaut(utilisateur.getId());
         }
 
         AdresseLivraison adresse = AdresseLivraison.builder()
                 .utilisateur(utilisateur)
-                .nom(request.getNom())
-                .adresse(request.getAdresse())
-                .codePostal(request.getCodePostal())
-                .ville(request.getVille())
-                .telephone(request.getTelephone())
-                .parDefaut(request.getParDefaut() != null && request.getParDefaut())
+                .nom(request.nom())
+                .adresse(request.adresse())
+                .codePostal(request.codePostal())
+                .ville(request.ville())
+                .telephone(request.telephone())
+                .parDefaut(request.parDefaut() != null && request.parDefaut())
                 .build();
 
         AdresseLivraison saved = adresseLivraisonRepository.save(adresse);
@@ -89,17 +88,17 @@ public class AdresseLivraisonService {
             throw new SecurityException("Acces interdit a cette adresse");
         }
 
-        if (request.getParDefaut() != null && request.getParDefaut()) {
+        if (request.parDefaut() != null && request.parDefaut()) {
             resetParDefaut(utilisateur.getId());
         }
 
-        adresse.setNom(request.getNom());
-        adresse.setAdresse(request.getAdresse());
-        adresse.setCodePostal(request.getCodePostal());
-        adresse.setVille(request.getVille());
-        adresse.setTelephone(request.getTelephone());
-        if (request.getParDefaut() != null) {
-            adresse.setParDefaut(request.getParDefaut());
+        adresse.setNom(request.nom());
+        adresse.setAdresse(request.adresse());
+        adresse.setCodePostal(request.codePostal());
+        adresse.setVille(request.ville());
+        adresse.setTelephone(request.telephone());
+        if (request.parDefaut() != null) {
+            adresse.setParDefaut(request.parDefaut());
         }
 
         AdresseLivraison saved = adresseLivraisonRepository.save(adresse);
@@ -145,14 +144,13 @@ public class AdresseLivraisonService {
     }
 
     private AdresseLivraisonResponse toResponse(AdresseLivraison adresse) {
-        return AdresseLivraisonResponse.builder()
-                .id(adresse.getId())
-                .nom(adresse.getNom())
-                .adresse(adresse.getAdresse())
-                .codePostal(adresse.getCodePostal())
-                .ville(adresse.getVille())
-                .telephone(adresse.getTelephone())
-                .parDefaut(adresse.isParDefaut())
-                .build();
+        return new AdresseLivraisonResponse(
+                adresse.getId(),
+                adresse.getNom(),
+                adresse.getAdresse(),
+                adresse.getCodePostal(),
+                adresse.getVille(),
+                adresse.getTelephone(),
+                adresse.isParDefaut());
     }
 }

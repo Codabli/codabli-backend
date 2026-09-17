@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service d'historisation des actions sensibles (CDC 8.23, SUP-03).
- *
+ * <p>
  * Appele depuis les autres services (ex: suppression/suspension d'un
  * utilisateur) pour tracer qui a fait quoi. La consultation est reservee au
  * super-administrateur (verifie dans le controller).
@@ -26,7 +26,7 @@ public class JournalActiviteService {
     private final UtilisateurRepository utilisateurRepository;
 
     public JournalActiviteService(JournalActiviteRepository journalActiviteRepository,
-            UtilisateurRepository utilisateurRepository) {
+                                  UtilisateurRepository utilisateurRepository) {
         this.journalActiviteRepository = journalActiviteRepository;
         this.utilisateurRepository = utilisateurRepository;
     }
@@ -54,16 +54,15 @@ public class JournalActiviteService {
     @Transactional(readOnly = true)
     public Page<JournalActiviteResponse> lister(Pageable pageable) {
         return journalActiviteRepository.findAllByOrderByDateActionDesc(pageable)
-                .map(entree -> JournalActiviteResponse.builder()
-                        .id(entree.getId())
-                        .acteurId(entree.getActeur() != null ? entree.getActeur().getId() : null)
-                        .acteurNom(entree.getActeur() != null
+                .map(entree -> new JournalActiviteResponse(
+                        entree.getId(),
+                        entree.getActeur() != null ? entree.getActeur().getId() : null,
+                        entree.getActeur() != null
                                 ? entree.getActeur().getPrenom() + " " + entree.getActeur().getNom()
-                                : null)
-                        .action(entree.getAction())
-                        .cible(entree.getCible())
-                        .details(entree.getDetails())
-                        .dateAction(entree.getDateAction())
-                        .build());
+                                : null,
+                        entree.getAction(),
+                        entree.getCible(),
+                        entree.getDetails(),
+                        entree.getDateAction()));
     }
 }

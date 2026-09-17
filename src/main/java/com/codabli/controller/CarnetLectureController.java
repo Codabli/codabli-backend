@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Controller pour le Carnet de Lecture (CDC 8.17.1, CDL-01 a 17).
- *
+ * </p>
  * Securite : toutes les operations necessitent une authentification, avec
  * verification fine dans le service (seul le responsable du profil enfant,
  * ou un admin/super_admin, peut acceder au carnet — RG-13).
@@ -82,7 +82,7 @@ public class CarnetLectureController {
 
     /**
      * PATCH .../carnet-lecture/{pageId}/terminer
-     * Valide et termine la page (CDL-15). Ne la rend pas publique (RG-01).
+     * Valide et termine la page (CDL-15). Ne la rends pas publique (RG-01).
      */
     @PatchMapping("/{pageId}/terminer")
     public ResponseEntity<PageCarnetLectureResponse> terminerPage(

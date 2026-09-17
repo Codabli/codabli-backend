@@ -64,7 +64,7 @@ class ConteDanseServiceTest {
 
     @Test
     void modifier_withNonAuteurNonAdmin_shouldThrowAccessDenied() {
-        ConteDanseRequest request = new ConteDanseRequest();
+        ConteDanseRequest request = conteDanseRequest();
 
         when(jwt.getSubject()).thenReturn("other-id");
         when(utilisateurRepository.findByKeycloakId("other-id"))
@@ -72,10 +72,12 @@ class ConteDanseServiceTest {
         when(jwt.getClaimAsMap("realm_access")).thenReturn(Collections.emptyMap()); // no roles
         when(conteDanseRepository.findById(conteId)).thenReturn(Optional.of(conte));
 
-        assertThrows(AccessDeniedException.class, () -> {
-            conteDanseService.modifier(conteId, request, jwt);
-        });
+        assertThrows(AccessDeniedException.class, () -> conteDanseService.modifier(conteId, request, jwt));
 
         verify(conteDanseRepository, never()).save(any());
+    }
+
+    private ConteDanseRequest conteDanseRequest() {
+        return new ConteDanseRequest("titre", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

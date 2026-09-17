@@ -5,25 +5,24 @@ import com.codabli.dto.GalerieMiseEnAvantRequest;
 import com.codabli.dto.GalerieMiseEnAvantResponse;
 import com.codabli.entity.enums.TypeCarte;
 import com.codabli.service.GalerieService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -38,9 +37,9 @@ class GalerieControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private GalerieService galerieService;
 
     // ─────────────────────────────────────────────
@@ -49,14 +48,14 @@ class GalerieControllerTest {
 
     @Test
     void lister_withoutAuth_shouldReturn200() throws Exception {
-        GalerieItemResponse item = GalerieItemResponse.builder()
-                .id(UUID.randomUUID())
-                .type(TypeCarte.personnage)
-                .imageUrl("https://example.com/img.jpg")
-                .texteAssocie("Test")
-                .createurPrenom("Amine")
-                .miseEnAvant(false)
-                .build();
+        GalerieItemResponse item = new GalerieItemResponse(
+                UUID.randomUUID(),
+                TypeCarte.personnage,
+                "https://example.com/img.jpg",
+                "Test",
+                null,
+                "Amine",
+                false);
 
         Page<GalerieItemResponse> page = new PageImpl<>(List.of(item));
         when(galerieService.listerGalerie(any())).thenReturn(page);
@@ -69,13 +68,14 @@ class GalerieControllerTest {
     @Test
     void getById_withoutAuth_shouldReturn200() throws Exception {
         UUID id = UUID.randomUUID();
-        GalerieItemResponse response = GalerieItemResponse.builder()
-                .id(id)
-                .type(TypeCarte.personnage)
-                .texteAssocie("Le petit prince")
-                .createurPrenom("Amine")
-                .miseEnAvant(true)
-                .build();
+        GalerieItemResponse response = new GalerieItemResponse(
+                id,
+                TypeCarte.personnage,
+                null,
+                "Le petit prince",
+                null,
+                "Amine",
+                true);
 
         when(galerieService.getCarteGalerie(id)).thenReturn(response);
 
@@ -92,25 +92,22 @@ class GalerieControllerTest {
     @WithMockUser(roles = "admin")
     void postMiseEnAvant_asAdmin_shouldReturn201() throws Exception {
         UUID carteId = UUID.randomUUID();
-        GalerieMiseEnAvantRequest request = GalerieMiseEnAvantRequest.builder()
-                .carteAConteId(carteId)
-                .ordreAffichage(1)
-                .build();
+        GalerieMiseEnAvantRequest request = new GalerieMiseEnAvantRequest(carteId, null, 1);
 
-        GalerieMiseEnAvantResponse response = GalerieMiseEnAvantResponse.builder()
-                .id(UUID.randomUUID())
-                .carteAConteId(carteId)
-                .titreCarte("Le petit prince")
-                .dateDebut(OffsetDateTime.now())
-                .ordreAffichage(1)
-                .actif(true)
-                .build();
+        GalerieMiseEnAvantResponse response = new GalerieMiseEnAvantResponse(
+                UUID.randomUUID(),
+                carteId,
+                "Le petit prince",
+                OffsetDateTime.now(),
+                null,
+                1,
+                true);
 
         when(galerieService.ajouterMiseEnAvant(any())).thenReturn(response);
 
         mockMvc.perform(post("/api/admin/galerie/mise-en-avant")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.titreCarte").value("Le petit prince"));
     }
@@ -118,14 +115,11 @@ class GalerieControllerTest {
     @Test
     @WithMockUser(roles = "enseignant")
     void postMiseEnAvant_asEnseignant_shouldReturn403() throws Exception {
-        GalerieMiseEnAvantRequest request = GalerieMiseEnAvantRequest.builder()
-                .carteAConteId(UUID.randomUUID())
-                .ordreAffichage(1)
-                .build();
+        GalerieMiseEnAvantRequest request = new GalerieMiseEnAvantRequest(UUID.randomUUID(), null, 1);
 
         mockMvc.perform(post("/api/admin/galerie/mise-en-avant")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
     }
 

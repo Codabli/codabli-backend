@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les partenaires (CDC 8.13, PAR-01/02).
- *
+ * </p>
  * Securite :
  * - GET (liste + detail) : public, filtre sur actif=true
  * - POST / PUT / DELETE : reserves aux admins via @PreAuthorize

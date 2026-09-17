@@ -15,7 +15,7 @@ import java.util.UUID;
 
 /**
  * Controller public pour la galerie d'art.
- *
+ * </p>
  * Sécurité : aucun @PreAuthorize — les endpoints sont publics.
  * Le SecurityConfig autorise GET /api/galerie/** sans authentification.
  */
