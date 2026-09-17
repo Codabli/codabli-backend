@@ -1,10 +1,5 @@
 package com.codabli.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -14,31 +9,16 @@ import java.util.UUID;
  * N'expose volontairement aucune information sur le compte du responsable
  * (RG-03) au-dela de son ID technique.
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ProfilEnfantResponse {
-
-    private UUID id;
-
-    private UUID responsableId;
-
-    private String pseudonyme;
-
-    private LocalDate dateNaissance;
-
-    private String languePreferee;
-
-    private String preferences;
-
-    private String accessibilite;
-
-    private boolean autorisationParentale;
-
-    private OffsetDateTime dateAutorisation;
-
-    private boolean actif;
-
-    private OffsetDateTime dateCreation;
+public record ProfilEnfantResponse(
+        UUID id,
+        UUID responsableId,
+        String pseudonyme,
+        LocalDate dateNaissance,
+        String languePreferee,
+        String preferences,
+        String accessibilite,
+        boolean autorisationParentale,
+        OffsetDateTime dateAutorisation,
+        boolean actif,
+        OffsetDateTime dateCreation) {
 }

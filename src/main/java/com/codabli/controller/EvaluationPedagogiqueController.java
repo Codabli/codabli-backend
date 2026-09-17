@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les evaluations pedagogiques (CDC PRO-05).
- *
+ * </p>
  * Securite : reserve aux enseignants/professionnels de l'education pour la
  * creation ; consultation/modification/suppression limitees a l'auteur (ou
  * admin/super_admin), verifie dans le service.

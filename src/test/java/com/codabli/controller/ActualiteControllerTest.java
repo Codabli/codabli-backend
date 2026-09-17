@@ -47,10 +47,7 @@ class ActualiteControllerTest {
     @Test
     void getById_shouldBeAccessibleToPublic() throws Exception {
         UUID id = UUID.randomUUID();
-        ActualiteResponse response = ActualiteResponse.builder()
-                .id(id)
-                .titre("Test Titre")
-                .build();
+        ActualiteResponse response = actualiteResponse(id, "Test Titre");
         when(actualiteService.getById(id)).thenReturn(response);
 
         mockMvc.perform(get("/api/actualites/" + id))
@@ -60,10 +57,7 @@ class ActualiteControllerTest {
 
     @Test
     void creer_withoutAuth_shouldReturn401() throws Exception {
-        ActualiteRequest request = ActualiteRequest.builder()
-                .titre("Titre")
-                .contenu("Contenu")
-                .build();
+        ActualiteRequest request = actualiteRequest();
 
         mockMvc.perform(post("/api/actualites")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -74,10 +68,7 @@ class ActualiteControllerTest {
     @Test
     @WithMockUser(roles = "eleve")
     void creer_withEleveRole_shouldReturn403() throws Exception {
-        ActualiteRequest request = ActualiteRequest.builder()
-                .titre("Titre")
-                .contenu("Contenu")
-                .build();
+        ActualiteRequest request = actualiteRequest();
 
         mockMvc.perform(post("/api/actualites")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,15 +79,9 @@ class ActualiteControllerTest {
     @Test
     @WithMockUser(roles = "admin")
     void creer_withAdminRole_shouldReturn201() throws Exception {
-        ActualiteRequest request = ActualiteRequest.builder()
-                .titre("Titre")
-                .contenu("Contenu")
-                .build();
+        ActualiteRequest request = actualiteRequest();
 
-        ActualiteResponse response = ActualiteResponse.builder()
-                .id(UUID.randomUUID())
-                .titre("Titre")
-                .build();
+        ActualiteResponse response = actualiteResponse(UUID.randomUUID(), "Titre");
 
         when(actualiteService.creer(any(), any())).thenReturn(response);
 
@@ -105,5 +90,13 @@ class ActualiteControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.titre").value("Titre"));
+    }
+
+    private ActualiteRequest actualiteRequest() {
+        return new ActualiteRequest("Titre", null, null, "Contenu", null);
+    }
+
+    private ActualiteResponse actualiteResponse(UUID id, String titre) {
+        return new ActualiteResponse(id, titre, null, null, null, false, null, null, null, null, null, null);
     }
 }

@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Business logic service for the Utilisateur module.
@@ -29,10 +28,10 @@ public class UtilisateurService {
     private final JournalActiviteService journalActiviteService;
 
     public UtilisateurService(UtilisateurRepository utilisateurRepository,
-            KeycloakAdminService keycloakAdminService,
-            UtilisateurMapper utilisateurMapper,
-            EntityManager entityManager,
-            JournalActiviteService journalActiviteService) {
+                              KeycloakAdminService keycloakAdminService,
+                              UtilisateurMapper utilisateurMapper,
+                              EntityManager entityManager,
+                              JournalActiviteService journalActiviteService) {
         this.utilisateurRepository = utilisateurRepository;
         this.keycloakAdminService = keycloakAdminService;
         this.utilisateurMapper = utilisateurMapper;
@@ -46,37 +45,37 @@ public class UtilisateurService {
      */
     public UtilisateurResponse register(RegisterRequest request) {
         // Check if email already exists locally
-        if (utilisateurRepository.existsByEmail(request.getEmail())) {
+        if (utilisateurRepository.existsByEmail(request.email())) {
             throw new IllegalArgumentException("Un utilisateur avec cet email existe déjà");
         }
 
         // Validate: eleve must have an ecoleId
-        if (request.getRole() == RoleUtilisateur.eleve && request.getEcoleId() == null) {
+        if (request.role() == RoleUtilisateur.eleve && request.ecoleId() == null) {
             throw new IllegalArgumentException("Un élève doit être associé à une école");
         }
 
         // Create user in Keycloak
         String keycloakId = keycloakAdminService.createUser(
-                request.getEmail(),
-                request.getPassword(),
-                request.getPrenom(),
-                request.getNom(),
-                request.getRole().name());
+                request.email(),
+                request.password(),
+                request.prenom(),
+                request.nom(),
+                request.role().name());
 
         // Build local entity
         Utilisateur utilisateur = Utilisateur.builder()
                 .keycloakId(keycloakId)
-                .nom(request.getNom())
-                .prenom(request.getPrenom())
-                .email(request.getEmail())
-                .role(request.getRole())
-                .dateNaissance(request.getDateNaissance())
-                .languePreferee(request.getLanguePreferee())
+                .nom(request.nom())
+                .prenom(request.prenom())
+                .email(request.email())
+                .role(request.role())
+                .dateNaissance(request.dateNaissance())
+                .languePreferee(request.languePreferee())
                 .build();
 
         // Associate with Ecole if provided
-        if (request.getEcoleId() != null) {
-            Ecole ecole = entityManager.getReference(Ecole.class, request.getEcoleId());
+        if (request.ecoleId() != null) {
+            Ecole ecole = entityManager.getReference(Ecole.class, request.ecoleId());
             utilisateur.setEcole(ecole);
         }
 
@@ -88,7 +87,7 @@ public class UtilisateurService {
      * Authenticates a user via Keycloak and returns JWT tokens.
      */
     public LoginResponse login(LoginRequest request) {
-        return keycloakAdminService.login(request.getEmail(), request.getPassword());
+        return keycloakAdminService.login(request.email(), request.password());
     }
 
     /**
@@ -110,17 +109,17 @@ public class UtilisateurService {
         Utilisateur utilisateur = utilisateurRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
 
-        if (request.getNom() != null) {
-            utilisateur.setNom(request.getNom());
+        if (request.nom() != null) {
+            utilisateur.setNom(request.nom());
         }
-        if (request.getPrenom() != null) {
-            utilisateur.setPrenom(request.getPrenom());
+        if (request.prenom() != null) {
+            utilisateur.setPrenom(request.prenom());
         }
-        if (request.getDateNaissance() != null) {
-            utilisateur.setDateNaissance(request.getDateNaissance());
+        if (request.dateNaissance() != null) {
+            utilisateur.setDateNaissance(request.dateNaissance());
         }
-        if (request.getLanguePreferee() != null) {
-            utilisateur.setLanguePreferee(request.getLanguePreferee());
+        if (request.languePreferee() != null) {
+            utilisateur.setLanguePreferee(request.languePreferee());
         }
 
         Utilisateur saved = utilisateurRepository.save(utilisateur);
@@ -161,7 +160,7 @@ public class UtilisateurService {
     public List<UtilisateurResponse> getAllUsers() {
         return utilisateurRepository.findAll().stream()
                 .map(utilisateurMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -222,6 +221,6 @@ public class UtilisateurService {
     public List<UtilisateurResponse> getUsersByRole(RoleUtilisateur role) {
         return utilisateurRepository.findByRole(role).stream()
                 .map(utilisateurMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 }

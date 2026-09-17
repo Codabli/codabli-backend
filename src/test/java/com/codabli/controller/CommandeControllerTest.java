@@ -41,9 +41,7 @@ class CommandeControllerTest {
 
     @Test
     void creerCommande_withoutAuth_shouldReturn401() throws Exception {
-        CreerCommandeRequest request = CreerCommandeRequest.builder()
-                .adresseLivraisonId(UUID.randomUUID())
-                .build();
+        CreerCommandeRequest request = new CreerCommandeRequest(UUID.randomUUID());
 
         mockMvc.perform(post("/api/commandes")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -54,15 +52,9 @@ class CommandeControllerTest {
     @Test
     @WithMockUser(roles = "eleve")
     void creerCommande_withUserRole_shouldReturn201() throws Exception {
-        CreerCommandeRequest request = CreerCommandeRequest.builder()
-                .adresseLivraisonId(UUID.randomUUID())
-                .build();
+        CreerCommandeRequest request = new CreerCommandeRequest(UUID.randomUUID());
 
-        CommandeResponse response = CommandeResponse.builder()
-                .id(UUID.randomUUID())
-                .statut(StatutCommande.en_attente)
-                .total(new BigDecimal("25.00"))
-                .build();
+        CommandeResponse response = commandeResponse(UUID.randomUUID(), StatutCommande.en_attente, new BigDecimal("25.00"));
 
         when(commandeService.creerCommande(any(), any())).thenReturn(response);
 
@@ -90,9 +82,7 @@ class CommandeControllerTest {
     @WithMockUser(roles = "eleve")
     void changerStatut_withUserRole_shouldReturn403() throws Exception {
         UUID id = UUID.randomUUID();
-        ChangerStatutCommandeRequest request = ChangerStatutCommandeRequest.builder()
-                .statut(StatutCommande.payee)
-                .build();
+        ChangerStatutCommandeRequest request = new ChangerStatutCommandeRequest(StatutCommande.payee);
 
         mockMvc.perform(patch("/api/admin/commandes/" + id + "/statut")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -104,14 +94,9 @@ class CommandeControllerTest {
     @WithMockUser(roles = "admin")
     void changerStatut_withAdminRole_shouldReturn200() throws Exception {
         UUID id = UUID.randomUUID();
-        ChangerStatutCommandeRequest request = ChangerStatutCommandeRequest.builder()
-                .statut(StatutCommande.payee)
-                .build();
+        ChangerStatutCommandeRequest request = new ChangerStatutCommandeRequest(StatutCommande.payee);
 
-        CommandeResponse response = CommandeResponse.builder()
-                .id(id)
-                .statut(StatutCommande.payee)
-                .build();
+        CommandeResponse response = commandeResponse(id, StatutCommande.payee, null);
 
         when(commandeService.changerStatut(eq(id), eq(StatutCommande.payee))).thenReturn(response);
 
@@ -120,5 +105,9 @@ class CommandeControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statut").value("payee"));
+    }
+
+    private CommandeResponse commandeResponse(UUID id, StatutCommande statut, BigDecimal total) {
+        return new CommandeResponse(id, statut, null, null, total, null, null, null, null);
     }
 }

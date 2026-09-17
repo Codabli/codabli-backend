@@ -99,9 +99,7 @@ class CommandeServiceTest {
                 .build();
         mockPanier.getLignes().add(ligne);
 
-        CreerCommandeRequest request = CreerCommandeRequest.builder()
-                .adresseLivraisonId(mockAdresse.getId())
-                .build();
+        CreerCommandeRequest request = new CreerCommandeRequest(mockAdresse.getId());
 
         when(jwt.getSubject()).thenReturn("keycloak-user-123");
         when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
@@ -118,9 +116,9 @@ class CommandeServiceTest {
         CommandeResponse response = commandeService.creerCommande(request, jwt);
 
         assertNotNull(response);
-        assertEquals(new BigDecimal("40.00"), response.getSousTotal());
-        assertEquals(new BigDecimal("5.00"), response.getFraisLivraison());
-        assertEquals(new BigDecimal("45.00"), response.getTotal());
+        assertEquals(new BigDecimal("40.00"), response.sousTotal());
+        assertEquals(new BigDecimal("5.00"), response.fraisLivraison());
+        assertEquals(new BigDecimal("45.00"), response.total());
         assertEquals(8, mockProduitPhysique.getStock());
         assertTrue(mockPanier.getLignes().isEmpty());
         verify(commandeRepository, times(1)).save(any(Commande.class));
@@ -136,9 +134,7 @@ class CommandeServiceTest {
                 .build();
         mockPanier.getLignes().add(ligne);
 
-        CreerCommandeRequest request = CreerCommandeRequest.builder()
-                .adresseLivraisonId(null)
-                .build();
+        CreerCommandeRequest request = new CreerCommandeRequest(null);
 
         when(jwt.getSubject()).thenReturn("keycloak-user-123");
         when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))

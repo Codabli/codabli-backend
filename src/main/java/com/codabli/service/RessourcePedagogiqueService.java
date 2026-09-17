@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service de gestion des ressources de la mallette pédagogique.
@@ -70,7 +69,7 @@ public class RessourcePedagogiqueService {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
         return ressourceFavoriteRepository.findByUtilisateurId(utilisateur.getId()).stream()
                 .map(f -> toResponse(f.getRessource()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
@@ -126,13 +125,13 @@ public class RessourcePedagogiqueService {
 
     public RessourcePedagogiqueResponse creer(RessourcePedagogiqueRequest request) {
         RessourcePedagogique ressource = RessourcePedagogique.builder()
-                .titre(request.getTitre())
-                .description(request.getDescription())
-                .type(request.getType())
-                .fichierUrl(request.getFichierUrl())
-                .thematique(request.getThematique())
-                .niveauScolaire(request.getNiveauScolaire())
-                .actif(request.getActif() != null ? request.getActif() : true)
+                .titre(request.titre())
+                .description(request.description())
+                .type(request.type())
+                .fichierUrl(request.fichierUrl())
+                .thematique(request.thematique())
+                .niveauScolaire(request.niveauScolaire())
+                .actif(request.actif() != null ? request.actif() : true)
                 .build();
 
         RessourcePedagogique saved = ressourcePedagogiqueRepository.save(ressource);
@@ -148,14 +147,14 @@ public class RessourcePedagogiqueService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Ressource pedagogique non trouvee avec l'ID: " + id));
 
-        ressource.setTitre(request.getTitre());
-        ressource.setDescription(request.getDescription());
-        ressource.setType(request.getType());
-        ressource.setFichierUrl(request.getFichierUrl());
-        ressource.setThematique(request.getThematique());
-        ressource.setNiveauScolaire(request.getNiveauScolaire());
-        if (request.getActif() != null) {
-            ressource.setActif(request.getActif());
+        ressource.setTitre(request.titre());
+        ressource.setDescription(request.description());
+        ressource.setType(request.type());
+        ressource.setFichierUrl(request.fichierUrl());
+        ressource.setThematique(request.thematique());
+        ressource.setNiveauScolaire(request.niveauScolaire());
+        if (request.actif() != null) {
+            ressource.setActif(request.actif());
         }
 
         RessourcePedagogique saved = ressourcePedagogiqueRepository.save(ressource);
@@ -209,16 +208,15 @@ public class RessourcePedagogiqueService {
     // ────────────────────────────────────────────────────────────────
 
     private RessourcePedagogiqueResponse toResponse(RessourcePedagogique ressource) {
-        return RessourcePedagogiqueResponse.builder()
-                .id(ressource.getId())
-                .titre(ressource.getTitre())
-                .description(ressource.getDescription())
-                .type(ressource.getType())
-                .fichierUrl(ressource.getFichierUrl())
-                .thematique(ressource.getThematique())
-                .niveauScolaire(ressource.getNiveauScolaire())
-                .dateAjout(ressource.getDateAjout())
-                .actif(ressource.isActif())
-                .build();
+        return new RessourcePedagogiqueResponse(
+                ressource.getId(),
+                ressource.getTitre(),
+                ressource.getDescription(),
+                ressource.getType(),
+                ressource.getFichierUrl(),
+                ressource.getThematique(),
+                ressource.getNiveauScolaire(),
+                ressource.getDateAjout(),
+                ressource.isActif());
     }
 }

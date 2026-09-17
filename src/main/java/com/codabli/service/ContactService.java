@@ -13,7 +13,7 @@ import java.util.UUID;
 
 /**
  * Service metier pour le formulaire de contact (CDC 8.21).
- *
+ * </p>
  * Securite :
  * - Envoi (POST) : public, aucune authentification requise
  * - Consultation (GET) et traitement : reserves a l'administration via
@@ -35,11 +35,11 @@ public class ContactService {
 
     public ContactResponse envoyer(ContactRequest request) {
         DemandeContact demande = DemandeContact.builder()
-                .categorie(request.getCategorie())
-                .nom(request.getNom())
-                .email(request.getEmail())
-                .sujet(request.getSujet())
-                .message(request.getMessage())
+                .categorie(request.categorie())
+                .nom(request.nom())
+                .email(request.email())
+                .sujet(request.sujet())
+                .message(request.message())
                 .build();
 
         DemandeContact saved = demandeContactRepository.save(demande);
@@ -74,18 +74,15 @@ public class ContactService {
     // ────────────────────────────────────────────────────────────────
 
     private ContactResponse toResponse(DemandeContact demande, boolean avecAccuseReception) {
-        return ContactResponse.builder()
-                .id(demande.getId())
-                .categorie(demande.getCategorie())
-                .nom(demande.getNom())
-                .email(demande.getEmail())
-                .sujet(demande.getSujet())
-                .message(demande.getMessage())
-                .traite(demande.isTraite())
-                .dateCreation(demande.getDateCreation())
-                .accuseReception(avecAccuseReception
-                        ? "Votre demande a bien ete recue. Notre equipe vous repondra dans les meilleurs delais."
-                        : null)
-                .build();
+        return new ContactResponse(
+                demande.getId(),
+                demande.getCategorie(),
+                demande.getNom(),
+                demande.getEmail(),
+                demande.getSujet(),
+                demande.getMessage(),
+                demande.isTraite(),
+                demande.getDateCreation(),
+                avecAccuseReception ? "Votre demande a bien ete recue. Notre equipe vous repondra dans les meilleurs delais." : null);
     }
 }

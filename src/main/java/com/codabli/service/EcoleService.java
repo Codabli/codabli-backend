@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -22,9 +21,9 @@ public class EcoleService {
 
     public EcoleResponse creer(EcoleRequest request) {
         Ecole ecole = Ecole.builder()
-                .nom(request.getNom())
-                .pays(request.getPays())
-                .ville(request.getVille())
+                .nom(request.nom())
+                .pays(request.pays())
+                .ville(request.ville())
                 .build();
         Ecole saved = ecoleRepository.save(ecole);
         return toResponse(saved);
@@ -34,18 +33,17 @@ public class EcoleService {
     public List<EcoleResponse> listerTout() {
         return ecoleRepository.findAll().stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private EcoleResponse toResponse(Ecole ecole) {
-        return EcoleResponse.builder()
-                .id(ecole.getId())
-                .nom(ecole.getNom())
-                .pays(ecole.getPays())
-                .ville(ecole.getVille())
-                .niveauAbonnement(ecole.getNiveauAbonnement())
-                .statut(ecole.getStatut())
-                .dateCreation(ecole.getDateCreation())
-                .build();
+        return new EcoleResponse(
+                ecole.getId(),
+                ecole.getNom(),
+                ecole.getPays(),
+                ecole.getVille(),
+                ecole.getNiveauAbonnement(),
+                ecole.getStatut(),
+                ecole.getDateCreation());
     }
 }

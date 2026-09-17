@@ -35,7 +35,6 @@ class ProduitServiceTest {
     private ProduitService produitService;
 
     private Produit produitPhysique;
-    private Produit produitNumerique;
 
     @BeforeEach
     void setUp() {
@@ -46,16 +45,6 @@ class ProduitServiceTest {
                 .prix(new BigDecimal("15.99"))
                 .type(TypeProduit.produit_physique)
                 .stock(50)
-                .actif(true)
-                .build();
-
-        produitNumerique = Produit.builder()
-                .id(UUID.randomUUID())
-                .nom("Livre Numerique")
-                .description("Version PDF")
-                .prix(new BigDecimal("9.99"))
-                .type(TypeProduit.produit_numerique)
-                .stock(null)
                 .actif(true)
                 .build();
     }
@@ -72,7 +61,7 @@ class ProduitServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        assertEquals("Livre Physique", result.getContent().get(0).getNom());
+        assertEquals("Livre Physique", result.getContent().getFirst().nom());
         verify(produitRepository, times(1)).findByTypeAndActifTrue(TypeProduit.produit_physique, pageable);
     }
 
@@ -84,8 +73,8 @@ class ProduitServiceTest {
         ProduitResponse response = produitService.getById(id);
 
         assertNotNull(response);
-        assertEquals("Livre Physique", response.getNom());
-        assertEquals(new BigDecimal("15.99"), response.getPrix());
+        assertEquals("Livre Physique", response.nom());
+        assertEquals(new BigDecimal("15.99"), response.prix());
     }
 
     @Test
@@ -98,13 +87,7 @@ class ProduitServiceTest {
 
     @Test
     void creer_shouldSaveAndReturnResponse() {
-        ProduitRequest request = ProduitRequest.builder()
-                .nom("Nouveau Produit")
-                .prix(new BigDecimal("29.90"))
-                .type(TypeProduit.produit_physique)
-                .stock(100)
-                .actif(true)
-                .build();
+        ProduitRequest request = produitRequest("Nouveau Produit", new BigDecimal("29.90"), 100, true);
 
         when(produitRepository.save(any(Produit.class))).thenAnswer(invocation -> {
             Produit toSave = invocation.getArgument(0);
@@ -115,22 +98,16 @@ class ProduitServiceTest {
         ProduitResponse response = produitService.creer(request);
 
         assertNotNull(response);
-        assertNotNull(response.getId());
-        assertEquals("Nouveau Produit", response.getNom());
-        assertEquals(new BigDecimal("29.90"), response.getPrix());
+        assertNotNull(response.id());
+        assertEquals("Nouveau Produit", response.nom());
+        assertEquals(new BigDecimal("29.90"), response.prix());
         verify(produitRepository, times(1)).save(any(Produit.class));
     }
 
     @Test
     void modifier_shouldUpdateAndSave() {
         UUID id = produitPhysique.getId();
-        ProduitRequest request = ProduitRequest.builder()
-                .nom("Nom Modifie")
-                .prix(new BigDecimal("19.99"))
-                .type(TypeProduit.produit_physique)
-                .stock(40)
-                .actif(false)
-                .build();
+        ProduitRequest request = produitRequest("Nom Modifie", new BigDecimal("19.99"), 40, false);
 
         when(produitRepository.findById(id)).thenReturn(Optional.of(produitPhysique));
         when(produitRepository.save(any(Produit.class))).thenReturn(produitPhysique);
@@ -138,9 +115,9 @@ class ProduitServiceTest {
         ProduitResponse response = produitService.modifier(id, request);
 
         assertNotNull(response);
-        assertEquals("Nom Modifie", response.getNom());
-        assertEquals(new BigDecimal("19.99"), response.getPrix());
-        assertFalse(response.isActif());
+        assertEquals("Nom Modifie", response.nom());
+        assertEquals(new BigDecimal("19.99"), response.prix());
+        assertFalse(response.actif());
         verify(produitRepository, times(1)).save(produitPhysique);
     }
 
@@ -153,5 +130,9 @@ class ProduitServiceTest {
         assertDoesNotThrow(() -> produitService.supprimer(id));
 
         verify(produitRepository, times(1)).delete(produitPhysique);
+    }
+
+    private ProduitRequest produitRequest(String nom, BigDecimal prix, Integer stock, Boolean actif) {
+        return new ProduitRequest(nom, null, prix, null, TypeProduit.produit_physique, stock, actif);
     }
 }

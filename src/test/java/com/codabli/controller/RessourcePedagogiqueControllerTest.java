@@ -60,12 +60,7 @@ class RessourcePedagogiqueControllerTest {
     @Test
     @WithMockUser(roles = "enseignant")
     void lister_asEnseignant_shouldReturn200() throws Exception {
-        RessourcePedagogiqueResponse res = RessourcePedagogiqueResponse.builder()
-                .id(UUID.randomUUID())
-                .titre("Titre Enseignant")
-                .type(TypeRessource.fiche)
-                .actif(true)
-                .build();
+        RessourcePedagogiqueResponse res = ressourcePedagogiqueResponse(UUID.randomUUID(), "Titre Enseignant", TypeRessource.fiche, null);
 
         when(ressourcePedagogiqueService.lister(any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(res)));
@@ -82,10 +77,7 @@ class RessourcePedagogiqueControllerTest {
     @Test
     @WithMockUser(roles = "enseignant")
     void creer_asEnseignant_shouldReturn403() throws Exception {
-        RessourcePedagogiqueRequest request = RessourcePedagogiqueRequest.builder()
-                .titre("Guide secret")
-                .type(TypeRessource.guide)
-                .build();
+        RessourcePedagogiqueRequest request = ressourcePedagogiqueRequest("Guide secret", null);
 
         mockMvc.perform(post("/api/ressources-pedagogiques")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -96,19 +88,9 @@ class RessourcePedagogiqueControllerTest {
     @Test
     @WithMockUser(roles = "comite_lecture")
     void creer_asComiteLecture_shouldReturn201() throws Exception {
-        RessourcePedagogiqueRequest request = RessourcePedagogiqueRequest.builder()
-                .titre("Guide Comité")
-                .type(TypeRessource.guide)
-                .actif(true)
-                .build();
+        RessourcePedagogiqueRequest request = ressourcePedagogiqueRequest("Guide Comité", true);
 
-        RessourcePedagogiqueResponse response = RessourcePedagogiqueResponse.builder()
-                .id(UUID.randomUUID())
-                .titre("Guide Comité")
-                .type(TypeRessource.guide)
-                .actif(true)
-                .dateAjout(OffsetDateTime.now())
-                .build();
+        RessourcePedagogiqueResponse response = ressourcePedagogiqueResponse(UUID.randomUUID(), "Guide Comité", TypeRessource.guide, OffsetDateTime.now());
 
         when(ressourcePedagogiqueService.creer(any())).thenReturn(response);
 
@@ -123,18 +105,9 @@ class RessourcePedagogiqueControllerTest {
     @WithMockUser(roles = "comite_lecture")
     void modifier_asComiteLecture_shouldReturn200() throws Exception {
         UUID id = UUID.randomUUID();
-        RessourcePedagogiqueRequest request = RessourcePedagogiqueRequest.builder()
-                .titre("Guide Modifie")
-                .type(TypeRessource.guide)
-                .actif(true)
-                .build();
+        RessourcePedagogiqueRequest request = ressourcePedagogiqueRequest("Guide Modifie", true);
 
-        RessourcePedagogiqueResponse response = RessourcePedagogiqueResponse.builder()
-                .id(id)
-                .titre("Guide Modifie")
-                .type(TypeRessource.guide)
-                .actif(true)
-                .build();
+        RessourcePedagogiqueResponse response = ressourcePedagogiqueResponse(id, "Guide Modifie", TypeRessource.guide, null);
 
         when(ressourcePedagogiqueService.modifier(eq(id), any())).thenReturn(response);
 
@@ -173,5 +146,13 @@ class RessourcePedagogiqueControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(ressourcePedagogiqueService).supprimer(eq(id), any());
+    }
+
+    private RessourcePedagogiqueResponse ressourcePedagogiqueResponse(UUID id, String titre, TypeRessource type, OffsetDateTime dateAjout) {
+        return new RessourcePedagogiqueResponse(id, titre, null, type, null, null, null, dateAjout, true);
+    }
+
+    private RessourcePedagogiqueRequest ressourcePedagogiqueRequest(String titre, Boolean actif) {
+        return new RessourcePedagogiqueRequest(titre, null, TypeRessource.guide, null, null, null, actif);
     }
 }

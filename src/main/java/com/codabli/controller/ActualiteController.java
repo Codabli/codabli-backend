@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les actualites.
- *
+ * </p>
  * Securite :
  * - GET (liste + detail) : public, aucune authentification requise
  * - POST / PUT / DELETE : reserve aux admins via @PreAuthorize

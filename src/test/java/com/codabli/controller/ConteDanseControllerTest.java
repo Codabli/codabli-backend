@@ -46,9 +46,7 @@ class ConteDanseControllerTest {
 
     @Test
     void creer_withoutAuth_shouldReturn401() throws Exception {
-        ConteDanseRequest request = ConteDanseRequest.builder()
-                .titre("Titre conte")
-                .build();
+        ConteDanseRequest request = conteDanseRequest();
 
         mockMvc.perform(post("/api/contes-danses")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -59,14 +57,9 @@ class ConteDanseControllerTest {
     @Test
     @WithMockUser(roles = "eleve")
     void creer_withAuth_shouldReturn201() throws Exception {
-        ConteDanseRequest request = ConteDanseRequest.builder()
-                .titre("Titre conte")
-                .build();
+        ConteDanseRequest request = conteDanseRequest();
 
-        ConteDanseResponse response = ConteDanseResponse.builder()
-                .id(UUID.randomUUID())
-                .titre("Titre conte")
-                .build();
+        ConteDanseResponse response = conteDanseResponse();
 
         when(conteDanseService.creer(any(), any())).thenReturn(response);
 
@@ -75,5 +68,13 @@ class ConteDanseControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.titre").value("Titre conte"));
+    }
+
+    private ConteDanseRequest conteDanseRequest() {
+        return new ConteDanseRequest("Titre conte", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    private ConteDanseResponse conteDanseResponse() {
+        return new ConteDanseResponse(UUID.randomUUID(), "Titre conte", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

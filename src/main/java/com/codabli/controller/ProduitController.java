@@ -20,7 +20,7 @@ import java.util.UUID;
 
 /**
  * Controller pour la gestion des produits de la boutique.
- *
+ * </p>
  * Securite :
  * - Lecture (GET) : publique
  * - Ecriture (POST/PUT/DELETE) : reservee aux admins
