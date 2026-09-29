@@ -15,7 +15,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les souscriptions d'abonnement (CDC 8.14, ABO-02/03/04).
- *
+ * </p>
  * Securite : tous les endpoints necessitent une authentification. La
  * verification fine (propriete de l'abonnement) est geree dans le service.
  */

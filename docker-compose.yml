@@ -58,7 +58,7 @@ services:
   # Utilise le réseau de l'hôte pour joindre postgres (5442) et keycloak (8081)
   # via localhost, exactement comme le ferait un lancement natif `./mvnw`.
   backend:
-    image: maven:3.9-eclipse-temurin-17
+    image: maven:3.9-eclipse-temurin-25
     container_name: codabli-backend
     profiles: ["app"]
     network_mode: host

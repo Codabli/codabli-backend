@@ -58,22 +58,22 @@ public class StatistiquesService {
     private final DemandeContactRepository demandeContactRepository;
 
     public StatistiquesService(UtilisateurRepository utilisateurRepository,
-            EcoleRepository ecoleRepository,
-            ClasseRepository classeRepository,
-            ConteDanseRepository conteDanseRepository,
-            CarteAConteRepository carteAConteRepository,
-            RessourcePedagogiqueRepository ressourcePedagogiqueRepository,
-            FicheActiviteRepository ficheActiviteRepository,
-            ProduitRepository produitRepository,
-            CommandeRepository commandeRepository,
-            PartenaireRepository partenaireRepository,
-            OffreAbonnementRepository offreAbonnementRepository,
-            AbonnementRepository abonnementRepository,
-            ProfilEnfantRepository profilEnfantRepository,
-            PageCarnetLectureRepository pageCarnetLectureRepository,
-            PageCarnetVoyageRepository pageCarnetVoyageRepository,
-            ActualiteRepository actualiteRepository,
-            DemandeContactRepository demandeContactRepository) {
+                               EcoleRepository ecoleRepository,
+                               ClasseRepository classeRepository,
+                               ConteDanseRepository conteDanseRepository,
+                               CarteAConteRepository carteAConteRepository,
+                               RessourcePedagogiqueRepository ressourcePedagogiqueRepository,
+                               FicheActiviteRepository ficheActiviteRepository,
+                               ProduitRepository produitRepository,
+                               CommandeRepository commandeRepository,
+                               PartenaireRepository partenaireRepository,
+                               OffreAbonnementRepository offreAbonnementRepository,
+                               AbonnementRepository abonnementRepository,
+                               ProfilEnfantRepository profilEnfantRepository,
+                               PageCarnetLectureRepository pageCarnetLectureRepository,
+                               PageCarnetVoyageRepository pageCarnetVoyageRepository,
+                               ActualiteRepository actualiteRepository,
+                               DemandeContactRepository demandeContactRepository) {
         this.utilisateurRepository = utilisateurRepository;
         this.ecoleRepository = ecoleRepository;
         this.classeRepository = classeRepository;
@@ -119,31 +119,30 @@ public class StatistiquesService {
             abonnementsParStatut.put(statut.name(), abonnementRepository.countByStatut(statut));
         }
 
-        return StatistiquesResponse.builder()
-                .totalUtilisateurs(utilisateurRepository.count())
-                .utilisateursParRole(utilisateursParRole)
-                .totalEcoles(ecoleRepository.count())
-                .totalClasses(classeRepository.count())
-                .totalContesDanses(conteDanseRepository.count())
-                .contesDansesParStatut(contesParStatut)
-                .totalCartesAConte(carteAConteRepository.count())
-                .cartesAConteParStatut(cartesParStatut)
-                .totalRessourcesPedagogiques(ressourcePedagogiqueRepository.count())
-                .totalFichesActivites(ficheActiviteRepository.count())
-                .totalProduits(produitRepository.count())
-                .totalCommandes(commandeRepository.count())
-                .commandesParStatut(commandesParStatut)
-                .totalPartenaires(partenaireRepository.count())
-                .totalOffresAbonnement(offreAbonnementRepository.count())
-                .abonnementsParStatut(abonnementsParStatut)
-                .totalProfilsEnfants(profilEnfantRepository.count())
-                .totalPagesCarnetLecture(pageCarnetLectureRepository.count())
-                .pagesCarnetLectureTerminees(pageCarnetLectureRepository.countByStatut(StatutPageCarnet.terminee))
-                .totalPagesCarnetVoyage(pageCarnetVoyageRepository.count())
-                .pagesCarnetVoyageTerminees(pageCarnetVoyageRepository.countByStatut(StatutPageCarnet.terminee))
-                .totalActualitesPubliees(actualiteRepository.countByPublieTrue())
-                .totalDemandesContact(demandeContactRepository.count())
-                .demandesContactNonTraitees(demandeContactRepository.countByTraite(false))
-                .build();
+        return new StatistiquesResponse(
+                utilisateurRepository.count(),
+                utilisateursParRole,
+                ecoleRepository.count(),
+                classeRepository.count(),
+                conteDanseRepository.count(),
+                contesParStatut,
+                carteAConteRepository.count(),
+                cartesParStatut,
+                ressourcePedagogiqueRepository.count(),
+                ficheActiviteRepository.count(),
+                produitRepository.count(),
+                commandeRepository.count(),
+                commandesParStatut,
+                partenaireRepository.count(),
+                offreAbonnementRepository.count(),
+                abonnementsParStatut,
+                profilEnfantRepository.count(),
+                pageCarnetLectureRepository.count(),
+                pageCarnetLectureRepository.countByStatut(StatutPageCarnet.terminee),
+                pageCarnetVoyageRepository.count(),
+                pageCarnetVoyageRepository.countByStatut(StatutPageCarnet.terminee),
+                actualiteRepository.countByPublieTrue(),
+                demandeContactRepository.count(),
+                demandeContactRepository.countByTraite(false));
     }
 }

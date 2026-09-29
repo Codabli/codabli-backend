@@ -21,11 +21,11 @@ import java.util.UUID;
 
 /**
  * Controller pour les contes danses.
- *
+ * </p>
  * Securite a deux niveaux :
  * 1. @PreAuthorize → verifie le role (grossier)
  * 2. Le service → verifie la relation auteur/admin (fin)
- *
+ * </p>
  * Acces :
  * - GET (catalogue) : public, aucune authentification requise
  * - POST : utilisateur authentifie
@@ -55,7 +55,7 @@ public class ConteDanseController {
             @RequestParam(required = false) String thematique,
             @RequestParam(required = false) AccesConte acces,
             @RequestParam(required = false) Integer age,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault Pageable pageable) {
         boolean aucunFiltre = langue == null && pays == null && thematique == null && acces == null && age == null;
         Page<ConteDanseResponse> contes = aucunFiltre
                 ? conteDanseService.listerPublies(pageable)

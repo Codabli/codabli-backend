@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les fiches d'activites (CDC 8.7, FIC-ACT-01/02).
- *
+ * </p>
  * Securite, identique a la Mallette Pedagogique :
  * - GET : enseignant/professionnel_education/admin/super_admin/comite_lecture
  * - POST/PUT : admin/super_admin/comite_lecture
@@ -39,7 +39,7 @@ public class FicheActiviteController {
     public ResponseEntity<Page<FicheActiviteResponse>> lister(
             @RequestParam(required = false) Integer age,
             @AuthenticationPrincipal Jwt jwt,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault Pageable pageable) {
         return ResponseEntity.ok(ficheActiviteService.lister(age, jwt, pageable));
     }
 

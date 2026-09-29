@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * Service metier pour les produits.
- *
+ * <p>
  * Securite :
  * - Lecture (GET) : publique
  * - Ecriture (POST/PUT/DELETE) : reservee aux admins via @PreAuthorize dans le
@@ -79,13 +79,13 @@ public class ProduitService {
 
     public ProduitResponse creer(ProduitRequest request) {
         Produit produit = Produit.builder()
-                .nom(request.getNom())
-                .description(request.getDescription())
-                .prix(request.getPrix())
-                .imageUrl(request.getImageUrl())
-                .type(request.getType())
-                .stock(request.getStock())
-                .actif(request.getActif() != null ? request.getActif() : true)
+                .nom(request.nom())
+                .description(request.description())
+                .prix(request.prix())
+                .imageUrl(request.imageUrl())
+                .type(request.type())
+                .stock(request.stock())
+                .actif(request.actif() != null ? request.actif() : true)
                 .build();
 
         Produit saved = produitRepository.save(produit);
@@ -101,14 +101,14 @@ public class ProduitService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Produit non trouve avec l'ID: " + id));
 
-        produit.setNom(request.getNom());
-        produit.setDescription(request.getDescription());
-        produit.setPrix(request.getPrix());
-        produit.setImageUrl(request.getImageUrl());
-        produit.setType(request.getType());
-        produit.setStock(request.getStock());
-        if (request.getActif() != null) {
-            produit.setActif(request.getActif());
+        produit.setNom(request.nom());
+        produit.setDescription(request.description());
+        produit.setPrix(request.prix());
+        produit.setImageUrl(request.imageUrl());
+        produit.setType(request.type());
+        produit.setStock(request.stock());
+        if (request.actif() != null) {
+            produit.setActif(request.actif());
         }
 
         Produit saved = produitRepository.save(produit);
@@ -131,17 +131,16 @@ public class ProduitService {
     // ────────────────────────────────────────────────────────────────
 
     private ProduitResponse toResponse(Produit produit) {
-        return ProduitResponse.builder()
-                .id(produit.getId())
-                .nom(produit.getNom())
-                .description(produit.getDescription())
-                .prix(produit.getPrix())
-                .imageUrl(produit.getImageUrl())
-                .type(produit.getType())
-                .stock(produit.getStock())
-                .actif(produit.isActif())
-                .dateCreation(produit.getDateCreation())
-                .dateMiseAJour(produit.getDateMiseAJour())
-                .build();
+        return new ProduitResponse(
+                produit.getId(),
+                produit.getNom(),
+                produit.getDescription(),
+                produit.getPrix(),
+                produit.getImageUrl(),
+                produit.getType(),
+                produit.getStock(),
+                produit.isActif(),
+                produit.getDateCreation(),
+                produit.getDateMiseAJour());
     }
 }

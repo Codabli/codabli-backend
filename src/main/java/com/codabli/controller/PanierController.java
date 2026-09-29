@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Controller pour la gestion du panier de l'utilisateur connecte.
- *
+ * </p>
  * Securite :
  * - Tous les endpoints requierent une authentification valide.
  */

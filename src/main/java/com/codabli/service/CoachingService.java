@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour le coaching (CDC PRO-07).
@@ -33,8 +32,8 @@ public class CoachingService {
     private final UtilisateurRepository utilisateurRepository;
 
     public CoachingService(OffreCoachingRepository offreCoachingRepository,
-            ReservationCoachingRepository reservationCoachingRepository,
-            UtilisateurRepository utilisateurRepository) {
+                           ReservationCoachingRepository reservationCoachingRepository,
+                           UtilisateurRepository utilisateurRepository) {
         this.offreCoachingRepository = offreCoachingRepository;
         this.reservationCoachingRepository = reservationCoachingRepository;
         this.utilisateurRepository = utilisateurRepository;
@@ -48,28 +47,28 @@ public class CoachingService {
     public List<OffreCoachingResponse> listerOffres() {
         return offreCoachingRepository.findByActifTrue().stream()
                 .map(this::toOffreResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public OffreCoachingResponse creerOffre(OffreCoachingRequest request) {
         OffreCoaching offre = OffreCoaching.builder()
-                .titre(request.getTitre())
-                .description(request.getDescription())
-                .dureeMinutes(request.getDureeMinutes())
-                .tarif(request.getTarif())
-                .actif(request.getActif() == null || request.getActif())
+                .titre(request.titre())
+                .description(request.description())
+                .dureeMinutes(request.dureeMinutes())
+                .tarif(request.tarif())
+                .actif(request.actif() == null || request.actif())
                 .build();
         return toOffreResponse(offreCoachingRepository.save(offre));
     }
 
     public OffreCoachingResponse modifierOffre(UUID id, OffreCoachingRequest request) {
         OffreCoaching offre = getOffreOrThrow(id);
-        offre.setTitre(request.getTitre());
-        offre.setDescription(request.getDescription());
-        offre.setDureeMinutes(request.getDureeMinutes());
-        offre.setTarif(request.getTarif());
-        if (request.getActif() != null) {
-            offre.setActif(request.getActif());
+        offre.setTitre(request.titre());
+        offre.setDescription(request.description());
+        offre.setDureeMinutes(request.dureeMinutes());
+        offre.setTarif(request.tarif());
+        if (request.actif() != null) {
+            offre.setActif(request.actif());
         }
         return toOffreResponse(offreCoachingRepository.save(offre));
     }
@@ -84,7 +83,7 @@ public class CoachingService {
 
     public ReservationCoachingResponse reserver(ReservationCoachingRequest request, Jwt jwt) {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        OffreCoaching offre = getOffreOrThrow(request.getOffreCoachingId());
+        OffreCoaching offre = getOffreOrThrow(request.offreCoachingId());
 
         if (!offre.isActif()) {
             throw new IllegalStateException("Cette offre de coaching n'est plus disponible");
@@ -93,7 +92,7 @@ public class CoachingService {
         ReservationCoaching reservation = ReservationCoaching.builder()
                 .offreCoaching(offre)
                 .utilisateur(utilisateur)
-                .dateCreneau(request.getDateCreneau())
+                .dateCreneau(request.dateCreneau())
                 .build();
 
         return toReservationResponse(reservationCoachingRepository.save(reservation));
@@ -104,7 +103,7 @@ public class CoachingService {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
         return reservationCoachingRepository.findByUtilisateurIdOrderByDateCreneauDesc(utilisateur.getId()).stream()
                 .map(this::toReservationResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public ReservationCoachingResponse changerStatut(UUID reservationId, StatutReservationCoaching statut, Jwt jwt) {
@@ -158,24 +157,22 @@ public class CoachingService {
     }
 
     private OffreCoachingResponse toOffreResponse(OffreCoaching offre) {
-        return OffreCoachingResponse.builder()
-                .id(offre.getId())
-                .titre(offre.getTitre())
-                .description(offre.getDescription())
-                .dureeMinutes(offre.getDureeMinutes())
-                .tarif(offre.getTarif())
-                .actif(offre.isActif())
-                .build();
+        return new OffreCoachingResponse(
+                offre.getId(),
+                offre.getTitre(),
+                offre.getDescription(),
+                offre.getDureeMinutes(),
+                offre.getTarif(),
+                offre.isActif());
     }
 
     private ReservationCoachingResponse toReservationResponse(ReservationCoaching reservation) {
-        return ReservationCoachingResponse.builder()
-                .id(reservation.getId())
-                .offreCoachingId(reservation.getOffreCoaching().getId())
-                .offreCoachingTitre(reservation.getOffreCoaching().getTitre())
-                .dateCreneau(reservation.getDateCreneau())
-                .statut(reservation.getStatut())
-                .dateCreation(reservation.getDateCreation())
-                .build();
+        return new ReservationCoachingResponse(
+                reservation.getId(),
+                reservation.getOffreCoaching().getId(),
+                reservation.getOffreCoaching().getTitre(),
+                reservation.getDateCreneau(),
+                reservation.getStatut(),
+                reservation.getDateCreation());
     }
 }

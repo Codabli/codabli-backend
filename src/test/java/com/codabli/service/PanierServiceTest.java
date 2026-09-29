@@ -29,7 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class PanierServiceTest {
+class PanierServiceTest {
 
     @Mock
     private PanierRepository panierRepository;
@@ -83,17 +83,14 @@ public class PanierServiceTest {
         PanierResponse response = panierService.getPanier(jwt);
 
         assertNotNull(response);
-        assertEquals(mockPanier.getId(), response.getId());
-        assertEquals(0, response.getLignes().size());
-        assertEquals(BigDecimal.ZERO, response.getTotal());
+        assertEquals(mockPanier.getId(), response.id());
+        assertEquals(0, response.lignes().size());
+        assertEquals(BigDecimal.ZERO, response.total());
     }
 
     @Test
     void ajouterProduit_shouldAddNewLineItem() {
-        AjoutPanierRequest request = AjoutPanierRequest.builder()
-                .produitId(mockProduit.getId())
-                .quantite(2)
-                .build();
+        AjoutPanierRequest request = new AjoutPanierRequest(mockProduit.getId(), 2);
 
         when(jwt.getSubject()).thenReturn("keycloak-user-123");
         when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
@@ -107,8 +104,8 @@ public class PanierServiceTest {
 
         assertNotNull(response);
         assertEquals(1, mockPanier.getLignes().size());
-        assertEquals(2, mockPanier.getLignes().get(0).getQuantite());
-        assertEquals(new BigDecimal("20.00"), response.getTotal());
+        assertEquals(2, mockPanier.getLignes().getFirst().getQuantite());
+        assertEquals(new BigDecimal("20.00"), response.total());
     }
 
     @Test
@@ -121,10 +118,7 @@ public class PanierServiceTest {
                 .build();
         mockPanier.getLignes().add(existingLigne);
 
-        AjoutPanierRequest request = AjoutPanierRequest.builder()
-                .produitId(mockProduit.getId())
-                .quantite(2)
-                .build();
+        AjoutPanierRequest request = new AjoutPanierRequest(mockProduit.getId(), 2);
 
         when(jwt.getSubject()).thenReturn("keycloak-user-123");
         when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
@@ -138,8 +132,8 @@ public class PanierServiceTest {
 
         assertNotNull(response);
         assertEquals(1, mockPanier.getLignes().size());
-        assertEquals(5, mockPanier.getLignes().get(0).getQuantite());
-        assertEquals(new BigDecimal("50.00"), response.getTotal());
+        assertEquals(5, mockPanier.getLignes().getFirst().getQuantite());
+        assertEquals(new BigDecimal("50.00"), response.total());
     }
 
     @Test
@@ -153,9 +147,7 @@ public class PanierServiceTest {
                 .build();
         mockPanier.getLignes().add(existingLigne);
 
-        ModifQuantiteRequest request = ModifQuantiteRequest.builder()
-                .quantite(4)
-                .build();
+        ModifQuantiteRequest request = new ModifQuantiteRequest(4);
 
         when(jwt.getSubject()).thenReturn("keycloak-user-123");
         when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
@@ -167,8 +159,8 @@ public class PanierServiceTest {
         PanierResponse response = panierService.modifierQuantite(ligneId, request, jwt);
 
         assertNotNull(response);
-        assertEquals(4, mockPanier.getLignes().get(0).getQuantite());
-        assertEquals(new BigDecimal("40.00"), response.getTotal());
+        assertEquals(4, mockPanier.getLignes().getFirst().getQuantite());
+        assertEquals(new BigDecimal("40.00"), response.total());
     }
 
     @Test

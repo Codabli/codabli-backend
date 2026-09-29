@@ -23,7 +23,6 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour le Carnet de Voyage (CDC 8.17.2, CDV-01 a 14).
@@ -40,9 +39,9 @@ public class CarnetVoyageService {
     private final UtilisateurRepository utilisateurRepository;
 
     public CarnetVoyageService(PageCarnetVoyageRepository pageRepository,
-            ProfilEnfantRepository profilEnfantRepository,
-            ConteDanseRepository conteDanseRepository,
-            UtilisateurRepository utilisateurRepository) {
+                               ProfilEnfantRepository profilEnfantRepository,
+                               ConteDanseRepository conteDanseRepository,
+                               UtilisateurRepository utilisateurRepository) {
         this.pageRepository = pageRepository;
         this.profilEnfantRepository = profilEnfantRepository;
         this.conteDanseRepository = conteDanseRepository;
@@ -58,21 +57,21 @@ public class CarnetVoyageService {
 
         PageCarnetVoyage page = PageCarnetVoyage.builder()
                 .profilEnfant(profil)
-                .pays(request.getPays())
-                .drapeauUrl(request.getDrapeauUrl())
-                .languesDecouvertes(request.getLanguesDecouvertes())
-                .dateVisite(request.getDateVisite() != null ? request.getDateVisite() : LocalDate.now())
-                .identiteNotes(request.getIdentiteNotes())
-                .natureNotes(request.getNatureNotes())
-                .societeNotes(request.getSocieteNotes())
-                .cultureNotes(request.getCultureNotes())
-                .experienceNotes(request.getExperienceNotes())
+                .pays(request.pays())
+                .drapeauUrl(request.drapeauUrl())
+                .languesDecouvertes(request.languesDecouvertes())
+                .dateVisite(request.dateVisite() != null ? request.dateVisite() : LocalDate.now())
+                .identiteNotes(request.identiteNotes())
+                .natureNotes(request.natureNotes())
+                .societeNotes(request.societeNotes())
+                .cultureNotes(request.cultureNotes())
+                .experienceNotes(request.experienceNotes())
                 .build();
 
-        if (request.getConteId() != null) {
-            ConteDanse conte = conteDanseRepository.findById(request.getConteId())
+        if (request.conteId() != null) {
+            ConteDanse conte = conteDanseRepository.findById(request.conteId())
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Conte danse non trouve avec l'ID: " + request.getConteId()));
+                            "Conte danse non trouve avec l'ID: " + request.conteId()));
             page.setConte(conte);
             if (page.getPays() == null) {
                 page.setPays(conte.getPays());
@@ -95,7 +94,7 @@ public class CarnetVoyageService {
         getProfilAvecDroit(profilEnfantId, jwt);
         return pageRepository.findByProfilEnfantIdOrderByDateCreationDesc(profilEnfantId).stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -112,22 +111,22 @@ public class CarnetVoyageService {
     // ────────────────────────────────────────────────────────────────
 
     public PageCarnetVoyageResponse modifierPage(UUID profilEnfantId, UUID pageId,
-            PageCarnetVoyageRequest request, Jwt jwt) {
+                                                 PageCarnetVoyageRequest request, Jwt jwt) {
         PageCarnetVoyage page = getPageAvecDroit(profilEnfantId, pageId, jwt);
 
         if (page.getStatut() == StatutPageCarnet.terminee || page.getStatut() == StatutPageCarnet.non_commencee) {
             page.setStatut(StatutPageCarnet.en_cours);
         }
 
-        page.setPays(request.getPays());
-        page.setDrapeauUrl(request.getDrapeauUrl());
-        page.setLanguesDecouvertes(request.getLanguesDecouvertes());
-        page.setDateVisite(request.getDateVisite());
-        page.setIdentiteNotes(request.getIdentiteNotes());
-        page.setNatureNotes(request.getNatureNotes());
-        page.setSocieteNotes(request.getSocieteNotes());
-        page.setCultureNotes(request.getCultureNotes());
-        page.setExperienceNotes(request.getExperienceNotes());
+        page.setPays(request.pays());
+        page.setDrapeauUrl(request.drapeauUrl());
+        page.setLanguesDecouvertes(request.languesDecouvertes());
+        page.setDateVisite(request.dateVisite());
+        page.setIdentiteNotes(request.identiteNotes());
+        page.setNatureNotes(request.natureNotes());
+        page.setSocieteNotes(request.societeNotes());
+        page.setCultureNotes(request.cultureNotes());
+        page.setExperienceNotes(request.experienceNotes());
 
         PageCarnetVoyage saved = pageRepository.save(page);
         return toResponse(saved);
@@ -158,16 +157,16 @@ public class CarnetVoyageService {
     // ────────────────────────────────────────────────────────────────
 
     public PageCarnetVoyageResponse ajouterElement(UUID profilEnfantId, UUID pageId,
-            ElementCarnetVoyageRequest request, Jwt jwt) {
+                                                   ElementCarnetVoyageRequest request, Jwt jwt) {
         PageCarnetVoyage page = getPageAvecDroit(profilEnfantId, pageId, jwt);
 
         ElementCarnetVoyage element = ElementCarnetVoyage.builder()
                 .page(page)
-                .type(request.getType())
-                .nom(request.getNom())
-                .description(request.getDescription())
-                .imageUrl(request.getImageUrl())
-                .ordreAffichage(request.getOrdreAffichage() != null ? request.getOrdreAffichage() : page.getElements().size())
+                .type(request.type())
+                .nom(request.nom())
+                .description(request.description())
+                .imageUrl(request.imageUrl())
+                .ordreAffichage(request.ordreAffichage() != null ? request.ordreAffichage() : page.getElements().size())
                 .build();
 
         page.getElements().add(element);
@@ -242,34 +241,32 @@ public class CarnetVoyageService {
 
     private PageCarnetVoyageResponse toResponse(PageCarnetVoyage page) {
         List<ElementCarnetVoyageResponse> elements = page.getElements().stream()
-                .map(e -> ElementCarnetVoyageResponse.builder()
-                        .id(e.getId())
-                        .type(e.getType())
-                        .nom(e.getNom())
-                        .description(e.getDescription())
-                        .imageUrl(e.getImageUrl())
-                        .ordreAffichage(e.getOrdreAffichage())
-                        .build())
-                .collect(Collectors.toList());
+                .map(e -> new ElementCarnetVoyageResponse(
+                        e.getId(),
+                        e.getType(),
+                        e.getNom(),
+                        e.getDescription(),
+                        e.getImageUrl(),
+                        e.getOrdreAffichage()))
+                .toList();
 
-        return PageCarnetVoyageResponse.builder()
-                .id(page.getId())
-                .profilEnfantId(page.getProfilEnfant().getId())
-                .conteId(page.getConte() != null ? page.getConte().getId() : null)
-                .pays(page.getPays())
-                .drapeauUrl(page.getDrapeauUrl())
-                .languesDecouvertes(page.getLanguesDecouvertes())
-                .dateVisite(page.getDateVisite())
-                .identiteNotes(page.getIdentiteNotes())
-                .natureNotes(page.getNatureNotes())
-                .societeNotes(page.getSocieteNotes())
-                .cultureNotes(page.getCultureNotes())
-                .experienceNotes(page.getExperienceNotes())
-                .statut(page.getStatut())
-                .fichierExportUrl(page.getFichierExportUrl())
-                .elements(elements)
-                .dateCreation(page.getDateCreation())
-                .dateMiseAJour(page.getDateMiseAJour())
-                .build();
+        return new PageCarnetVoyageResponse(
+                page.getId(),
+                page.getProfilEnfant().getId(),
+                page.getConte() != null ? page.getConte().getId() : null,
+                page.getPays(),
+                page.getDrapeauUrl(),
+                page.getLanguesDecouvertes(),
+                page.getDateVisite(),
+                page.getIdentiteNotes(),
+                page.getNatureNotes(),
+                page.getSocieteNotes(),
+                page.getCultureNotes(),
+                page.getExperienceNotes(),
+                page.getStatut(),
+                page.getFichierExportUrl(),
+                elements,
+                page.getDateCreation(),
+                page.getDateMiseAJour());
     }
 }

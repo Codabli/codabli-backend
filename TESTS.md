@@ -31,7 +31,7 @@ docker compose up -d postgres
 
 ## ▶️ Lancer les tests
 
-### Option A — natif (nécessite un JDK 17+)
+### Option A — natif (nécessite un JDK 25+)
 
 ```bash
 docker compose up -d postgres   # si ce n'est pas déjà fait
@@ -41,13 +41,13 @@ docker compose up -d postgres   # si ce n'est pas déjà fait
 ### Option B — tout Docker (aucun JDK requis sur l'hôte)
 
 Si la machine n'a qu'un JRE (pas de `javac`), on compile/exécute les tests dans un
-conteneur Maven + JDK 17 :
+conteneur Maven + JDK 25 :
 
 ```bash
 docker compose up -d postgres
 docker run --rm --network host \
   -v "$PWD":/app -w /app \
-  maven:3.9-eclipse-temurin-17 mvn -B test
+  maven:3.9-eclipse-temurin-25 mvn -B test
 ```
 
 *(`--network host` permet au conteneur d'atteindre le PostgreSQL publié sur
@@ -120,8 +120,8 @@ Les rapports détaillés sont générés dans **`target/surefire-reports/`**.
 
 ## 🩺 Dépannage
 
-| Symptôme | Cause probable | Solution |
-| --- | --- | --- |
-| Tous les `*ControllerTest` échouent, `Connection to localhost:5442 refused` | PostgreSQL non démarré | `docker compose up -d postgres` |
-| `release version 17 not supported` | Pas de JDK (seulement un JRE) sur l'hôte | Utiliser l'**option B** (tout Docker) ou installer un JDK 17+ |
-| `UnnecessaryStubbingException` | Stub partagé non utilisé par tous les tests | Passer le stub en `lenient().when(...)` |
+| Symptôme                                                                    | Cause probable | Solution                                                     |
+|-----------------------------------------------------------------------------| --- |--------------------------------------------------------------|
+| Tous les `*ControllerTest` échouent, `Connection to localhost:5442 refused` | PostgreSQL non démarré | `docker compose up -d postgres`                              |
+| `release version 25 not supported`                                          | Pas de JDK (seulement un JRE) sur l'hôte | Utiliser l'**option B** (tout Docker) ou installer un JDK 25+ |
+| `UnnecessaryStubbingException`                                              | Stub partagé non utilisé par tous les tests | Passer le stub en `lenient().when(...)`                      |

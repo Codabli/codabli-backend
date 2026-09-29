@@ -111,7 +111,7 @@ public class KeycloakAdminService {
                     tokenUrl,
                     org.springframework.http.HttpMethod.POST,
                     request,
-                    new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                    new org.springframework.core.ParameterizedTypeReference<>() {
                     });
             Map<String, Object> responseBody = response.getBody();
 
@@ -119,13 +119,12 @@ public class KeycloakAdminService {
                 throw new RuntimeException("Réponse vide du serveur Keycloak");
             }
 
-            return LoginResponse.builder()
-                    .accessToken((String) responseBody.get("access_token"))
-                    .refreshToken((String) responseBody.get("refresh_token"))
-                    .expiresIn(((Number) responseBody.get("expires_in")).longValue())
-                    .tokenType((String) responseBody.get("token_type"))
-                    .build();
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            return new LoginResponse(
+                    (String) responseBody.get("access_token"),
+                    (String) responseBody.get("refresh_token"),
+                    ((Number) responseBody.get("expires_in")).longValue(),
+                    (String) responseBody.get("token_type"));
+        } catch (org.springframework.web.client.HttpClientErrorException _) {
             throw new IllegalArgumentException("Email ou mot de passe incorrect");
         }
     }
@@ -171,7 +170,7 @@ public class KeycloakAdminService {
         List<UserRepresentation> users = getRealmResource().users()
                 .search(null, null, null, null, 0, 1);
         if (!users.isEmpty()) {
-            return users.get(0).getId();
+            return users.getFirst().getId();
         }
         throw new RuntimeException("Impossible de récupérer l'ID de l'utilisateur créé");
     }

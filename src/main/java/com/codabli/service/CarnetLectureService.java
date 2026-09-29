@@ -23,15 +23,14 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour le Carnet de Lecture (CDC 8.17.1, CDL-01 a 17).
- *
+ * </p>
  * Securite (RG-13, confidentialite des carnets) : seul le responsable
  * (parent/professionnel_education) proprietaire du profil enfant peut
  * consulter/modifier son carnet, ou un admin/super_admin.
- *
+ * </p>
  * RG-10 : le backend ne genere jamais le resume, les reponses ou les
  * descriptions a la place de l'enfant — il se contente de sauvegarder ce
  * qui est saisi, et de prerempli uniquement les metadonnees objectives du
@@ -47,9 +46,9 @@ public class CarnetLectureService {
     private final UtilisateurRepository utilisateurRepository;
 
     public CarnetLectureService(PageCarnetLectureRepository pageRepository,
-            ProfilEnfantRepository profilEnfantRepository,
-            ConteDanseRepository conteDanseRepository,
-            UtilisateurRepository utilisateurRepository) {
+                                ProfilEnfantRepository profilEnfantRepository,
+                                ConteDanseRepository conteDanseRepository,
+                                UtilisateurRepository utilisateurRepository) {
         this.pageRepository = pageRepository;
         this.profilEnfantRepository = profilEnfantRepository;
         this.conteDanseRepository = conteDanseRepository;
@@ -65,21 +64,21 @@ public class CarnetLectureService {
 
         PageCarnetLecture page = PageCarnetLecture.builder()
                 .profilEnfant(profil)
-                .titre(request.getTitre())
-                .auteur(request.getAuteur())
-                .couvertureUrl(request.getCouvertureUrl())
-                .langue(request.getLangue())
-                .dateLecture(request.getDateLecture() != null ? request.getDateLecture() : LocalDate.now())
-                .theme(request.getTheme())
-                .resume(request.getResume())
-                .motsPreferes(request.getMotsPreferes())
-                .questionsReponses(request.getQuestionsReponses())
+                .titre(request.titre())
+                .auteur(request.auteur())
+                .couvertureUrl(request.couvertureUrl())
+                .langue(request.langue())
+                .dateLecture(request.dateLecture() != null ? request.dateLecture() : LocalDate.now())
+                .theme(request.theme())
+                .resume(request.resume())
+                .motsPreferes(request.motsPreferes())
+                .questionsReponses(request.questionsReponses())
                 .build();
 
-        if (request.getConteId() != null) {
-            ConteDanse conte = conteDanseRepository.findById(request.getConteId())
+        if (request.conteId() != null) {
+            ConteDanse conte = conteDanseRepository.findById(request.conteId())
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Conte danse non trouve avec l'ID: " + request.getConteId()));
+                            "Conte danse non trouve avec l'ID: " + request.conteId()));
             page.setConte(conte);
             if (page.getTitre() == null) {
                 page.setTitre(conte.getTitre());
@@ -108,7 +107,7 @@ public class CarnetLectureService {
         getProfilAvecDroit(profilEnfantId, jwt);
         return pageRepository.findByProfilEnfantIdOrderByDateCreationDesc(profilEnfantId).stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -125,7 +124,7 @@ public class CarnetLectureService {
     // ────────────────────────────────────────────────────────────────
 
     public PageCarnetLectureResponse modifierPage(UUID profilEnfantId, UUID pageId,
-            PageCarnetLectureRequest request, Jwt jwt) {
+                                                  PageCarnetLectureRequest request, Jwt jwt) {
         PageCarnetLecture page = getPageAvecDroit(profilEnfantId, pageId, jwt);
 
         if (page.getStatut() == StatutPageCarnet.terminee) {
@@ -138,15 +137,15 @@ public class CarnetLectureService {
             page.setStatut(StatutPageCarnet.en_cours);
         }
 
-        page.setTitre(request.getTitre());
-        page.setAuteur(request.getAuteur());
-        page.setCouvertureUrl(request.getCouvertureUrl());
-        page.setLangue(request.getLangue());
-        page.setDateLecture(request.getDateLecture());
-        page.setTheme(request.getTheme());
-        page.setResume(request.getResume());
-        page.setMotsPreferes(request.getMotsPreferes());
-        page.setQuestionsReponses(request.getQuestionsReponses());
+        page.setTitre(request.titre());
+        page.setAuteur(request.auteur());
+        page.setCouvertureUrl(request.couvertureUrl());
+        page.setLangue(request.langue());
+        page.setDateLecture(request.dateLecture());
+        page.setTheme(request.theme());
+        page.setResume(request.resume());
+        page.setMotsPreferes(request.motsPreferes());
+        page.setQuestionsReponses(request.questionsReponses());
 
         PageCarnetLecture saved = pageRepository.save(page);
         return toResponse(saved);
@@ -177,16 +176,16 @@ public class CarnetLectureService {
     // ────────────────────────────────────────────────────────────────
 
     public PageCarnetLectureResponse ajouterElement(UUID profilEnfantId, UUID pageId,
-            ElementCarnetLectureRequest request, Jwt jwt) {
+                                                    ElementCarnetLectureRequest request, Jwt jwt) {
         PageCarnetLecture page = getPageAvecDroit(profilEnfantId, pageId, jwt);
 
         ElementCarnetLecture element = ElementCarnetLecture.builder()
                 .page(page)
-                .type(request.getType())
-                .nom(request.getNom())
-                .description(request.getDescription())
-                .imageUrl(request.getImageUrl())
-                .ordreAffichage(request.getOrdreAffichage() != null ? request.getOrdreAffichage() : page.getElements().size())
+                .type(request.type())
+                .nom(request.nom())
+                .description(request.description())
+                .imageUrl(request.imageUrl())
+                .ordreAffichage(request.ordreAffichage() != null ? request.ordreAffichage() : page.getElements().size())
                 .build();
 
         page.getElements().add(element);
@@ -261,34 +260,32 @@ public class CarnetLectureService {
 
     private PageCarnetLectureResponse toResponse(PageCarnetLecture page) {
         List<ElementCarnetLectureResponse> elements = page.getElements().stream()
-                .map(e -> ElementCarnetLectureResponse.builder()
-                        .id(e.getId())
-                        .type(e.getType())
-                        .nom(e.getNom())
-                        .description(e.getDescription())
-                        .imageUrl(e.getImageUrl())
-                        .ordreAffichage(e.getOrdreAffichage())
-                        .build())
-                .collect(Collectors.toList());
+                .map(e -> new ElementCarnetLectureResponse(
+                        e.getId(),
+                        e.getType(),
+                        e.getNom(),
+                        e.getDescription(),
+                        e.getImageUrl(),
+                        e.getOrdreAffichage()))
+                .toList();
 
-        return PageCarnetLectureResponse.builder()
-                .id(page.getId())
-                .profilEnfantId(page.getProfilEnfant().getId())
-                .conteId(page.getConte() != null ? page.getConte().getId() : null)
-                .titre(page.getTitre())
-                .auteur(page.getAuteur())
-                .couvertureUrl(page.getCouvertureUrl())
-                .langue(page.getLangue())
-                .dateLecture(page.getDateLecture())
-                .theme(page.getTheme())
-                .resume(page.getResume())
-                .motsPreferes(page.getMotsPreferes())
-                .questionsReponses(page.getQuestionsReponses())
-                .statut(page.getStatut())
-                .fichierExportUrl(page.getFichierExportUrl())
-                .elements(elements)
-                .dateCreation(page.getDateCreation())
-                .dateMiseAJour(page.getDateMiseAJour())
-                .build();
+        return new PageCarnetLectureResponse(
+                page.getId(),
+                page.getProfilEnfant().getId(),
+                page.getConte() != null ? page.getConte().getId() : null,
+                page.getTitre(),
+                page.getAuteur(),
+                page.getCouvertureUrl(),
+                page.getLangue(),
+                page.getDateLecture(),
+                page.getTheme(),
+                page.getResume(),
+                page.getMotsPreferes(),
+                page.getQuestionsReponses(),
+                page.getStatut(),
+                page.getFichierExportUrl(),
+                elements,
+                page.getDateCreation(),
+                page.getDateMiseAJour());
     }
 }

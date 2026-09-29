@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les traductions de Contes Danses (CDC 8.5, LAN-01/02/03).
- *
+ * </p>
  * Securite :
  * - GET /traductions (public) : uniquement les traductions publiees
  * - GET /traductions/gestion + POST/PUT/PATCH/DELETE : reserves aux

@@ -51,11 +51,7 @@ class ActualiteServiceTest {
 
     @Test
     void creer_shouldSaveAndReturnResponse() {
-        ActualiteRequest request = ActualiteRequest.builder()
-                .titre("Titre")
-                .contenu("Contenu")
-                .publie(true)
-                .build();
+        ActualiteRequest request = new ActualiteRequest("Titre", null, null, "Contenu", true);
 
         when(jwt.getSubject()).thenReturn("keycloak-id-test");
         when(utilisateurRepository.findByKeycloakId("keycloak-id-test"))
@@ -73,7 +69,7 @@ class ActualiteServiceTest {
         ActualiteResponse response = actualiteService.creer(request, jwt);
 
         assertNotNull(response);
-        assertEquals("Titre", response.getTitre());
+        assertEquals("Titre", response.titre());
         verify(actualiteRepository, times(1)).save(any(Actualite.class));
     }
 }

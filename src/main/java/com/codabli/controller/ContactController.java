@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Controller pour le formulaire de contact (CDC 8.21).
- *
+ * </p>
  * Securite :
  * - POST /api/contact : public, aucune authentification requise
  * - GET / PATCH sous /api/admin/contact : reserves a l'administration

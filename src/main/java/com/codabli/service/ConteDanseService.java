@@ -22,11 +22,10 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les contes danses.
- *
+ * <p>
  * Securite a deux niveaux :
  * 1. Niveau role (grossier) : gere par @PreAuthorize dans le controller
  * 2. Niveau relation (fin) : gere ICI — seul l'auteur ou un admin peut
@@ -41,8 +40,8 @@ public class ConteDanseService {
     private final EntityManager entityManager;
 
     public ConteDanseService(ConteDanseRepository conteDanseRepository,
-            UtilisateurRepository utilisateurRepository,
-            EntityManager entityManager) {
+                             UtilisateurRepository utilisateurRepository,
+                             EntityManager entityManager) {
         this.conteDanseRepository = conteDanseRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.entityManager = entityManager;
@@ -57,31 +56,31 @@ public class ConteDanseService {
 
         ConteDanse conte = ConteDanse.builder()
                 .createur(createur)
-                .titre(request.getTitre())
-                .description(request.getDescription())
-                .thematique(request.getThematique())
-                .langueOriginale(request.getLangueOriginale())
-                .couvertureUrl(request.getCouvertureUrl())
-                .pays(request.getPays())
-                .culture(request.getCulture())
-                .ageMin(request.getAgeMin())
-                .ageMax(request.getAgeMax())
-                .dureeMinutes(request.getDureeMinutes())
-                .credits(request.getCredits())
-                .fichierTexteUrl(request.getFichierTexteUrl())
-                .fichierAudioUrl(request.getFichierAudioUrl())
-                .fichierVideoUrl(request.getFichierVideoUrl())
+                .titre(request.titre())
+                .description(request.description())
+                .thematique(request.thematique())
+                .langueOriginale(request.langueOriginale())
+                .couvertureUrl(request.couvertureUrl())
+                .pays(request.pays())
+                .culture(request.culture())
+                .ageMin(request.ageMin())
+                .ageMax(request.ageMax())
+                .dureeMinutes(request.dureeMinutes())
+                .credits(request.credits())
+                .fichierTexteUrl(request.fichierTexteUrl())
+                .fichierAudioUrl(request.fichierAudioUrl())
+                .fichierVideoUrl(request.fichierVideoUrl())
                 .build();
 
         // Rattacher a une ecole si ecoleId est fourni
-        if (request.getEcoleId() != null) {
-            Ecole ecole = entityManager.getReference(Ecole.class, request.getEcoleId());
+        if (request.ecoleId() != null) {
+            Ecole ecole = entityManager.getReference(Ecole.class, request.ecoleId());
             conte.setEcole(ecole);
         }
 
         // Rattacher a une classe si classeId est fourni
-        if (request.getClasseId() != null) {
-            Classe classe = entityManager.getReference(Classe.class, request.getClasseId());
+        if (request.classeId() != null) {
+            Classe classe = entityManager.getReference(Classe.class, request.classeId());
             conte.setClasse(classe);
         }
 
@@ -102,31 +101,31 @@ public class ConteDanseService {
         // Verification fine : seul l'auteur ou un admin peut modifier
         verifierAuteurOuAdmin(conte, utilisateur, jwt);
 
-        conte.setTitre(request.getTitre());
-        conte.setDescription(request.getDescription());
-        conte.setThematique(request.getThematique());
-        conte.setCouvertureUrl(request.getCouvertureUrl());
-        conte.setPays(request.getPays());
-        conte.setCulture(request.getCulture());
-        conte.setAgeMin(request.getAgeMin());
-        conte.setAgeMax(request.getAgeMax());
-        conte.setDureeMinutes(request.getDureeMinutes());
-        conte.setCredits(request.getCredits());
-        conte.setFichierTexteUrl(request.getFichierTexteUrl());
-        conte.setFichierAudioUrl(request.getFichierAudioUrl());
-        conte.setFichierVideoUrl(request.getFichierVideoUrl());
+        conte.setTitre(request.titre());
+        conte.setDescription(request.description());
+        conte.setThematique(request.thematique());
+        conte.setCouvertureUrl(request.couvertureUrl());
+        conte.setPays(request.pays());
+        conte.setCulture(request.culture());
+        conte.setAgeMin(request.ageMin());
+        conte.setAgeMax(request.ageMax());
+        conte.setDureeMinutes(request.dureeMinutes());
+        conte.setCredits(request.credits());
+        conte.setFichierTexteUrl(request.fichierTexteUrl());
+        conte.setFichierAudioUrl(request.fichierAudioUrl());
+        conte.setFichierVideoUrl(request.fichierVideoUrl());
 
-        if (request.getLangueOriginale() != null) {
-            conte.setLangueOriginale(request.getLangueOriginale());
+        if (request.langueOriginale() != null) {
+            conte.setLangueOriginale(request.langueOriginale());
         }
 
-        if (request.getEcoleId() != null) {
-            Ecole ecole = entityManager.getReference(Ecole.class, request.getEcoleId());
+        if (request.ecoleId() != null) {
+            Ecole ecole = entityManager.getReference(Ecole.class, request.ecoleId());
             conte.setEcole(ecole);
         }
 
-        if (request.getClasseId() != null) {
-            Classe classe = entityManager.getReference(Classe.class, request.getClasseId());
+        if (request.classeId() != null) {
+            Classe classe = entityManager.getReference(Classe.class, request.classeId());
             conte.setClasse(classe);
         }
 
@@ -219,7 +218,7 @@ public class ConteDanseService {
                 || roles.contains("comite_lecture");
         if (!autorise && roles.contains("enseignant") && conte.getStatut() == StatutConte.en_revision_enseignant
                 && (conte.getClasse() == null
-                        || conte.getClasse().getEnseignant().getId().equals(utilisateur.getId()))) {
+                || conte.getClasse().getEnseignant().getId().equals(utilisateur.getId()))) {
             autorise = true;
         }
         if (!autorise) {
@@ -242,7 +241,7 @@ public class ConteDanseService {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
         return conteDanseRepository.findByCreateurId(utilisateur.getId()).stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -267,7 +266,7 @@ public class ConteDanseService {
             throw new AccessDeniedException("Role non autorise a consulter la file de moderation");
         }
 
-        return contes.stream().map(this::toResponse).collect(Collectors.toList());
+        return contes.stream().map(this::toResponse).toList();
     }
 
     private void publier(ConteDanse conte, Utilisateur validateur) {
@@ -314,7 +313,7 @@ public class ConteDanseService {
 
     @Transactional(readOnly = true)
     public Page<ConteDanseResponse> filtrerPublies(String langue, String pays, String thematique,
-            AccesConte acces, Integer age, Pageable pageable) {
+                                                   AccesConte acces, Integer age, Pageable pageable) {
         return conteDanseRepository
                 .filtrerPublies(StatutConte.publie, langue, pays, thematique, acces, age, pageable)
                 .map(this::toResponse);
@@ -379,33 +378,32 @@ public class ConteDanseService {
     }
 
     private ConteDanseResponse toResponse(ConteDanse conte) {
-        return ConteDanseResponse.builder()
-                .id(conte.getId())
-                .titre(conte.getTitre())
-                .description(conte.getDescription())
-                .thematique(conte.getThematique())
-                .langueOriginale(conte.getLangueOriginale())
-                .couvertureUrl(conte.getCouvertureUrl())
-                .pays(conte.getPays())
-                .culture(conte.getCulture())
-                .ageMin(conte.getAgeMin())
-                .ageMax(conte.getAgeMax())
-                .dureeMinutes(conte.getDureeMinutes())
-                .credits(conte.getCredits())
-                .statut(conte.getStatut())
-                .acces(conte.getAcces())
-                .isbn(conte.getIsbn())
-                .fichierTexteUrl(conte.getFichierTexteUrl())
-                .fichierAudioUrl(conte.getFichierAudioUrl())
-                .fichierVideoUrl(conte.getFichierVideoUrl())
-                .motifModeration(conte.getMotifModeration())
-                .dateCreation(conte.getDateCreation())
-                .datePublication(conte.getDatePublication())
-                .createurId(conte.getCreateur().getId())
-                .createurNom(conte.getCreateur().getNom())
-                .createurPrenom(conte.getCreateur().getPrenom())
-                .ecoleId(conte.getEcole() != null ? conte.getEcole().getId() : null)
-                .classeId(conte.getClasse() != null ? conte.getClasse().getId() : null)
-                .build();
+        return new ConteDanseResponse(
+                conte.getId(),
+                conte.getTitre(),
+                conte.getDescription(),
+                conte.getThematique(),
+                conte.getLangueOriginale(),
+                conte.getCouvertureUrl(),
+                conte.getPays(),
+                conte.getCulture(),
+                conte.getAgeMin(),
+                conte.getAgeMax(),
+                conte.getDureeMinutes(),
+                conte.getCredits(),
+                conte.getStatut(),
+                conte.getAcces(),
+                conte.getIsbn(),
+                conte.getFichierTexteUrl(),
+                conte.getFichierAudioUrl(),
+                conte.getFichierVideoUrl(),
+                conte.getMotifModeration(),
+                conte.getDateCreation(),
+                conte.getDatePublication(),
+                conte.getCreateur().getId(),
+                conte.getCreateur().getNom(),
+                conte.getCreateur().getPrenom(),
+                conte.getEcole() != null ? conte.getEcole().getId() : null,
+                conte.getClasse() != null ? conte.getClasse().getId() : null);
     }
 }

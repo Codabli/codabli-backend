@@ -50,7 +50,7 @@ public class CommandeController {
     @ApiResponse(responseCode = "200", description = "Liste des commandes retournee avec succes")
     public ResponseEntity<Page<CommandeResponse>> listerCommandes(
             @AuthenticationPrincipal Jwt jwt,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault Pageable pageable) {
         Page<CommandeResponse> commandes = commandeService.listerCommandes(jwt, pageable);
         return ResponseEntity.ok(commandes);
     }
@@ -75,7 +75,7 @@ public class CommandeController {
     public ResponseEntity<CommandeResponse> changerStatut(
             @PathVariable UUID id,
             @Valid @RequestBody ChangerStatutCommandeRequest request) {
-        CommandeResponse response = commandeService.changerStatut(id, request.getStatut());
+        CommandeResponse response = commandeService.changerStatut(id, request.statut());
         return ResponseEntity.ok(response);
     }
 }

@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Controller admin pour la gestion des mises en avant dans la galerie.
- *
+ * </p>
  * Sécurité : protégé par la règle SecurityConfig existante
  * requestMatchers("/api/admin/**").hasRole("admin").
  * Aucun @PreAuthorize additionnel nécessaire.
