@@ -1,4 +1,13 @@
-# Infrastructure de développement local pour le backend Codabli.
+# Infrastructure de DÉVELOPPEMENT LOCAL pour le backend Codabli.
+#
+# ⚠️ Ce fichier n'est PAS l'environnement de recette. La recette est décrite dans
+#    le repo `codabli-infra` (codabli-infra/recette/docker-compose.yml) : mode prod
+#    Keycloak `start`, reverse-proxy Caddy, images tirées de GHCR. Ici c'est du
+#    `start-dev`, HTTP direct, build local — volontairement différent.
+#
+# 🔖 Versions d'images (Keycloak, Postgres…) : l'autorité est la RECETTE. Ce compose
+#    de dev doit SUIVRE les versions de `codabli-infra/recette`. Les bumps arrivent
+#    par PR (Renovate/Dependabot) dans chaque repo ; garder les deux alignés.
 #
 #   docker compose up -d      -> démarre PostgreSQL + Keycloak
 #   docker compose down       -> arrête (les données sont conservées dans les volumes)
@@ -30,7 +39,7 @@ services:
       retries: 10
 
   keycloak:
-    image: quay.io/keycloak/keycloak:25.0.2
+    image: quay.io/keycloak/keycloak:26.8.0
     container_name: codabli-keycloak
     command: ["start-dev", "--import-realm"]
     environment:
