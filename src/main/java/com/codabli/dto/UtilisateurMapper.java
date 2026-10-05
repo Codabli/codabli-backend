@@ -10,18 +10,17 @@ import org.springframework.stereotype.Component;
 public class UtilisateurMapper {
 
     public UtilisateurResponse toResponse(Utilisateur utilisateur) {
-        return UtilisateurResponse.builder()
-                .id(utilisateur.getId())
-                .nom(utilisateur.getNom())
-                .prenom(utilisateur.getPrenom())
-                .email(utilisateur.getEmail())
-                .role(utilisateur.getRole())
-                .dateNaissance(utilisateur.getDateNaissance())
-                .languePreferee(utilisateur.getLanguePreferee())
-                .statut(utilisateur.getStatut())
-                .ecoleId(utilisateur.getEcole() != null ? utilisateur.getEcole().getId() : null)
-                .ecoleNom(utilisateur.getEcole() != null ? utilisateur.getEcole().getNom() : null)
-                .dateCreation(utilisateur.getDateCreation())
-                .build();
+        return new UtilisateurResponse(
+                utilisateur.getId(),
+                utilisateur.getNom(),
+                utilisateur.getPrenom(),
+                utilisateur.getEmail(),
+                utilisateur.getRole(),
+                utilisateur.getDateNaissance(),
+                utilisateur.getLanguePreferee(),
+                utilisateur.getStatut(),
+                utilisateur.getEcole() != null ? utilisateur.getEcole().getId() : null,
+                utilisateur.getEcole() != null ? utilisateur.getEcole().getNom() : null,
+                utilisateur.getDateCreation());
     }
 }

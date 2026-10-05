@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * Service metier pour les partenaires (CDC 8.13, PAR-01/02).
- *
+ * </p>
  * Securite :
  * - Lecture (GET) : publique, filtree sur actif=true
  * - Ecriture (POST/PUT/DELETE) : reservee aux admins via @PreAuthorize dans
@@ -70,17 +70,17 @@ public class PartenaireService {
 
     public PartenaireResponse creer(PartenaireRequest request) {
         Partenaire partenaire = Partenaire.builder()
-                .nom(request.getNom())
-                .logoUrl(request.getLogoUrl())
-                .presentation(request.getPresentation())
-                .categorie(request.getCategorie())
-                .territoire(request.getTerritoire())
-                .roleProjet(request.getRoleProjet())
-                .videoUrl(request.getVideoUrl())
-                .lien(request.getLien())
-                .periodeDebut(request.getPeriodeDebut())
-                .periodeFin(request.getPeriodeFin())
-                .actif(request.getActif() == null || request.getActif())
+                .nom(request.nom())
+                .logoUrl(request.logoUrl())
+                .presentation(request.presentation())
+                .categorie(request.categorie())
+                .territoire(request.territoire())
+                .roleProjet(request.roleProjet())
+                .videoUrl(request.videoUrl())
+                .lien(request.lien())
+                .periodeDebut(request.periodeDebut())
+                .periodeFin(request.periodeFin())
+                .actif(request.actif() == null || request.actif())
                 .build();
 
         Partenaire saved = partenaireRepository.save(partenaire);
@@ -96,18 +96,18 @@ public class PartenaireService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Partenaire non trouve avec l'ID: " + id));
 
-        partenaire.setNom(request.getNom());
-        partenaire.setLogoUrl(request.getLogoUrl());
-        partenaire.setPresentation(request.getPresentation());
-        partenaire.setCategorie(request.getCategorie());
-        partenaire.setTerritoire(request.getTerritoire());
-        partenaire.setRoleProjet(request.getRoleProjet());
-        partenaire.setVideoUrl(request.getVideoUrl());
-        partenaire.setLien(request.getLien());
-        partenaire.setPeriodeDebut(request.getPeriodeDebut());
-        partenaire.setPeriodeFin(request.getPeriodeFin());
-        if (request.getActif() != null) {
-            partenaire.setActif(request.getActif());
+        partenaire.setNom(request.nom());
+        partenaire.setLogoUrl(request.logoUrl());
+        partenaire.setPresentation(request.presentation());
+        partenaire.setCategorie(request.categorie());
+        partenaire.setTerritoire(request.territoire());
+        partenaire.setRoleProjet(request.roleProjet());
+        partenaire.setVideoUrl(request.videoUrl());
+        partenaire.setLien(request.lien());
+        partenaire.setPeriodeDebut(request.periodeDebut());
+        partenaire.setPeriodeFin(request.periodeFin());
+        if (request.actif() != null) {
+            partenaire.setActif(request.actif());
         }
 
         Partenaire saved = partenaireRepository.save(partenaire);
@@ -130,21 +130,20 @@ public class PartenaireService {
     // ────────────────────────────────────────────────────────────────
 
     private PartenaireResponse toResponse(Partenaire partenaire) {
-        return PartenaireResponse.builder()
-                .id(partenaire.getId())
-                .nom(partenaire.getNom())
-                .logoUrl(partenaire.getLogoUrl())
-                .presentation(partenaire.getPresentation())
-                .categorie(partenaire.getCategorie())
-                .territoire(partenaire.getTerritoire())
-                .roleProjet(partenaire.getRoleProjet())
-                .videoUrl(partenaire.getVideoUrl())
-                .lien(partenaire.getLien())
-                .periodeDebut(partenaire.getPeriodeDebut())
-                .periodeFin(partenaire.getPeriodeFin())
-                .actif(partenaire.isActif())
-                .dateCreation(partenaire.getDateCreation())
-                .dateMiseAJour(partenaire.getDateMiseAJour())
-                .build();
+        return new PartenaireResponse(
+                partenaire.getId(),
+                partenaire.getNom(),
+                partenaire.getLogoUrl(),
+                partenaire.getPresentation(),
+                partenaire.getCategorie(),
+                partenaire.getTerritoire(),
+                partenaire.getRoleProjet(),
+                partenaire.getVideoUrl(),
+                partenaire.getLien(),
+                partenaire.getPeriodeDebut(),
+                partenaire.getPeriodeFin(),
+                partenaire.isActif(),
+                partenaire.getDateCreation(),
+                partenaire.getDateMiseAJour());
     }
 }

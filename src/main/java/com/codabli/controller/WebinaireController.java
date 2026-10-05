@@ -20,7 +20,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les webinaires (CDC PRO-06).
- *
+ * </p>
  * Securite :
  * - GET (catalogue) : public
  * - POST/PUT/DELETE : admin/super_admin
@@ -37,7 +37,7 @@ public class WebinaireController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<WebinaireResponse>> lister(@PageableDefault(size = 10) Pageable pageable) {
+    public ResponseEntity<Page<WebinaireResponse>> lister(@PageableDefault Pageable pageable) {
         return ResponseEntity.ok(webinaireService.lister(pageable));
     }
 

@@ -16,11 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les evaluations pedagogiques (CDC PRO-05).
- *
+ * <p>
  * Securite : seul l'enseignant auteur de l'evaluation (ou un
  * admin/super_admin) peut la consulter/modifier/supprimer.
  */
@@ -33,8 +32,8 @@ public class EvaluationPedagogiqueService {
     private final EntityManager entityManager;
 
     public EvaluationPedagogiqueService(EvaluationPedagogiqueRepository evaluationRepository,
-            UtilisateurRepository utilisateurRepository,
-            EntityManager entityManager) {
+                                        UtilisateurRepository utilisateurRepository,
+                                        EntityManager entityManager) {
         this.evaluationRepository = evaluationRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.entityManager = entityManager;
@@ -45,19 +44,19 @@ public class EvaluationPedagogiqueService {
 
         EvaluationPedagogique evaluation = EvaluationPedagogique.builder()
                 .enseignant(enseignant)
-                .titre(request.getTitre())
-                .competencesEvaluees(request.getCompetencesEvaluees())
-                .observations(request.getObservations())
-                .bilan(request.getBilan())
-                .dateEvaluation(request.getDateEvaluation())
-                .fichierExportUrl(request.getFichierExportUrl())
+                .titre(request.titre())
+                .competencesEvaluees(request.competencesEvaluees())
+                .observations(request.observations())
+                .bilan(request.bilan())
+                .dateEvaluation(request.dateEvaluation())
+                .fichierExportUrl(request.fichierExportUrl())
                 .build();
 
-        if (request.getClasseId() != null) {
-            evaluation.setClasse(entityManager.getReference(Classe.class, request.getClasseId()));
+        if (request.classeId() != null) {
+            evaluation.setClasse(entityManager.getReference(Classe.class, request.classeId()));
         }
-        if (request.getEleveId() != null) {
-            evaluation.setEleve(entityManager.getReference(Utilisateur.class, request.getEleveId()));
+        if (request.eleveId() != null) {
+            evaluation.setEleve(entityManager.getReference(Utilisateur.class, request.eleveId()));
         }
 
         return toResponse(evaluationRepository.save(evaluation));
@@ -68,7 +67,7 @@ public class EvaluationPedagogiqueService {
         Utilisateur enseignant = getUtilisateurFromJwt(jwt);
         return evaluationRepository.findByEnseignantIdOrderByDateEvaluationDesc(enseignant.getId()).stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -79,18 +78,18 @@ public class EvaluationPedagogiqueService {
     public EvaluationPedagogiqueResponse modifier(UUID id, EvaluationPedagogiqueRequest request, Jwt jwt) {
         EvaluationPedagogique evaluation = getAvecDroit(id, jwt);
 
-        evaluation.setTitre(request.getTitre());
-        evaluation.setCompetencesEvaluees(request.getCompetencesEvaluees());
-        evaluation.setObservations(request.getObservations());
-        evaluation.setBilan(request.getBilan());
-        evaluation.setDateEvaluation(request.getDateEvaluation());
-        evaluation.setFichierExportUrl(request.getFichierExportUrl());
+        evaluation.setTitre(request.titre());
+        evaluation.setCompetencesEvaluees(request.competencesEvaluees());
+        evaluation.setObservations(request.observations());
+        evaluation.setBilan(request.bilan());
+        evaluation.setDateEvaluation(request.dateEvaluation());
+        evaluation.setFichierExportUrl(request.fichierExportUrl());
 
-        if (request.getClasseId() != null) {
-            evaluation.setClasse(entityManager.getReference(Classe.class, request.getClasseId()));
+        if (request.classeId() != null) {
+            evaluation.setClasse(entityManager.getReference(Classe.class, request.classeId()));
         }
-        if (request.getEleveId() != null) {
-            evaluation.setEleve(entityManager.getReference(Utilisateur.class, request.getEleveId()));
+        if (request.eleveId() != null) {
+            evaluation.setEleve(entityManager.getReference(Utilisateur.class, request.eleveId()));
         }
 
         return toResponse(evaluationRepository.save(evaluation));
@@ -134,23 +133,20 @@ public class EvaluationPedagogiqueService {
     }
 
     private EvaluationPedagogiqueResponse toResponse(EvaluationPedagogique evaluation) {
-        return EvaluationPedagogiqueResponse.builder()
-                .id(evaluation.getId())
-                .enseignantId(evaluation.getEnseignant().getId())
-                .enseignantNom(evaluation.getEnseignant().getPrenom() + " " + evaluation.getEnseignant().getNom())
-                .classeId(evaluation.getClasse() != null ? evaluation.getClasse().getId() : null)
-                .eleveId(evaluation.getEleve() != null ? evaluation.getEleve().getId() : null)
-                .eleveNom(evaluation.getEleve() != null
-                        ? evaluation.getEleve().getPrenom() + " " + evaluation.getEleve().getNom()
-                        : null)
-                .titre(evaluation.getTitre())
-                .competencesEvaluees(evaluation.getCompetencesEvaluees())
-                .observations(evaluation.getObservations())
-                .bilan(evaluation.getBilan())
-                .dateEvaluation(evaluation.getDateEvaluation())
-                .fichierExportUrl(evaluation.getFichierExportUrl())
-                .dateCreation(evaluation.getDateCreation())
-                .dateMiseAJour(evaluation.getDateMiseAJour())
-                .build();
+        return new EvaluationPedagogiqueResponse(
+                evaluation.getId(),
+                evaluation.getEnseignant().getId(),
+                evaluation.getEnseignant().getPrenom() + " " + evaluation.getEnseignant().getNom(),
+                evaluation.getClasse() != null ? evaluation.getClasse().getId() : null,
+                evaluation.getEleve() != null ? evaluation.getEleve().getId() : null,
+                evaluation.getEleve() != null ? evaluation.getEleve().getPrenom() + " " + evaluation.getEleve().getNom() : null,
+                evaluation.getTitre(),
+                evaluation.getCompetencesEvaluees(),
+                evaluation.getObservations(),
+                evaluation.getBilan(),
+                evaluation.getDateEvaluation(),
+                evaluation.getFichierExportUrl(),
+                evaluation.getDateCreation(),
+                evaluation.getDateMiseAJour());
     }
 }

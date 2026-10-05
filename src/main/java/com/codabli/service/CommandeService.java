@@ -28,11 +28,10 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les commandes.
- *
+ * <p>
  * Securite :
  * - Creation / consultation : authentifie, propre a l'utilisateur connecte
  * - Changement de statut : admin uniquement via @PreAuthorize
@@ -50,10 +49,10 @@ public class CommandeService {
     private final PanierService panierService;
 
     public CommandeService(CommandeRepository commandeRepository,
-            ProduitRepository produitRepository,
-            AdresseLivraisonRepository adresseLivraisonRepository,
-            UtilisateurRepository utilisateurRepository,
-            PanierService panierService) {
+                           ProduitRepository produitRepository,
+                           AdresseLivraisonRepository adresseLivraisonRepository,
+                           UtilisateurRepository utilisateurRepository,
+                           PanierService panierService) {
         this.commandeRepository = commandeRepository;
         this.produitRepository = produitRepository;
         this.adresseLivraisonRepository = adresseLivraisonRepository;
@@ -76,10 +75,10 @@ public class CommandeService {
 
         // Recuperer l'adresse de livraison si fournie
         AdresseLivraison adresseLivraison = null;
-        if (request.getAdresseLivraisonId() != null) {
-            adresseLivraison = adresseLivraisonRepository.findById(request.getAdresseLivraisonId())
+        if (request.adresseLivraisonId() != null) {
+            adresseLivraison = adresseLivraisonRepository.findById(request.adresseLivraisonId())
                     .orElseThrow(() -> new ResourceNotFoundException(
-                            "Adresse de livraison non trouvee avec l'ID: " + request.getAdresseLivraisonId()));
+                            "Adresse de livraison non trouvee avec l'ID: " + request.adresseLivraisonId()));
 
             // Verifier que l'adresse appartient a l'utilisateur
             if (!adresseLivraison.getUtilisateur().getId().equals(utilisateur.getId())) {
@@ -215,46 +214,43 @@ public class CommandeService {
     private CommandeResponse toResponse(Commande commande) {
         List<LigneCommandeResponse> lignes = commande.getLignes().stream()
                 .map(this::toLigneResponse)
-                .collect(Collectors.toList());
+                .toList();
 
         AdresseLivraisonResponse adresseResponse = null;
         if (commande.getAdresseLivraison() != null) {
             AdresseLivraison a = commande.getAdresseLivraison();
-            adresseResponse = AdresseLivraisonResponse.builder()
-                    .id(a.getId())
-                    .nom(a.getNom())
-                    .adresse(a.getAdresse())
-                    .codePostal(a.getCodePostal())
-                    .ville(a.getVille())
-                    .telephone(a.getTelephone())
-                    .parDefaut(a.isParDefaut())
-                    .build();
+            adresseResponse = new AdresseLivraisonResponse(
+                    a.getId(),
+                    a.getNom(),
+                    a.getAdresse(),
+                    a.getCodePostal(),
+                    a.getVille(),
+                    a.getTelephone(),
+                    a.isParDefaut());
         }
 
-        return CommandeResponse.builder()
-                .id(commande.getId())
-                .statut(commande.getStatut())
-                .sousTotal(commande.getSousTotal())
-                .fraisLivraison(commande.getFraisLivraison())
-                .total(commande.getTotal())
-                .dateCommande(commande.getDateCommande())
-                .referencePaiement(commande.getReferencePaiement())
-                .adresseLivraison(adresseResponse)
-                .lignes(lignes)
-                .build();
+        return new CommandeResponse(
+                commande.getId(),
+                commande.getStatut(),
+                commande.getSousTotal(),
+                commande.getFraisLivraison(),
+                commande.getTotal(),
+                commande.getDateCommande(),
+                commande.getReferencePaiement(),
+                adresseResponse,
+                lignes);
     }
 
     private LigneCommandeResponse toLigneResponse(LigneCommande ligne) {
         BigDecimal sousTotal = ligne.getPrixUnitaire()
                 .multiply(BigDecimal.valueOf(ligne.getQuantite()));
 
-        return LigneCommandeResponse.builder()
-                .id(ligne.getId())
-                .produitId(ligne.getProduit() != null ? ligne.getProduit().getId() : null)
-                .nomProduit(ligne.getNomProduit())
-                .prixUnitaire(ligne.getPrixUnitaire())
-                .quantite(ligne.getQuantite())
-                .sousTotal(sousTotal)
-                .build();
+        return new LigneCommandeResponse(
+                ligne.getId(),
+                ligne.getProduit() != null ? ligne.getProduit().getId() : null,
+                ligne.getNomProduit(),
+                ligne.getPrixUnitaire(),
+                ligne.getQuantite(),
+                sousTotal);
     }
 }

@@ -44,14 +44,17 @@ class RessourcePedagogiqueServiceTest {
 
     @BeforeEach
     void setUp() {
+        // JWT partages par plusieurs tests : chaque test n'en utilise qu'un ou
+        // deux, donc les stubs sont declares lenient() pour ne pas declencher
+        // UnnecessaryStubbingException (Mockito strict) sur ceux non utilises.
         teacherJwt = mock(Jwt.class);
-        when(teacherJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("enseignant")));
+        lenient().when(teacherJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("enseignant")));
 
         comiteJwt = mock(Jwt.class);
-        when(comiteJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("comite_lecture")));
+        lenient().when(comiteJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("comite_lecture")));
 
         adminJwt = mock(Jwt.class);
-        when(adminJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("admin")));
+        lenient().when(adminJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("admin")));
     }
 
     @Test
@@ -73,7 +76,7 @@ class RessourcePedagogiqueServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        assertTrue(result.getContent().get(0).isActif());
+        assertTrue(result.getContent().getFirst().actif());
         verify(repository).findByFilters(eq(TypeRessource.fiche), eq("Maths"), eq("6eme"), eq(true), eq(pageable));
     }
 
@@ -96,7 +99,7 @@ class RessourcePedagogiqueServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
-        assertFalse(result.getContent().get(0).isActif());
+        assertFalse(result.getContent().getFirst().actif());
         verify(repository).findByFilters(eq(TypeRessource.guide), eq("Maths"), eq("6eme"), eq(false), eq(pageable));
     }
 
@@ -115,7 +118,7 @@ class RessourcePedagogiqueServiceTest {
 
         RessourcePedagogiqueResponse result = service.getById(id, teacherJwt);
         assertNotNull(result);
-        assertEquals("Fiche math active", result.getTitre());
+        assertEquals("Fiche math active", result.titre());
     }
 
     @Test
@@ -152,16 +155,12 @@ class RessourcePedagogiqueServiceTest {
 
         assertNotNull(resultComite);
         assertNotNull(resultAdmin);
-        assertFalse(resultComite.isActif());
+        assertFalse(resultComite.actif());
     }
 
     @Test
     void creer_shouldSaveRessource() {
-        RessourcePedagogiqueRequest request = RessourcePedagogiqueRequest.builder()
-                .titre("Nouveau guide")
-                .type(TypeRessource.guide)
-                .actif(true)
-                .build();
+        RessourcePedagogiqueRequest request = ressourcePedagogiqueRequest("Nouveau guide", TypeRessource.guide, true);
 
         RessourcePedagogique savedRes = RessourcePedagogique.builder()
                 .id(UUID.randomUUID())
@@ -175,7 +174,7 @@ class RessourcePedagogiqueServiceTest {
 
         RessourcePedagogiqueResponse result = service.creer(request);
         assertNotNull(result);
-        assertEquals("Nouveau guide", result.getTitre());
+        assertEquals("Nouveau guide", result.titre());
         verify(repository).save(any(RessourcePedagogique.class));
     }
 
@@ -190,20 +189,16 @@ class RessourcePedagogiqueServiceTest {
                 .dateAjout(OffsetDateTime.now())
                 .build();
 
-        RessourcePedagogiqueRequest request = RessourcePedagogiqueRequest.builder()
-                .titre("Fiche V2")
-                .type(TypeRessource.video)
-                .actif(false)
-                .build();
+        RessourcePedagogiqueRequest request = ressourcePedagogiqueRequest("Fiche V2", TypeRessource.video, false);
 
         when(repository.findById(id)).thenReturn(Optional.of(mockRes));
         when(repository.save(any(RessourcePedagogique.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         RessourcePedagogiqueResponse result = service.modifier(id, request);
         assertNotNull(result);
-        assertEquals("Fiche V2", result.getTitre());
-        assertEquals(TypeRessource.video, result.getType());
-        assertFalse(result.isActif());
+        assertEquals("Fiche V2", result.titre());
+        assertEquals(TypeRessource.video, result.type());
+        assertFalse(result.actif());
     }
 
     @Test
@@ -226,5 +221,9 @@ class RessourcePedagogiqueServiceTest {
         assertThrows(AccessDeniedException.class, () -> service.supprimer(id, comiteJwt));
         assertThrows(AccessDeniedException.class, () -> service.supprimer(id, teacherJwt));
         verify(repository, never()).delete(any());
+    }
+
+    private RessourcePedagogiqueRequest ressourcePedagogiqueRequest(String titre, TypeRessource type, Boolean actif) {
+        return new RessourcePedagogiqueRequest(titre, null, type, null, null, null, actif);
     }
 }

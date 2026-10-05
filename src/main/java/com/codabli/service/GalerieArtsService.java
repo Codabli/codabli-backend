@@ -1,11 +1,6 @@
 package com.codabli.service;
 
-import com.codabli.dto.FresqueRequest;
-import com.codabli.dto.FresqueResponse;
-import com.codabli.dto.HotspotRequest;
-import com.codabli.dto.HotspotResponse;
-import com.codabli.dto.SalleGalerieRequest;
-import com.codabli.dto.SalleGalerieResponse;
+import com.codabli.dto.*;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.Fresque;
 import com.codabli.entity.Hotspot;
@@ -18,12 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour le socle structurel de la Galerie des Arts immersive
  * (CDC 8.11) : hall (salles/pays), fresques principales et hotspots.
- *
+ * <p>
  * Perimetre volontairement limite au contenu structurel gere par
  * l'administration ; la navigation immersive (2,5D), la collecte
  * d'autocollants et les mini-jeux d'observation relevent du frontend et/ou
@@ -38,8 +32,8 @@ public class GalerieArtsService {
     private final EntityManager entityManager;
 
     public GalerieArtsService(SalleGalerieRepository salleGalerieRepository,
-            FresqueRepository fresqueRepository,
-            EntityManager entityManager) {
+                              FresqueRepository fresqueRepository,
+                              EntityManager entityManager) {
         this.salleGalerieRepository = salleGalerieRepository;
         this.fresqueRepository = fresqueRepository;
         this.entityManager = entityManager;
@@ -53,7 +47,7 @@ public class GalerieArtsService {
     public List<SalleGalerieResponse> listerSalles() {
         return salleGalerieRepository.findByActifTrueOrderByOrdreAffichageAsc().stream()
                 .map(this::toSalleResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -63,27 +57,27 @@ public class GalerieArtsService {
 
     public SalleGalerieResponse creerSalle(SalleGalerieRequest request) {
         SalleGalerie salle = SalleGalerie.builder()
-                .pays(request.getPays())
-                .introduction(request.getIntroduction())
-                .ambianceSonoreUrl(request.getAmbianceSonoreUrl())
-                .paletteCouleurs(request.getPaletteCouleurs())
-                .ordreAffichage(request.getOrdreAffichage() != null ? request.getOrdreAffichage() : 0)
-                .actif(request.getActif() == null || request.getActif())
+                .pays(request.pays())
+                .introduction(request.introduction())
+                .ambianceSonoreUrl(request.ambianceSonoreUrl())
+                .paletteCouleurs(request.paletteCouleurs())
+                .ordreAffichage(request.ordreAffichage() != null ? request.ordreAffichage() : 0)
+                .actif(request.actif() == null || request.actif())
                 .build();
         return toSalleResponse(salleGalerieRepository.save(salle));
     }
 
     public SalleGalerieResponse modifierSalle(UUID id, SalleGalerieRequest request) {
         SalleGalerie salle = getSalleOrThrow(id);
-        salle.setPays(request.getPays());
-        salle.setIntroduction(request.getIntroduction());
-        salle.setAmbianceSonoreUrl(request.getAmbianceSonoreUrl());
-        salle.setPaletteCouleurs(request.getPaletteCouleurs());
-        if (request.getOrdreAffichage() != null) {
-            salle.setOrdreAffichage(request.getOrdreAffichage());
+        salle.setPays(request.pays());
+        salle.setIntroduction(request.introduction());
+        salle.setAmbianceSonoreUrl(request.ambianceSonoreUrl());
+        salle.setPaletteCouleurs(request.paletteCouleurs());
+        if (request.ordreAffichage() != null) {
+            salle.setOrdreAffichage(request.ordreAffichage());
         }
-        if (request.getActif() != null) {
-            salle.setActif(request.getActif());
+        if (request.actif() != null) {
+            salle.setActif(request.actif());
         }
         return toSalleResponse(salleGalerieRepository.save(salle));
     }
@@ -97,7 +91,7 @@ public class GalerieArtsService {
     // ────────────────────────────────────────────────────────────────
 
     public FresqueResponse creerFresque(FresqueRequest request) {
-        SalleGalerie salle = getSalleOrThrow(request.getSalleId());
+        SalleGalerie salle = getSalleOrThrow(request.salleId());
 
         if (fresqueRepository.findBySalleId(salle.getId()).isPresent()) {
             throw new IllegalStateException("Cette salle possede deja une fresque principale");
@@ -105,13 +99,13 @@ public class GalerieArtsService {
 
         Fresque fresque = Fresque.builder()
                 .salle(salle)
-                .titre(request.getTitre())
-                .imageUrl(request.getImageUrl())
-                .introduction(request.getIntroduction())
+                .titre(request.titre())
+                .imageUrl(request.imageUrl())
+                .introduction(request.introduction())
                 .build();
 
-        if (request.getConteId() != null) {
-            fresque.setConte(entityManager.getReference(ConteDanse.class, request.getConteId()));
+        if (request.conteId() != null) {
+            fresque.setConte(entityManager.getReference(ConteDanse.class, request.conteId()));
         }
 
         return toFresqueResponse(fresqueRepository.save(fresque));
@@ -120,11 +114,11 @@ public class GalerieArtsService {
     public FresqueResponse modifierFresque(UUID id, FresqueRequest request) {
         Fresque fresque = getFresqueOrThrow(id);
 
-        fresque.setTitre(request.getTitre());
-        fresque.setImageUrl(request.getImageUrl());
-        fresque.setIntroduction(request.getIntroduction());
-        fresque.setConte(request.getConteId() != null
-                ? entityManager.getReference(ConteDanse.class, request.getConteId())
+        fresque.setTitre(request.titre());
+        fresque.setImageUrl(request.imageUrl());
+        fresque.setIntroduction(request.introduction());
+        fresque.setConte(request.conteId() != null
+                ? entityManager.getReference(ConteDanse.class, request.conteId())
                 : null);
 
         return toFresqueResponse(fresqueRepository.save(fresque));
@@ -143,13 +137,13 @@ public class GalerieArtsService {
 
         Hotspot hotspot = Hotspot.builder()
                 .fresque(fresque)
-                .titre(request.getTitre())
-                .explicationDecouverte(request.getExplicationDecouverte())
-                .explicationApprofondie(request.getExplicationApprofondie())
-                .imageUrl(request.getImageUrl())
-                .audioUrl(request.getAudioUrl())
-                .ordreAffichage(request.getOrdreAffichage() != null ? request.getOrdreAffichage() : fresque.getHotspots().size())
-                .actif(request.getActif() == null || request.getActif())
+                .titre(request.titre())
+                .explicationDecouverte(request.explicationDecouverte())
+                .explicationApprofondie(request.explicationApprofondie())
+                .imageUrl(request.imageUrl())
+                .audioUrl(request.audioUrl())
+                .ordreAffichage(request.ordreAffichage() != null ? request.ordreAffichage() : fresque.getHotspots().size())
+                .actif(request.actif() == null || request.actif())
                 .build();
 
         fresque.getHotspots().add(hotspot);
@@ -163,16 +157,16 @@ public class GalerieArtsService {
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Hotspot non trouve avec l'ID: " + hotspotId));
 
-        hotspot.setTitre(request.getTitre());
-        hotspot.setExplicationDecouverte(request.getExplicationDecouverte());
-        hotspot.setExplicationApprofondie(request.getExplicationApprofondie());
-        hotspot.setImageUrl(request.getImageUrl());
-        hotspot.setAudioUrl(request.getAudioUrl());
-        if (request.getOrdreAffichage() != null) {
-            hotspot.setOrdreAffichage(request.getOrdreAffichage());
+        hotspot.setTitre(request.titre());
+        hotspot.setExplicationDecouverte(request.explicationDecouverte());
+        hotspot.setExplicationApprofondie(request.explicationApprofondie());
+        hotspot.setImageUrl(request.imageUrl());
+        hotspot.setAudioUrl(request.audioUrl());
+        if (request.ordreAffichage() != null) {
+            hotspot.setOrdreAffichage(request.ordreAffichage());
         }
-        if (request.getActif() != null) {
-            hotspot.setActif(request.getActif());
+        if (request.actif() != null) {
+            hotspot.setActif(request.actif());
         }
 
         return toFresqueResponse(fresqueRepository.save(fresque));
@@ -206,41 +200,38 @@ public class GalerieArtsService {
                 .map(this::toFresqueResponse)
                 .orElse(null);
 
-        return SalleGalerieResponse.builder()
-                .id(salle.getId())
-                .pays(salle.getPays())
-                .introduction(salle.getIntroduction())
-                .ambianceSonoreUrl(salle.getAmbianceSonoreUrl())
-                .paletteCouleurs(salle.getPaletteCouleurs())
-                .ordreAffichage(salle.getOrdreAffichage())
-                .actif(salle.isActif())
-                .fresque(fresque)
-                .build();
+        return new SalleGalerieResponse(
+                salle.getId(),
+                salle.getPays(),
+                salle.getIntroduction(),
+                salle.getAmbianceSonoreUrl(),
+                salle.getPaletteCouleurs(),
+                salle.getOrdreAffichage(),
+                salle.isActif(),
+                fresque);
     }
 
     private FresqueResponse toFresqueResponse(Fresque fresque) {
         List<HotspotResponse> hotspots = fresque.getHotspots().stream()
-                .map(h -> HotspotResponse.builder()
-                        .id(h.getId())
-                        .fresqueId(fresque.getId())
-                        .titre(h.getTitre())
-                        .explicationDecouverte(h.getExplicationDecouverte())
-                        .explicationApprofondie(h.getExplicationApprofondie())
-                        .imageUrl(h.getImageUrl())
-                        .audioUrl(h.getAudioUrl())
-                        .ordreAffichage(h.getOrdreAffichage())
-                        .actif(h.isActif())
-                        .build())
-                .collect(Collectors.toList());
+                .map(h -> new HotspotResponse(
+                        h.getId(),
+                        fresque.getId(),
+                        h.getTitre(),
+                        h.getExplicationDecouverte(),
+                        h.getExplicationApprofondie(),
+                        h.getImageUrl(),
+                        h.getAudioUrl(),
+                        h.getOrdreAffichage(),
+                        h.isActif()))
+                .toList();
 
-        return FresqueResponse.builder()
-                .id(fresque.getId())
-                .salleId(fresque.getSalle().getId())
-                .titre(fresque.getTitre())
-                .imageUrl(fresque.getImageUrl())
-                .introduction(fresque.getIntroduction())
-                .conteId(fresque.getConte() != null ? fresque.getConte().getId() : null)
-                .hotspots(hotspots)
-                .build();
+        return new FresqueResponse(
+                fresque.getId(),
+                fresque.getSalle().getId(),
+                fresque.getTitre(),
+                fresque.getImageUrl(),
+                fresque.getIntroduction(),
+                fresque.getConte() != null ? fresque.getConte().getId() : null,
+                hotspots);
     }
 }

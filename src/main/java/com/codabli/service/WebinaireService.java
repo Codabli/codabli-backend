@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les webinaires (CDC PRO-06).
@@ -31,8 +30,8 @@ public class WebinaireService {
     private final UtilisateurRepository utilisateurRepository;
 
     public WebinaireService(WebinaireRepository webinaireRepository,
-            InscriptionWebinaireRepository inscriptionRepository,
-            UtilisateurRepository utilisateurRepository) {
+                            InscriptionWebinaireRepository inscriptionRepository,
+                            UtilisateurRepository utilisateurRepository) {
         this.webinaireRepository = webinaireRepository;
         this.inscriptionRepository = inscriptionRepository;
         this.utilisateurRepository = utilisateurRepository;
@@ -58,16 +57,16 @@ public class WebinaireService {
 
     public WebinaireResponse creer(WebinaireRequest request) {
         Webinaire webinaire = Webinaire.builder()
-                .titre(request.getTitre())
-                .description(request.getDescription())
-                .intervenant(request.getIntervenant())
-                .dateDebut(request.getDateDebut())
-                .dateFin(request.getDateFin())
-                .lienUrl(request.getLienUrl())
-                .lienRediffusionUrl(request.getLienRediffusionUrl())
-                .documentsUrl(request.getDocumentsUrl())
-                .capaciteMax(request.getCapaciteMax())
-                .actif(request.getActif() == null || request.getActif())
+                .titre(request.titre())
+                .description(request.description())
+                .intervenant(request.intervenant())
+                .dateDebut(request.dateDebut())
+                .dateFin(request.dateFin())
+                .lienUrl(request.lienUrl())
+                .lienRediffusionUrl(request.lienRediffusionUrl())
+                .documentsUrl(request.documentsUrl())
+                .capaciteMax(request.capaciteMax())
+                .actif(request.actif() == null || request.actif())
                 .build();
 
         Webinaire saved = webinaireRepository.save(webinaire);
@@ -77,17 +76,17 @@ public class WebinaireService {
     public WebinaireResponse modifier(UUID id, WebinaireRequest request) {
         Webinaire webinaire = getOrThrow(id);
 
-        webinaire.setTitre(request.getTitre());
-        webinaire.setDescription(request.getDescription());
-        webinaire.setIntervenant(request.getIntervenant());
-        webinaire.setDateDebut(request.getDateDebut());
-        webinaire.setDateFin(request.getDateFin());
-        webinaire.setLienUrl(request.getLienUrl());
-        webinaire.setLienRediffusionUrl(request.getLienRediffusionUrl());
-        webinaire.setDocumentsUrl(request.getDocumentsUrl());
-        webinaire.setCapaciteMax(request.getCapaciteMax());
-        if (request.getActif() != null) {
-            webinaire.setActif(request.getActif());
+        webinaire.setTitre(request.titre());
+        webinaire.setDescription(request.description());
+        webinaire.setIntervenant(request.intervenant());
+        webinaire.setDateDebut(request.dateDebut());
+        webinaire.setDateFin(request.dateFin());
+        webinaire.setLienUrl(request.lienUrl());
+        webinaire.setLienRediffusionUrl(request.lienRediffusionUrl());
+        webinaire.setDocumentsUrl(request.documentsUrl());
+        webinaire.setCapaciteMax(request.capaciteMax());
+        if (request.actif() != null) {
+            webinaire.setActif(request.actif());
         }
 
         Webinaire saved = webinaireRepository.save(webinaire);
@@ -137,7 +136,7 @@ public class WebinaireService {
         Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
         return inscriptionRepository.findByUtilisateurIdOrderByDateInscriptionDesc(utilisateur.getId()).stream()
                 .map(this::toInscriptionResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -156,32 +155,30 @@ public class WebinaireService {
     }
 
     private WebinaireResponse toResponse(Webinaire webinaire) {
-        return WebinaireResponse.builder()
-                .id(webinaire.getId())
-                .titre(webinaire.getTitre())
-                .description(webinaire.getDescription())
-                .intervenant(webinaire.getIntervenant())
-                .dateDebut(webinaire.getDateDebut())
-                .dateFin(webinaire.getDateFin())
-                .lienUrl(webinaire.getLienUrl())
-                .lienRediffusionUrl(webinaire.getLienRediffusionUrl())
-                .documentsUrl(webinaire.getDocumentsUrl())
-                .capaciteMax(webinaire.getCapaciteMax())
-                .nombreInscrits(inscriptionRepository.countByWebinaireId(webinaire.getId()))
-                .actif(webinaire.isActif())
-                .dateCreation(webinaire.getDateCreation())
-                .build();
+        return new WebinaireResponse(
+                webinaire.getId(),
+                webinaire.getTitre(),
+                webinaire.getDescription(),
+                webinaire.getIntervenant(),
+                webinaire.getDateDebut(),
+                webinaire.getDateFin(),
+                webinaire.getLienUrl(),
+                webinaire.getLienRediffusionUrl(),
+                webinaire.getDocumentsUrl(),
+                webinaire.getCapaciteMax(),
+                inscriptionRepository.countByWebinaireId(webinaire.getId()),
+                webinaire.isActif(),
+                webinaire.getDateCreation());
     }
 
     private InscriptionWebinaireResponse toInscriptionResponse(InscriptionWebinaire inscription) {
-        return InscriptionWebinaireResponse.builder()
-                .id(inscription.getId())
-                .webinaireId(inscription.getWebinaire().getId())
-                .webinaireTitre(inscription.getWebinaire().getTitre())
-                .webinaireDateDebut(inscription.getWebinaire().getDateDebut())
-                .presenceConfirmee(inscription.isPresenceConfirmee())
-                .attestationUrl(inscription.getAttestationUrl())
-                .dateInscription(inscription.getDateInscription())
-                .build();
+        return new InscriptionWebinaireResponse(
+                inscription.getId(),
+                inscription.getWebinaire().getId(),
+                inscription.getWebinaire().getTitre(),
+                inscription.getWebinaire().getDateDebut(),
+                inscription.isPresenceConfirmee(),
+                inscription.getAttestationUrl(),
+                inscription.getDateInscription());
     }
 }

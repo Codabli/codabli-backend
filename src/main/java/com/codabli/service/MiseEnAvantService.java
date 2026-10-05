@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les mises en avant de la page d'accueil (CDC ACC-04).
@@ -29,18 +28,18 @@ public class MiseEnAvantService {
     public List<MiseEnAvantResponse> listerActives() {
         return miseEnAvantRepository.findActivesEnCours(OffsetDateTime.now()).stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public MiseEnAvantResponse creer(MiseEnAvantRequest request) {
         MiseEnAvant miseEnAvant = MiseEnAvant.builder()
-                .typeCible(request.getTypeCible())
-                .cibleId(request.getCibleId())
-                .titre(request.getTitre())
-                .dateDebut(request.getDateDebut())
-                .dateFin(request.getDateFin())
-                .ordreAffichage(request.getOrdreAffichage() != null ? request.getOrdreAffichage() : 0)
-                .actif(request.getActif() == null || request.getActif())
+                .typeCible(request.typeCible())
+                .cibleId(request.cibleId())
+                .titre(request.titre())
+                .dateDebut(request.dateDebut())
+                .dateFin(request.dateFin())
+                .ordreAffichage(request.ordreAffichage() != null ? request.ordreAffichage() : 0)
+                .actif(request.actif() == null || request.actif())
                 .build();
         return toResponse(miseEnAvantRepository.save(miseEnAvant));
     }
@@ -48,18 +47,18 @@ public class MiseEnAvantService {
     public MiseEnAvantResponse modifier(UUID id, MiseEnAvantRequest request) {
         MiseEnAvant miseEnAvant = getOrThrow(id);
 
-        miseEnAvant.setTypeCible(request.getTypeCible());
-        miseEnAvant.setCibleId(request.getCibleId());
-        miseEnAvant.setTitre(request.getTitre());
-        if (request.getDateDebut() != null) {
-            miseEnAvant.setDateDebut(request.getDateDebut());
+        miseEnAvant.setTypeCible(request.typeCible());
+        miseEnAvant.setCibleId(request.cibleId());
+        miseEnAvant.setTitre(request.titre());
+        if (request.dateDebut() != null) {
+            miseEnAvant.setDateDebut(request.dateDebut());
         }
-        miseEnAvant.setDateFin(request.getDateFin());
-        if (request.getOrdreAffichage() != null) {
-            miseEnAvant.setOrdreAffichage(request.getOrdreAffichage());
+        miseEnAvant.setDateFin(request.dateFin());
+        if (request.ordreAffichage() != null) {
+            miseEnAvant.setOrdreAffichage(request.ordreAffichage());
         }
-        if (request.getActif() != null) {
-            miseEnAvant.setActif(request.getActif());
+        if (request.actif() != null) {
+            miseEnAvant.setActif(request.actif());
         }
 
         return toResponse(miseEnAvantRepository.save(miseEnAvant));
@@ -75,15 +74,14 @@ public class MiseEnAvantService {
     }
 
     private MiseEnAvantResponse toResponse(MiseEnAvant miseEnAvant) {
-        return MiseEnAvantResponse.builder()
-                .id(miseEnAvant.getId())
-                .typeCible(miseEnAvant.getTypeCible())
-                .cibleId(miseEnAvant.getCibleId())
-                .titre(miseEnAvant.getTitre())
-                .dateDebut(miseEnAvant.getDateDebut())
-                .dateFin(miseEnAvant.getDateFin())
-                .ordreAffichage(miseEnAvant.getOrdreAffichage())
-                .actif(miseEnAvant.isActif())
-                .build();
+        return new MiseEnAvantResponse(
+                miseEnAvant.getId(),
+                miseEnAvant.getTypeCible(),
+                miseEnAvant.getCibleId(),
+                miseEnAvant.getTitre(),
+                miseEnAvant.getDateDebut(),
+                miseEnAvant.getDateFin(),
+                miseEnAvant.getOrdreAffichage(),
+                miseEnAvant.isActif());
     }
 }

@@ -20,7 +20,7 @@ import java.util.UUID;
 
 /**
  * Controller pour le coaching (CDC PRO-07).
- *
+ * </p>
  * Securite :
  * - GET offres : public
  * - POST/PUT/DELETE offres : admin/super_admin
@@ -52,7 +52,7 @@ public class CoachingController {
     @PutMapping("/offres/{id}")
     @PreAuthorize("hasAnyRole('admin', 'super_admin')")
     public ResponseEntity<OffreCoachingResponse> modifierOffre(@PathVariable UUID id,
-            @Valid @RequestBody OffreCoachingRequest request) {
+                                                               @Valid @RequestBody OffreCoachingRequest request) {
         return ResponseEntity.ok(coachingService.modifierOffre(id, request));
     }
 

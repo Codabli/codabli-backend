@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les mises en avant de la page d'accueil (CDC ACC-04).
- *
+ * </p>
  * Securite : GET public (uniquement les mises en avant actives et dans leur
  * fenetre de diffusion) ; gestion reservee admin/super_admin.
  */
@@ -42,7 +42,7 @@ public class MiseEnAvantController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('admin', 'super_admin')")
     public ResponseEntity<MiseEnAvantResponse> modifier(@PathVariable UUID id,
-            @Valid @RequestBody MiseEnAvantRequest request) {
+                                                        @Valid @RequestBody MiseEnAvantRequest request) {
         return ResponseEntity.ok(miseEnAvantService.modifier(id, request));
     }
 

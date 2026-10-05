@@ -26,12 +26,12 @@ import java.util.Map;
  * Endpoint de recherche transversale (CDC 8.19, REC-01/02).
  * Interroge les contenus publics : actualites, contes danses, cartes a
  * conte validees, produits et partenaires actifs.
- *
+ * </p>
  * Les ressources pedagogiques et fiches d'activites sont volontairement
  * exclues : leur acces est reserve a certains roles (enseignant,
  * professionnel_education, admin, comite_lecture) et les exposer dans une
  * recherche publique reviendrait a contourner cette restriction.
- *
+ * </p>
  * Public, aucune authentification requise.
  */
 @RestController
@@ -45,10 +45,10 @@ public class RechercheController {
     private final PartenaireService partenaireService;
 
     public RechercheController(ActualiteService actualiteService,
-            ConteDanseService conteDanseService,
-            GalerieService galerieService,
-            ProduitService produitService,
-            PartenaireService partenaireService) {
+                               ConteDanseService conteDanseService,
+                               GalerieService galerieService,
+                               ProduitService produitService,
+                               PartenaireService partenaireService) {
         this.actualiteService = actualiteService;
         this.conteDanseService = conteDanseService;
         this.galerieService = galerieService;
@@ -65,7 +65,7 @@ public class RechercheController {
     @GetMapping
     public ResponseEntity<Map<String, Object>> rechercher(
             @RequestParam String q,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault Pageable pageable) {
 
         Page<ActualiteResponse> actualites = actualiteService.rechercher(q, pageable);
         Page<ConteDanseResponse> contesDanses = conteDanseService.rechercher(q, pageable);

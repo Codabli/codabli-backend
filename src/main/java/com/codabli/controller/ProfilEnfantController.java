@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Controller pour les profils enfants (CDC 8.16/8.17, FAM-02, ENF-01).
- *
+ * </p>
  * Securite :
  * - Toutes les operations necessitent une authentification.
  * - Creation reservee aux comptes parent/professionnel_education.

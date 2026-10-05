@@ -15,11 +15,10 @@ import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service metier pour les profils enfants (CDC FAM-02, ENF-01).
- *
+ * </p>
  * Securite a deux niveaux, identique aux autres modules :
  * 1. @PreAuthorize dans le controller → seuls parent/professionnel_education
  * peuvent creer/gerer des profils enfants
@@ -34,7 +33,7 @@ public class ProfilEnfantService {
     private final UtilisateurRepository utilisateurRepository;
 
     public ProfilEnfantService(ProfilEnfantRepository profilEnfantRepository,
-            UtilisateurRepository utilisateurRepository) {
+                               UtilisateurRepository utilisateurRepository) {
         this.profilEnfantRepository = profilEnfantRepository;
         this.utilisateurRepository = utilisateurRepository;
     }
@@ -48,14 +47,14 @@ public class ProfilEnfantService {
 
         ProfilEnfant profil = ProfilEnfant.builder()
                 .responsable(responsable)
-                .pseudonyme(request.getPseudonyme())
-                .dateNaissance(request.getDateNaissance())
-                .languePreferee(request.getLanguePreferee())
-                .preferences(request.getPreferences())
-                .accessibilite(request.getAccessibilite())
+                .pseudonyme(request.pseudonyme())
+                .dateNaissance(request.dateNaissance())
+                .languePreferee(request.languePreferee())
+                .preferences(request.preferences())
+                .accessibilite(request.accessibilite())
                 .build();
 
-        appliquerAutorisation(profil, request.getAutorisationParentale());
+        appliquerAutorisation(profil, request.autorisationParentale());
 
         ProfilEnfant saved = profilEnfantRepository.save(profil);
         return toResponse(saved);
@@ -71,7 +70,7 @@ public class ProfilEnfantService {
         return profilEnfantRepository.findByResponsableIdOrderByPseudonyme(responsable.getId())
                 .stream()
                 .map(this::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -90,14 +89,14 @@ public class ProfilEnfantService {
     public ProfilEnfantResponse modifier(UUID id, ProfilEnfantRequest request, Jwt jwt) {
         ProfilEnfant profil = getProfilAvecDroit(id, jwt);
 
-        profil.setPseudonyme(request.getPseudonyme());
-        profil.setDateNaissance(request.getDateNaissance());
-        profil.setLanguePreferee(request.getLanguePreferee());
-        profil.setPreferences(request.getPreferences());
-        profil.setAccessibilite(request.getAccessibilite());
+        profil.setPseudonyme(request.pseudonyme());
+        profil.setDateNaissance(request.dateNaissance());
+        profil.setLanguePreferee(request.languePreferee());
+        profil.setPreferences(request.preferences());
+        profil.setAccessibilite(request.accessibilite());
 
-        if (request.getAutorisationParentale() != null) {
-            appliquerAutorisation(profil, request.getAutorisationParentale());
+        if (request.autorisationParentale() != null) {
+            appliquerAutorisation(profil, request.autorisationParentale());
         }
 
         ProfilEnfant saved = profilEnfantRepository.save(profil);
@@ -167,18 +166,17 @@ public class ProfilEnfantService {
     }
 
     private ProfilEnfantResponse toResponse(ProfilEnfant profil) {
-        return ProfilEnfantResponse.builder()
-                .id(profil.getId())
-                .responsableId(profil.getResponsable().getId())
-                .pseudonyme(profil.getPseudonyme())
-                .dateNaissance(profil.getDateNaissance())
-                .languePreferee(profil.getLanguePreferee())
-                .preferences(profil.getPreferences())
-                .accessibilite(profil.getAccessibilite())
-                .autorisationParentale(profil.isAutorisationParentale())
-                .dateAutorisation(profil.getDateAutorisation())
-                .actif(profil.isActif())
-                .dateCreation(profil.getDateCreation())
-                .build();
+        return new ProfilEnfantResponse(
+                profil.getId(),
+                profil.getResponsable().getId(),
+                profil.getPseudonyme(),
+                profil.getDateNaissance(),
+                profil.getLanguePreferee(),
+                profil.getPreferences(),
+                profil.getAccessibilite(),
+                profil.isAutorisationParentale(),
+                profil.getDateAutorisation(),
+                profil.isActif(),
+                profil.getDateCreation());
     }
 }

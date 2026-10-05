@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Service metier pour les fiches d'activites (CDC 8.7, FIC-ACT-01/02).
- *
+ * </p>
  * Securite, identique a la Mallette Pedagogique :
  * - GET : enseignant/professionnel_education/admin/super_admin/comite_lecture,
  * filtre sur actif=true pour les non-gestionnaires
@@ -67,19 +67,19 @@ public class FicheActiviteService {
 
     public FicheActiviteResponse creer(FicheActiviteRequest request) {
         FicheActivite fiche = FicheActivite.builder()
-                .titre(request.getTitre())
-                .objectif(request.getObjectif())
-                .ageMin(request.getAgeMin())
-                .ageMax(request.getAgeMax())
-                .dureeMinutes(request.getDureeMinutes())
-                .materiel(request.getMateriel())
-                .consignes(request.getConsignes())
-                .deroulement(request.getDeroulement())
-                .competences(request.getCompetences())
-                .adaptations(request.getAdaptations())
-                .credits(request.getCredits())
-                .fichierPdfUrl(request.getFichierPdfUrl())
-                .actif(request.getActif() == null || request.getActif())
+                .titre(request.titre())
+                .objectif(request.objectif())
+                .ageMin(request.ageMin())
+                .ageMax(request.ageMax())
+                .dureeMinutes(request.dureeMinutes())
+                .materiel(request.materiel())
+                .consignes(request.consignes())
+                .deroulement(request.deroulement())
+                .competences(request.competences())
+                .adaptations(request.adaptations())
+                .credits(request.credits())
+                .fichierPdfUrl(request.fichierPdfUrl())
+                .actif(request.actif() == null || request.actif())
                 .build();
 
         FicheActivite saved = ficheActiviteRepository.save(fiche);
@@ -95,20 +95,20 @@ public class FicheActiviteService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Fiche d'activite non trouvee avec l'ID: " + id));
 
-        fiche.setTitre(request.getTitre());
-        fiche.setObjectif(request.getObjectif());
-        fiche.setAgeMin(request.getAgeMin());
-        fiche.setAgeMax(request.getAgeMax());
-        fiche.setDureeMinutes(request.getDureeMinutes());
-        fiche.setMateriel(request.getMateriel());
-        fiche.setConsignes(request.getConsignes());
-        fiche.setDeroulement(request.getDeroulement());
-        fiche.setCompetences(request.getCompetences());
-        fiche.setAdaptations(request.getAdaptations());
-        fiche.setCredits(request.getCredits());
-        fiche.setFichierPdfUrl(request.getFichierPdfUrl());
-        if (request.getActif() != null) {
-            fiche.setActif(request.getActif());
+        fiche.setTitre(request.titre());
+        fiche.setObjectif(request.objectif());
+        fiche.setAgeMin(request.ageMin());
+        fiche.setAgeMax(request.ageMax());
+        fiche.setDureeMinutes(request.dureeMinutes());
+        fiche.setMateriel(request.materiel());
+        fiche.setConsignes(request.consignes());
+        fiche.setDeroulement(request.deroulement());
+        fiche.setCompetences(request.competences());
+        fiche.setAdaptations(request.adaptations());
+        fiche.setCredits(request.credits());
+        fiche.setFichierPdfUrl(request.fichierPdfUrl());
+        if (request.actif() != null) {
+            fiche.setActif(request.actif());
         }
 
         FicheActivite saved = ficheActiviteRepository.save(fiche);
@@ -161,23 +161,22 @@ public class FicheActiviteService {
     // ────────────────────────────────────────────────────────────────
 
     private FicheActiviteResponse toResponse(FicheActivite fiche) {
-        return FicheActiviteResponse.builder()
-                .id(fiche.getId())
-                .titre(fiche.getTitre())
-                .objectif(fiche.getObjectif())
-                .ageMin(fiche.getAgeMin())
-                .ageMax(fiche.getAgeMax())
-                .dureeMinutes(fiche.getDureeMinutes())
-                .materiel(fiche.getMateriel())
-                .consignes(fiche.getConsignes())
-                .deroulement(fiche.getDeroulement())
-                .competences(fiche.getCompetences())
-                .adaptations(fiche.getAdaptations())
-                .credits(fiche.getCredits())
-                .fichierPdfUrl(fiche.getFichierPdfUrl())
-                .actif(fiche.isActif())
-                .dateCreation(fiche.getDateCreation())
-                .dateMiseAJour(fiche.getDateMiseAJour())
-                .build();
+        return new FicheActiviteResponse(
+                fiche.getId(),
+                fiche.getTitre(),
+                fiche.getObjectif(),
+                fiche.getAgeMin(),
+                fiche.getAgeMax(),
+                fiche.getDureeMinutes(),
+                fiche.getMateriel(),
+                fiche.getConsignes(),
+                fiche.getDeroulement(),
+                fiche.getCompetences(),
+                fiche.getAdaptations(),
+                fiche.getCredits(),
+                fiche.getFichierPdfUrl(),
+                fiche.isActif(),
+                fiche.getDateCreation(),
+                fiche.getDateMiseAJour());
     }
 }

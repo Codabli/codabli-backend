@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Controller pour le socle de la Galerie des Arts immersive (CDC 8.11).
- *
+ * </p>
  * Securite : GET public (hall + salles + fresques + hotspots actifs) ;
  * gestion du contenu reservee a admin/super_admin.
  */
@@ -31,13 +31,17 @@ public class GalerieArtsController {
         this.galerieArtsService = galerieArtsService;
     }
 
-    /** GET /api/galerie-arts/salles — le hall (GAL-01). */
+    /**
+     * GET /api/galerie-arts/salles — le hall (GAL-01).
+     */
     @GetMapping("/salles")
     public ResponseEntity<List<SalleGalerieResponse>> listerSalles() {
         return ResponseEntity.ok(galerieArtsService.listerSalles());
     }
 
-    /** GET /api/galerie-arts/salles/{id} — salle + fresque + hotspots (GAL-03/06/08). */
+    /**
+     * GET /api/galerie-arts/salles/{id} — salle + fresque + hotspots (GAL-03/06/08).
+     */
     @GetMapping("/salles/{id}")
     public ResponseEntity<SalleGalerieResponse> getSalle(@PathVariable UUID id) {
         return ResponseEntity.ok(galerieArtsService.getSalle(id));
@@ -52,7 +56,7 @@ public class GalerieArtsController {
     @PutMapping("/salles/{id}")
     @PreAuthorize("hasAnyRole('admin', 'super_admin')")
     public ResponseEntity<SalleGalerieResponse> modifierSalle(@PathVariable UUID id,
-            @Valid @RequestBody SalleGalerieRequest request) {
+                                                              @Valid @RequestBody SalleGalerieRequest request) {
         return ResponseEntity.ok(galerieArtsService.modifierSalle(id, request));
     }
 
@@ -72,7 +76,7 @@ public class GalerieArtsController {
     @PutMapping("/fresques/{id}")
     @PreAuthorize("hasAnyRole('admin', 'super_admin')")
     public ResponseEntity<FresqueResponse> modifierFresque(@PathVariable UUID id,
-            @Valid @RequestBody FresqueRequest request) {
+                                                           @Valid @RequestBody FresqueRequest request) {
         return ResponseEntity.ok(galerieArtsService.modifierFresque(id, request));
     }
 
@@ -86,7 +90,7 @@ public class GalerieArtsController {
     @PostMapping("/fresques/{fresqueId}/hotspots")
     @PreAuthorize("hasAnyRole('admin', 'super_admin')")
     public ResponseEntity<FresqueResponse> ajouterHotspot(@PathVariable UUID fresqueId,
-            @Valid @RequestBody HotspotRequest request) {
+                                                          @Valid @RequestBody HotspotRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(galerieArtsService.ajouterHotspot(fresqueId, request));
     }
@@ -94,14 +98,14 @@ public class GalerieArtsController {
     @PutMapping("/fresques/{fresqueId}/hotspots/{hotspotId}")
     @PreAuthorize("hasAnyRole('admin', 'super_admin')")
     public ResponseEntity<FresqueResponse> modifierHotspot(@PathVariable UUID fresqueId,
-            @PathVariable UUID hotspotId, @Valid @RequestBody HotspotRequest request) {
+                                                           @PathVariable UUID hotspotId, @Valid @RequestBody HotspotRequest request) {
         return ResponseEntity.ok(galerieArtsService.modifierHotspot(fresqueId, hotspotId, request));
     }
 
     @DeleteMapping("/fresques/{fresqueId}/hotspots/{hotspotId}")
     @PreAuthorize("hasAnyRole('admin', 'super_admin')")
     public ResponseEntity<FresqueResponse> supprimerHotspot(@PathVariable UUID fresqueId,
-            @PathVariable UUID hotspotId) {
+                                                            @PathVariable UUID hotspotId) {
         return ResponseEntity.ok(galerieArtsService.supprimerHotspot(fresqueId, hotspotId));
     }
 }
