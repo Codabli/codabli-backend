@@ -39,3 +39,10 @@ codabli:
     max-tokens: 256
     timeout: 5s
     standby-message: Test standby message
+
+ovh:
+  storage:
+    access-key: test
+    secret-key: test
+    region: gra # ex: gra, sbg, bhs
+    bucket-name: test
