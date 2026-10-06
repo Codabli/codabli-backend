@@ -1,7 +1,7 @@
 # 📂 Modules Fonctionnels Implémentés — Codabli Backend
 
 > Liste détaillée des modules du backend et de leurs règles d'accès.
-> Pour l'installation et le lancement, voir le [README](README.md).
+> Pour l'installation et le lancement, voir le [README](../README.md).
 
 ### 🔐 1. Sécurité & Utilisateurs
 * Double inscription et synchronisation locale depuis le jeton **Keycloak** (JWT). Mappage des rôles du Realm : `eleve`, `enseignant`, `parent`, `professionnel_education`, `moderateur`, `admin`, `super_admin`, `comite_lecture`, `traducteur`, `ambassadeur`.

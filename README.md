@@ -2,6 +2,8 @@
 
 Backend de l'application **Codabli**, développé en **Spring Boot 4.1.1** et **Java 25**. Ce service assure la gestion des utilisateurs, de la scolarité, du catalogue de contes, de l'actualité, de la modération des cartes créées par les étudiants ainsi que d'une boutique e-commerce.
 
+L'application est disponible en recette, lien pour le swagger : https://recette.codabli.com/swagger-ui/index.html
+
 ---
 
 ## 🛠️ Stack Technique
@@ -28,12 +30,12 @@ realm n'est nécessaire : tout est provisionné automatiquement.
 
 ### Services & ports
 
-| Service        | URL / port hôte                         | Identifiants          |
-| -------------- | --------------------------------------- | --------------------- |
-| API backend    | http://localhost:8082                   | —                     |
-| Swagger UI     | http://localhost:8082/swagger-ui.html   | —                     |
-| PostgreSQL     | `localhost:5442` (base `codabli_dev`)   | `codabli` / `codabli` |
-| Keycloak admin | http://localhost:8081                   | `admin` / `admin`     |
+| Service        | URL / port hôte                       | Identifiants          |
+| -------------- |---------------------------------------| --------------------- |
+| API backend    | http://localhost:8082                 | —                     |
+| Swagger UI     | http://localhost:8082/swagger-ui.html | —                     |
+| PostgreSQL     | `localhost:5442` (base `codabli_dev`) | `codabli` / `codabli` |
+| Keycloak admin | http://localadmhost:8081               | `admin` / `admin`     |
 
 > ℹ️ PostgreSQL est exposé sur **5442** (et non 5432) car le port 5432 de l'hôte
 > est susceptible d'être déjà occupé par un autre projet. `application.yml` est
@@ -125,7 +127,7 @@ Pour lancer la suite de tests unitaires et d'intégration (nécessite un JDK 25+
 *(Vous pouvez également importer le projet sous IntelliJ IDEA pour compiler et exécuter les tests directement depuis l'IDE)*.
 
 👉 **Guide complet des tests** (organisation, exécution sans JDK, inventaire,
-conventions, dépannage) : **[TESTS.md](TESTS.md)**.
+conventions, dépannage) : **[TESTS.md](documentation/TESTS.md)**.
 
 ---
 
@@ -147,9 +149,9 @@ conventions, dépannage) : **[TESTS.md](TESTS.md)**.
 ## 📂 Modules fonctionnels
 
 Le détail des modules fonctionnels du backend et de leurs règles d'accès est
-documenté dans **[MODULES.md](MODULES.md)**.
+documenté dans **[MODULES.md](documentation/MODULES.md)**.
 
 Documentation complémentaire :
-* [`DOC_FONCTIONNELLE.md`](DOC_FONCTIONNELLE.md) — spécification fonctionnelle détaillée.
-* [`FICHE_TECHNIQUE.md`](FICHE_TECHNIQUE.md) — fiche technique (entités, sécurité, endpoints).
-* [`TESTS.md`](TESTS.md) — guide d'exécution et d'organisation des tests.
+* [`documentation/DOC_FONCTIONNELLE.md`](documentation/DOC_FONCTIONNELLE.md) — spécification fonctionnelle détaillée.
+* [`documentation/FICHE_TECHNIQUE.md`](documentation/FICHE_TECHNIQUE.md) — fiche technique (entités, sécurité, endpoints).
+* [`documentation/TESTS.md`](documentation/TESTS.md) — guide d'exécution et d'organisation des tests.
