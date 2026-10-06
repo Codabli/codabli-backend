@@ -2,6 +2,8 @@
 
 Backend de l'application **Codabli**, développé en **Spring Boot 4.1.1** et **Java 25**. Ce service assure la gestion des utilisateurs, de la scolarité, du catalogue de contes, de l'actualité, de la modération des cartes créées par les étudiants ainsi que d'une boutique e-commerce.
 
+L'application est disponible en recette, lien pour le swagger : https://recette.codabli.com/swagger-ui/index.html
+
 ---
 
 ## 🛠️ Stack Technique
