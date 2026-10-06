@@ -33,7 +33,7 @@ services:
     volumes:
       - codabli-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -41,7 +41,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.0
     container_name: codabli-keycloak
-    command: ["start-dev", "--import-realm"]
+    command: [ "start-dev", "--import-realm" ]
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -60,6 +60,21 @@ services:
       postgres:
         condition: service_healthy
 
+  s3mock:
+    image: adobe/s3mock:latest
+    ports:
+      - "9090:9090"
+    environment:
+      - ACCESS_KEY=${S3_ACCESS_KEY}
+      - SECRET_KEY=${S3_SECRET_KEY}
+      - INITIAL_BUCKETS=${S3_BUCKET}
+    volumes:
+      - s3data:/data
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9090/favicon.ico" ]
+      interval: 5s
+      retries: 3
+
   # Service OPTIONNEL : lance le backend dans un conteneur Maven+JDK 17,
   # utile si aucun JDK n'est installé sur l'hôte (seul un JRE l'est ici).
   # NON démarré par `docker compose up` : il faut le profil "app" ->
@@ -69,10 +84,10 @@ services:
   backend:
     image: maven:3.9-eclipse-temurin-25
     container_name: codabli-backend
-    profiles: ["app"]
+    profiles: [ "app" ]
     network_mode: host
     working_dir: /app
-    command: ["mvn", "-B", "spring-boot:run"]
+    command: [ "mvn", "-B", "spring-boot:run" ]
     environment:
       # Surcharge les valeurs par défaut d'application.yml avec celles du .env,
       # pour rester cohérent avec les identifiants de PostgreSQL et Keycloak.
@@ -90,3 +105,4 @@ volumes:
   codabli-pgdata:
   codabli-m2:
     name: codabli-m2
+  s3data:
