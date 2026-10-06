@@ -1,7 +1,7 @@
 # 🧪 Tests — Codabli Backend
 
 Guide d'exécution et d'organisation de la suite de tests. Pour l'installation
-générale et le lancement de l'application, voir le [README principal](README.md).
+générale et le lancement de l'application, voir le [README principal](../README.md).
 
 ---
 
@@ -66,7 +66,7 @@ docker run --rm --network host \
 ./mvnw test -Dmaven.test.failure.ignore=true
 ```
 
-Les rapports détaillés sont générés dans **`target/surefire-reports/`**.
+Les rapports détaillés sont générés dans **`../target/surefire-reports`**.
 
 ---
 

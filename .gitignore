@@ -1,16 +1,61 @@
-target/
-*.class
-
+######################
+# Project Specific
+######################
 # Secrets / config locale (le modèle .env.example reste versionné)
 .env
-.idea/
-.settings/
-.classpath
+
+######################
+# Eclipse
+######################
+*.pydevproject
 .project
-.vscode/
-*.log
+.metadata
+tmp/
+tmp/**/*
 *.tmp
 *.bak
+*.swp
+*~.nib
+local.properties
+.classpath
+.settings/
+.loadpath
+.factorypath
+/src/main/resources/rebel.xml
+# External tool builders
+.externalToolBuilders/**
+# Locally stored "Eclipse launch configurations"
+*.launch
+# CDT-specific
+.cproject
+# PDT-specific
+.buildpath
+# STS-specific
+/.sts4-cache/*
+
+######################
+# IntelliJ
+######################
+.idea/
+*.iml
+*.iws
+*.ipr
+*.ids
+*.orig
+classes/
+out/
+.run/
+
+######################
+# Visual Studio Code
+######################
+.vscode/*
+*.code-workspace
+
+######################
+# Maven
+######################
+/target/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.next
@@ -19,4 +64,28 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+
+######################
+# Maven Wrapper
+######################
 .mvn/wrapper/maven-wrapper.jar
+
+######################
+# Logs
+######################
+*.log
+logs/
+
+######################
+# Others
+######################
+*.class
+*.*~
+*~
+.merge_file*
+
+######################
+# OS
+######################
+.DS_Store
+Thumbs.db
