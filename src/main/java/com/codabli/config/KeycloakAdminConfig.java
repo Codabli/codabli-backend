@@ -3,9 +3,10 @@ package com.codabli.config;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestClient;
 
 /**
  * Configures the Keycloak Admin Client bean used for user management
@@ -13,28 +14,24 @@ import org.springframework.context.annotation.Configuration;
  * REST API.
  */
 @Configuration
+@EnableConfigurationProperties(KeycloakProperties.class)
 public class KeycloakAdminConfig {
 
-    @Value("${keycloak.admin.server-url}")
-    private String serverUrl;
-
-    @Value("${keycloak.admin.realm}")
-    private String realm;
-
-    @Value("${keycloak.admin.client-id}")
-    private String clientId;
-
-    @Value("${keycloak.admin.client-secret}")
-    private String clientSecret;
+    @Bean
+    public Keycloak keycloakAdminClient(KeycloakProperties properties) {
+        return KeycloakBuilder.builder()
+                .serverUrl(properties.serverUrl())
+                .realm(properties.realm())
+                .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
+                .clientId(properties.clientId())
+                .clientSecret(properties.clientSecret())
+                .build();
+    }
 
     @Bean
-    public Keycloak keycloakAdminClient() {
-        return KeycloakBuilder.builder()
-                .serverUrl(serverUrl)
-                .realm(realm)
-                .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
-                .clientId(clientId)
-                .clientSecret(clientSecret)
+    public RestClient restClient(KeycloakProperties properties) {
+        return RestClient.builder()
+                .baseUrl(properties.serverUrl())
                 .build();
     }
 }

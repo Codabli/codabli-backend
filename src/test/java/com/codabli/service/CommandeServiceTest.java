@@ -2,12 +2,15 @@ package com.codabli.service;
 
 import com.codabli.dto.CommandeResponse;
 import com.codabli.dto.CreerCommandeRequest;
-import com.codabli.entity.*;
+import com.codabli.entity.AdresseLivraison;
+import com.codabli.entity.Commande;
+import com.codabli.entity.LignePanier;
+import com.codabli.entity.Panier;
+import com.codabli.entity.Produit;
+import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.TypeProduit;
-import com.codabli.repository.AdresseLivraisonRepository;
+import com.codabli.exception.StockInsuffisantException;
 import com.codabli.repository.CommandeRepository;
-import com.codabli.repository.ProduitRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +27,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,16 +37,16 @@ class CommandeServiceTest {
     private CommandeRepository commandeRepository;
 
     @Mock
-    private ProduitRepository produitRepository;
-
-    @Mock
-    private AdresseLivraisonRepository adresseLivraisonRepository;
-
-    @Mock
-    private UtilisateurRepository utilisateurRepository;
+    private AdresseLivraisonService adresseLivraisonService;
 
     @Mock
     private PanierService panierService;
+
+    @Mock
+    private ProduitService produitService;
+
+    @Mock
+    private UtilisateurService utilisateurService;
 
     @InjectMocks
     private CommandeService commandeService;
@@ -101,12 +104,9 @@ class CommandeServiceTest {
 
         CreerCommandeRequest request = new CreerCommandeRequest(mockAdresse.getId());
 
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(panierService.getOrCreatePanier(mockUtilisateur)).thenReturn(mockPanier);
-        when(adresseLivraisonRepository.findById(mockAdresse.getId())).thenReturn(Optional.of(mockAdresse));
-        when(produitRepository.save(any(Produit.class))).thenReturn(mockProduitPhysique);
+        when(adresseLivraisonService.findById(mockAdresse.getId())).thenReturn(mockAdresse);
         when(commandeRepository.save(any(Commande.class))).thenAnswer(inv -> {
             Commande c = inv.getArgument(0);
             c.setId(UUID.randomUUID());
@@ -136,9 +136,7 @@ class CommandeServiceTest {
 
         CreerCommandeRequest request = new CreerCommandeRequest(null);
 
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(panierService.getOrCreatePanier(mockUtilisateur)).thenReturn(mockPanier);
 
         assertThrows(StockInsuffisantException.class, () -> commandeService.creerCommande(request, jwt));
@@ -155,9 +153,7 @@ class CommandeServiceTest {
                 .build();
         commande.getUtilisateur().setId(UUID.randomUUID());
 
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(commandeRepository.findById(id)).thenReturn(Optional.of(commande));
 
         assertThrows(AccessDeniedException.class, () -> commandeService.getCommandeById(id, jwt));

@@ -3,6 +3,8 @@ package com.codabli.service;
 import com.codabli.dto.ContactRequest;
 import com.codabli.dto.ContactResponse;
 import com.codabli.entity.DemandeContact;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.DemandeContactRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -62,7 +64,7 @@ public class ContactService {
 
     public ContactResponse marquerTraitee(UUID id) {
         DemandeContact demande = demandeContactRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_DEMANDE_CONTACT,
                         "Demande de contact non trouvee avec l'ID: " + id));
         demande.setTraite(true);
         DemandeContact saved = demandeContactRepository.save(demande);

@@ -9,8 +9,6 @@ import com.codabli.entity.Produit;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.TypeProduit;
 import com.codabli.repository.PanierRepository;
-import com.codabli.repository.ProduitRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +23,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,10 +33,10 @@ class PanierServiceTest {
     private PanierRepository panierRepository;
 
     @Mock
-    private ProduitRepository produitRepository;
+    private ProduitService produitService;
 
     @Mock
-    private UtilisateurRepository utilisateurRepository;
+    private UtilisateurService utilisateurService;
 
     @InjectMocks
     private PanierService panierService;
@@ -74,9 +72,7 @@ class PanierServiceTest {
 
     @Test
     void getPanier_shouldReturnExistingPanier() {
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(panierRepository.findByUtilisateurId(mockUtilisateur.getId()))
                 .thenReturn(Optional.of(mockPanier));
 
@@ -92,12 +88,10 @@ class PanierServiceTest {
     void ajouterProduit_shouldAddNewLineItem() {
         AjoutPanierRequest request = new AjoutPanierRequest(mockProduit.getId(), 2);
 
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(panierRepository.findByUtilisateurId(mockUtilisateur.getId()))
                 .thenReturn(Optional.of(mockPanier));
-        when(produitRepository.findById(mockProduit.getId())).thenReturn(Optional.of(mockProduit));
+        when(produitService.findById(any())).thenReturn(mockProduit);
         when(panierRepository.save(any(Panier.class))).thenReturn(mockPanier);
 
         PanierResponse response = panierService.ajouterProduit(request, jwt);
@@ -120,12 +114,10 @@ class PanierServiceTest {
 
         AjoutPanierRequest request = new AjoutPanierRequest(mockProduit.getId(), 2);
 
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(panierRepository.findByUtilisateurId(mockUtilisateur.getId()))
                 .thenReturn(Optional.of(mockPanier));
-        when(produitRepository.findById(mockProduit.getId())).thenReturn(Optional.of(mockProduit));
+        when(produitService.findById(any())).thenReturn(mockProduit);
         when(panierRepository.save(any(Panier.class))).thenReturn(mockPanier);
 
         PanierResponse response = panierService.ajouterProduit(request, jwt);
@@ -149,9 +141,7 @@ class PanierServiceTest {
 
         ModifQuantiteRequest request = new ModifQuantiteRequest(4);
 
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(panierRepository.findByUtilisateurId(mockUtilisateur.getId()))
                 .thenReturn(Optional.of(mockPanier));
         when(panierRepository.save(any(Panier.class))).thenReturn(mockPanier);
@@ -174,9 +164,7 @@ class PanierServiceTest {
                 .build();
         mockPanier.getLignes().add(existingLigne);
 
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(panierRepository.findByUtilisateurId(mockUtilisateur.getId()))
                 .thenReturn(Optional.of(mockPanier));
         when(panierRepository.save(any(Panier.class))).thenReturn(mockPanier);
@@ -197,9 +185,7 @@ class PanierServiceTest {
                 .build();
         mockPanier.getLignes().add(existingLigne);
 
-        when(jwt.getSubject()).thenReturn("keycloak-user-123");
-        when(utilisateurRepository.findByKeycloakId("keycloak-user-123"))
-                .thenReturn(Optional.of(mockUtilisateur));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockUtilisateur);
         when(panierRepository.findByUtilisateurId(mockUtilisateur.getId()))
                 .thenReturn(Optional.of(mockPanier));
         when(panierRepository.save(any(Panier.class))).thenReturn(mockPanier);

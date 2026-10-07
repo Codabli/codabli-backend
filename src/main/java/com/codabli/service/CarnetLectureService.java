@@ -10,10 +10,9 @@ import com.codabli.entity.PageCarnetLecture;
 import com.codabli.entity.ProfilEnfant;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.StatutPageCarnet;
-import com.codabli.repository.ConteDanseRepository;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.PageCarnetLectureRepository;
-import com.codabli.repository.ProfilEnfantRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -41,18 +40,19 @@ import java.util.UUID;
 public class CarnetLectureService {
 
     private final PageCarnetLectureRepository pageRepository;
-    private final ProfilEnfantRepository profilEnfantRepository;
-    private final ConteDanseRepository conteDanseRepository;
-    private final UtilisateurRepository utilisateurRepository;
+
+    private final ConteDanseService conteDanseService;
+    private final ProfilEnfantService profilEnfantService;
+    private final UtilisateurService utilisateurService;
 
     public CarnetLectureService(PageCarnetLectureRepository pageRepository,
-                                ProfilEnfantRepository profilEnfantRepository,
-                                ConteDanseRepository conteDanseRepository,
-                                UtilisateurRepository utilisateurRepository) {
+                                ConteDanseService conteDanseService,
+                                ProfilEnfantService profilEnfantService,
+                                UtilisateurService utilisateurService) {
         this.pageRepository = pageRepository;
-        this.profilEnfantRepository = profilEnfantRepository;
-        this.conteDanseRepository = conteDanseRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.conteDanseService = conteDanseService;
+        this.profilEnfantService = profilEnfantService;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -76,9 +76,7 @@ public class CarnetLectureService {
                 .build();
 
         if (request.conteId() != null) {
-            ConteDanse conte = conteDanseRepository.findById(request.conteId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Conte danse non trouve avec l'ID: " + request.conteId()));
+            ConteDanse conte = conteDanseService.findById(request.conteId());
             page.setConte(conte);
             if (page.getTitre() == null) {
                 page.setTitre(conte.getTitre());
@@ -128,7 +126,7 @@ public class CarnetLectureService {
         PageCarnetLecture page = getPageAvecDroit(profilEnfantId, pageId, jwt);
 
         if (page.getStatut() == StatutPageCarnet.terminee) {
-            // RG-18 : une page terminee reste modifiable tant qu'elle n'a pas
+            // TODO RG-18 : une page terminee reste modifiable tant qu'elle n'a pas
             // ete transmise pour publication — ici, aucune notion de
             // transmission n'existe encore, donc la modification reste
             // autorisee. On repasse simplement en_cours si du contenu change.
@@ -198,7 +196,7 @@ public class CarnetLectureService {
 
         boolean supprime = page.getElements().removeIf(e -> e.getId().equals(elementId));
         if (!supprime) {
-            throw new ResourceNotFoundException("Element non trouve avec l'ID: " + elementId);
+            throw new ResourceNotFoundException(ErrorCode.UNKNOWN_CARNET_ELEMENT, "Element non trouve avec l'ID: " + elementId);
         }
 
         PageCarnetLecture saved = pageRepository.save(page);
@@ -210,12 +208,10 @@ public class CarnetLectureService {
     // ────────────────────────────────────────────────────────────────
 
     private ProfilEnfant getProfilAvecDroit(UUID profilEnfantId, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
 
-        ProfilEnfant profil = profilEnfantRepository.findById(profilEnfantId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Profil enfant non trouve avec l'ID: " + profilEnfantId));
+        ProfilEnfant profil = profilEnfantService.getById(profilEnfantId);
 
         boolean estResponsable = profil.getResponsable().getId().equals(utilisateur.getId());
         boolean estAdmin = roles.contains("admin") || roles.contains("super_admin");
@@ -231,31 +227,15 @@ public class CarnetLectureService {
         getProfilAvecDroit(profilEnfantId, jwt);
 
         PageCarnetLecture page = pageRepository.findById(pageId)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_CARNET_PAGE,
                         "Page de carnet de lecture non trouvee avec l'ID: " + pageId));
 
         if (!page.getProfilEnfant().getId().equals(profilEnfantId)) {
-            throw new ResourceNotFoundException(
+            throw new ResourceNotFoundException(ErrorCode.UNKNOWN_CARNET_PAGE,
                     "Page de carnet de lecture non trouvee avec l'ID: " + pageId);
         }
 
         return page;
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
-        }
-        return (Collection<String>) realmAccess.get("roles");
     }
 
     private PageCarnetLectureResponse toResponse(PageCarnetLecture page) {

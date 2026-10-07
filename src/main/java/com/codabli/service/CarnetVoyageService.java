@@ -10,10 +10,9 @@ import com.codabli.entity.PageCarnetVoyage;
 import com.codabli.entity.ProfilEnfant;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.StatutPageCarnet;
-import com.codabli.repository.ConteDanseRepository;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.PageCarnetVoyageRepository;
-import com.codabli.repository.ProfilEnfantRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -34,18 +33,19 @@ import java.util.UUID;
 public class CarnetVoyageService {
 
     private final PageCarnetVoyageRepository pageRepository;
-    private final ProfilEnfantRepository profilEnfantRepository;
-    private final ConteDanseRepository conteDanseRepository;
-    private final UtilisateurRepository utilisateurRepository;
+
+    private final ConteDanseService conteDanseService;
+    private final ProfilEnfantService profilEnfantService;
+    private final UtilisateurService utilisateurService;
 
     public CarnetVoyageService(PageCarnetVoyageRepository pageRepository,
-                               ProfilEnfantRepository profilEnfantRepository,
-                               ConteDanseRepository conteDanseRepository,
-                               UtilisateurRepository utilisateurRepository) {
+                               ConteDanseService conteDanseService,
+                               ProfilEnfantService profilEnfantService,
+                               UtilisateurService utilisateurService) {
         this.pageRepository = pageRepository;
-        this.profilEnfantRepository = profilEnfantRepository;
-        this.conteDanseRepository = conteDanseRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.conteDanseService = conteDanseService;
+        this.profilEnfantService = profilEnfantService;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -69,9 +69,7 @@ public class CarnetVoyageService {
                 .build();
 
         if (request.conteId() != null) {
-            ConteDanse conte = conteDanseRepository.findById(request.conteId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Conte danse non trouve avec l'ID: " + request.conteId()));
+            ConteDanse conte = conteDanseService.findById(request.conteId());
             page.setConte(conte);
             if (page.getPays() == null) {
                 page.setPays(conte.getPays());
@@ -179,7 +177,7 @@ public class CarnetVoyageService {
 
         boolean supprime = page.getElements().removeIf(e -> e.getId().equals(elementId));
         if (!supprime) {
-            throw new ResourceNotFoundException("Element non trouve avec l'ID: " + elementId);
+            throw new ResourceNotFoundException(ErrorCode.UNKNOWN_CARNET_ELEMENT, "Element non trouve avec l'ID: " + elementId);
         }
 
         PageCarnetVoyage saved = pageRepository.save(page);
@@ -191,12 +189,10 @@ public class CarnetVoyageService {
     // ────────────────────────────────────────────────────────────────
 
     private ProfilEnfant getProfilAvecDroit(UUID profilEnfantId, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService. extractRoles(jwt);
 
-        ProfilEnfant profil = profilEnfantRepository.findById(profilEnfantId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Profil enfant non trouve avec l'ID: " + profilEnfantId));
+        ProfilEnfant profil = profilEnfantService.getById(profilEnfantId);
 
         boolean estResponsable = profil.getResponsable().getId().equals(utilisateur.getId());
         boolean estAdmin = roles.contains("admin") || roles.contains("super_admin");
@@ -212,31 +208,15 @@ public class CarnetVoyageService {
         getProfilAvecDroit(profilEnfantId, jwt);
 
         PageCarnetVoyage page = pageRepository.findById(pageId)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_CARNET_VOYAGE,
                         "Page de carnet de voyage non trouvee avec l'ID: " + pageId));
 
         if (!page.getProfilEnfant().getId().equals(profilEnfantId)) {
-            throw new ResourceNotFoundException(
+            throw new ResourceNotFoundException(ErrorCode.UNKNOWN_CARNET_VOYAGE,
                     "Page de carnet de voyage non trouvee avec l'ID: " + pageId);
         }
 
         return page;
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
-        }
-        return (Collection<String>) realmAccess.get("roles");
     }
 
     private PageCarnetVoyageResponse toResponse(PageCarnetVoyage page) {

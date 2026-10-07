@@ -4,6 +4,8 @@ import com.codabli.dto.PartenaireRequest;
 import com.codabli.dto.PartenaireResponse;
 import com.codabli.entity.Partenaire;
 import com.codabli.entity.enums.CategoriePartenaire;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.PartenaireRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -58,10 +60,14 @@ public class PartenaireService {
 
     @Transactional(readOnly = true)
     public PartenaireResponse getById(UUID id) {
-        Partenaire partenaire = partenaireRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Partenaire non trouve avec l'ID: " + id));
+        Partenaire partenaire = findById(id);
         return toResponse(partenaire);
+    }
+
+    private Partenaire findById(UUID id) {
+        return partenaireRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_PARTENAIRE,
+                        "Partenaire non trouve avec l'ID: " + id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -92,9 +98,7 @@ public class PartenaireService {
     // ────────────────────────────────────────────────────────────────
 
     public PartenaireResponse modifier(UUID id, PartenaireRequest request) {
-        Partenaire partenaire = partenaireRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Partenaire non trouve avec l'ID: " + id));
+        Partenaire partenaire = findById(id);
 
         partenaire.setNom(request.nom());
         partenaire.setLogoUrl(request.logoUrl());
@@ -119,9 +123,7 @@ public class PartenaireService {
     // ────────────────────────────────────────────────────────────────
 
     public void supprimer(UUID id) {
-        Partenaire partenaire = partenaireRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Partenaire non trouve avec l'ID: " + id));
+        Partenaire partenaire = findById(id);
         partenaireRepository.delete(partenaire);
     }
 

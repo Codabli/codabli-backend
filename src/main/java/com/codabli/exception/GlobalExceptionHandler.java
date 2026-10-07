@@ -1,7 +1,5 @@
-package com.codabli.config;
+package com.codabli.exception;
 
-import com.codabli.service.ResourceNotFoundException;
-import com.codabli.service.StockInsuffisantException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -22,22 +20,16 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleResourceNotFound(
-            ResourceNotFoundException ex, WebRequest request) {
-        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
-    }
-
-    @ExceptionHandler(StockInsuffisantException.class)
-    public ResponseEntity<Map<String, Object>> handleStockInsuffisant(
-            StockInsuffisantException ex, WebRequest request) {
-        return buildResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Map<String, Object>> handleBusinessException(
+            BusinessException ex, WebRequest request) {
+        return buildResponse(ex.getErrorCode(), ex.getMessage(), request);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(
             IllegalArgumentException ex, WebRequest request) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+        return buildResponse(ErrorCode.ILLEGAL_ARGUMENT, ex.getMessage(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -61,24 +53,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(
             AccessDeniedException ex, WebRequest request) {
-        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+        return buildResponse(ErrorCode.ACCESS_DENIED, ex.getMessage(), request);
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(
             RuntimeException ex, WebRequest request) {
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
+        return buildResponse(ErrorCode.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(
-            HttpStatus status, String message, WebRequest request) {
+            ErrorCode code, String message, WebRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", OffsetDateTime.now());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
+        body.put("status", code.getStatus().value());
+        body.put("error", code.getStatus().getReasonPhrase());
+        body.put("error-code", code.getKey());
         body.put("message", message);
         body.put("path", request.getDescription(false).replace("uri=", ""));
 
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(code.getStatus()).body(body);
     }
 }

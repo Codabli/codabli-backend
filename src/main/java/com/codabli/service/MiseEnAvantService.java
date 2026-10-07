@@ -3,6 +3,8 @@ package com.codabli.service;
 import com.codabli.dto.MiseEnAvantRequest;
 import com.codabli.dto.MiseEnAvantResponse;
 import com.codabli.entity.MiseEnAvant;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.MiseEnAvantRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +47,7 @@ public class MiseEnAvantService {
     }
 
     public MiseEnAvantResponse modifier(UUID id, MiseEnAvantRequest request) {
-        MiseEnAvant miseEnAvant = getOrThrow(id);
+        MiseEnAvant miseEnAvant = findById(id);
 
         miseEnAvant.setTypeCible(request.typeCible());
         miseEnAvant.setCibleId(request.cibleId());
@@ -65,12 +67,13 @@ public class MiseEnAvantService {
     }
 
     public void supprimer(UUID id) {
-        miseEnAvantRepository.delete(getOrThrow(id));
+        miseEnAvantRepository.delete(findById(id));
     }
 
-    private MiseEnAvant getOrThrow(UUID id) {
+    private MiseEnAvant findById(UUID id) {
         return miseEnAvantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Mise en avant non trouvee avec l'ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_MISE_AVANT,
+                        "Mise en avant non trouvee avec l'ID: " + id));
     }
 
     private MiseEnAvantResponse toResponse(MiseEnAvant miseEnAvant) {

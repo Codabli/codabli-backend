@@ -5,7 +5,6 @@ import com.codabli.dto.ActualiteResponse;
 import com.codabli.entity.Actualite;
 import com.codabli.entity.Utilisateur;
 import com.codabli.repository.ActualiteRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,11 +13,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -31,7 +29,7 @@ class ActualiteServiceTest {
     private ActualiteRepository actualiteRepository;
 
     @Mock
-    private UtilisateurRepository utilisateurRepository;
+    private UtilisateurService utilisateurService;
 
     @InjectMocks
     private ActualiteService actualiteService;
@@ -53,9 +51,7 @@ class ActualiteServiceTest {
     void creer_shouldSaveAndReturnResponse() {
         ActualiteRequest request = new ActualiteRequest("Titre", null, null, "Contenu", true);
 
-        when(jwt.getSubject()).thenReturn("keycloak-id-test");
-        when(utilisateurRepository.findByKeycloakId("keycloak-id-test"))
-                .thenReturn(Optional.of(mockAdmin));
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(mockAdmin);
 
         Actualite savedActualite = new Actualite();
         savedActualite.setId(UUID.randomUUID());

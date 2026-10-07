@@ -4,6 +4,8 @@ import com.codabli.dto.ProduitRequest;
 import com.codabli.dto.ProduitResponse;
 import com.codabli.entity.Produit;
 import com.codabli.entity.enums.TypeProduit;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ProduitRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -67,10 +69,14 @@ public class ProduitService {
 
     @Transactional(readOnly = true)
     public ProduitResponse getById(UUID id) {
-        Produit produit = produitRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Produit non trouve avec l'ID: " + id));
+        Produit produit = findById(id);
         return toResponse(produit);
+    }
+
+    Produit findById(UUID id) {
+        return produitRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_PRODUIT,
+                        "Produit non trouve avec l'ID: " + id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -92,14 +98,16 @@ public class ProduitService {
         return toResponse(saved);
     }
 
+    void save(Produit produit){
+        produitRepository.save(produit);
+    }
+
     // ────────────────────────────────────────────────────────────────
     // MODIFIER — admin only
     // ────────────────────────────────────────────────────────────────
 
     public ProduitResponse modifier(UUID id, ProduitRequest request) {
-        Produit produit = produitRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Produit non trouve avec l'ID: " + id));
+        Produit produit = findById(id);
 
         produit.setNom(request.nom());
         produit.setDescription(request.description());
@@ -120,9 +128,7 @@ public class ProduitService {
     // ────────────────────────────────────────────────────────────────
 
     public void supprimer(UUID id) {
-        Produit produit = produitRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Produit non trouve avec l'ID: " + id));
+        Produit produit = findById(id);
         produitRepository.delete(produit);
     }
 
