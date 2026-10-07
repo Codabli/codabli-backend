@@ -128,6 +128,9 @@ La couverture de test est implémentée en JUnit / Spring Boot Test, intégrant 
 * `CommandeControllerTest` : Tests d'intégration d'API (MockMvc) vérifiant la sécurité des endpoints de commande (utilisateurs authentifiés vs admins).
 * `RessourcePedagogiqueServiceTest` : Tests unitaires du service Mallette Pédagogique (rôles, filtrage actif, exceptions).
 * `RessourcePedagogiqueControllerTest` : Tests d'intégration d'API (MockMvc) pour la Mallette Pédagogique (droits par rôles, rejets sur inactif et interdiction de suppression).
+* `ProjetConteServiceTest` : Tests unitaires du service Projets de conte (rattachement à l'enseignant, normalisation des ingrédients, contrôle du propriétaire, 404).
+* `ProjetConteControllerTest` : Tests d'intégration d'API (MockMvc) pour les Projets de conte (401, 403 par rôle et par propriétaire, 400 de validation, 201).
+* `ProjetConteRepositoryTest` : Tests d'intégration (H2) du mapping JPA des Projets de conte (ingrédients ordonnés, mise à jour, tri par date de modification).
 
 ---
 
@@ -160,5 +163,23 @@ Bibliothèque de ressources pédagogiques (fiches, guides, vidéos, audio, docum
     * Ce filtrage de visibilité est validé au niveau requêtes paginées ET au niveau service par ID (renvoie `AccessDeniedException` si un enseignant demande une ressource inactive).
   * `POST/PUT /api/ressources-pedagogiques/**` : Réservé aux rôles `admin` et `comite_lecture`.
   * `DELETE /api/ressources-pedagogiques/{id}` : Réservé au rôle `admin` uniquement (`comite_lecture` n'a pas les droits de suppression).
+
+---
+
+### 9. Créer mon conte — Projets de conte (`/api/projets-contes`)
+
+Projet de conte dansé d'un enseignant, construit pas à pas dans le parcours « Créer mon conte » (epic SCRUM-29). L'écran 1 (SCRUM-84 / SCRUM-96) renseigne le contexte du projet ; les écrans suivants enrichiront ce projet.
+* **Entités du module** :
+  * `ProjetConte` : `id` (UUID), `enseignant` (Utilisateur), `trancheAge` (`3-5`, `6-8`, `9-11`, `12-14`, `15-18`), `pays`, `region`, `ville` (facultative), `theme`, `ingredientsSecrets` (liste ordonnée de mots-clés, table `projets_contes_ingredients`), `espaceRepresentation` (enum `EspaceRepresentation` : `salle_spectacle`, `gymnase`, `classe`, `exterieur`, facultatif), `dateCreation`, `dateModification`.
+* **Endpoints** :
+  * `GET /api/projets-contes` : projets de l'enseignant connecté, du plus récemment modifié au plus ancien.
+  * `GET /api/projets-contes/{id}` : consultation d'un projet.
+  * `POST /api/projets-contes` : création d'un projet avec son contexte (201).
+  * `PUT /api/projets-contes/{id}` : mise à jour du contexte.
+* **Sécurité & Règles Métier** :
+  * Rôles autorisés (`@PreAuthorize` sur le contrôleur) : `enseignant`, `professionnel_education`, `admin`.
+  * Un utilisateur n'accède qu'à ses propres projets (`AccessDeniedException` → 403 sinon, 404 si le projet n'existe pas).
+  * RG-CMC-01 : `trancheAge`, `pays`, `region` et `theme` obligatoires (400 avec le détail par champ).
+  * RG-CMC-02 : ingrédients secrets libres, 20 maximum, 40 caractères chacun ; espaces retirés et doublons supprimés (insensible à la casse) en conservant l'ordre de saisie.
 
 
