@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -174,25 +175,13 @@ public class RessourcePedagogiqueService {
     // ────────────────────────────────────────────────────────────────
 
     private boolean hasWritePermission(Jwt jwt) {
-        if (jwt == null || jwt.getClaimAsMap("realm_access") == null) {
-            return false;
-        }
-        Object rolesObj = jwt.getClaimAsMap("realm_access").get("roles");
-        if (rolesObj instanceof List<?> roles) {
-            return roles.contains("admin") || roles.contains("comite_lecture");
-        }
-        return false;
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
+        return roles.contains("admin") || roles.contains("super_admin") || roles.contains("comite_lecture");
     }
 
     private boolean isAdmin(Jwt jwt) {
-        if (jwt == null || jwt.getClaimAsMap("realm_access") == null) {
-            return false;
-        }
-        Object rolesObj = jwt.getClaimAsMap("realm_access").get("roles");
-        if (rolesObj instanceof List<?> roles) {
-            return roles.contains("admin");
-        }
-        return false;
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
+        return roles.contains("admin") || roles.contains("super_admin");
     }
 
     // ────────────────────────────────────────────────────────────────

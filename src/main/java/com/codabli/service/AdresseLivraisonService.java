@@ -7,6 +7,7 @@ import com.codabli.entity.Utilisateur;
 import com.codabli.exception.ErrorCode;
 import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.AdresseLivraisonRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,7 +85,7 @@ public class AdresseLivraisonService {
 
         // Verification proprietaire
         if (!adresse.getUtilisateur().getId().equals(utilisateur.getId())) {
-            throw new SecurityException("Acces interdit a cette adresse");
+            throw new AccessDeniedException("Acces interdit a cette adresse");
         }
 
         if (request.parDefaut() != null && request.parDefaut()) {
@@ -113,7 +114,7 @@ public class AdresseLivraisonService {
         AdresseLivraison adresse = findById(id);
 
         if (!adresse.getUtilisateur().getId().equals(utilisateur.getId())) {
-            throw new SecurityException("Acces interdit a cette adresse");
+            throw new AccessDeniedException("Acces interdit a cette adresse");
         }
 
         adresseLivraisonRepository.delete(adresse);
@@ -123,7 +124,7 @@ public class AdresseLivraisonService {
     // METHODES UTILITAIRES
     // ────────────────────────────────────────────────────────────────
 
-    AdresseLivraison findById(UUID id){
+    AdresseLivraison findById(UUID id) {
         return adresseLivraisonRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_ADRESSE,
                         "Adresse non trouvee avec l'ID: " + id));

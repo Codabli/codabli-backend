@@ -9,9 +9,12 @@ import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.util.Collections;
@@ -30,7 +33,7 @@ public class KeycloakAdminService {
     private final RestClient restClient;
     private final KeycloakProperties properties;
 
-    public KeycloakAdminService(Keycloak keycloak, RestClient restClient, KeycloakProperties properties) {
+    public KeycloakAdminService(Keycloak keycloak, @Qualifier("keycloakRestClient") RestClient restClient, KeycloakProperties properties) {
         this.keycloak = keycloak;
         this.restClient = restClient;
         this.properties = properties;
@@ -78,17 +81,17 @@ public class KeycloakAdminService {
      * Authenticates a user and returns JWT tokens from Keycloak's token endpoint.
      */
     public LoginResponse login(String email, String password) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "password");
+        form.add("client_id", properties.clientId());
+        form.add("client_secret", properties.clientSecret());
+        form.add("username", email);
+        form.add("password", password);
         try {
             Map<String, Object> responseBody = restClient.post()
-                    .uri("/realms/" + properties.realm() + "/protocol/openid-connect/token")
+                    .uri("/protocol/openid-connect/token")
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(Map.of(
-                            "grant_type", "password",
-                            "client_id", properties.clientId(),
-                            "client_secret", properties.clientSecret(),
-                            "username", email,
-                            "password", password
-                    ))
+                    .body(form)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {
                     });

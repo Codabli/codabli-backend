@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -127,9 +128,12 @@ public class UtilisateurService {
      */
     @SuppressWarnings("unchecked")
     public Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (jwt == null || jwt.getClaimAsMap("realm_access") == null) {
+            return List.of();
+        }
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
         if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
+            return List.of();
         }
         return (Collection<String>) realmAccess.get("roles");
     }

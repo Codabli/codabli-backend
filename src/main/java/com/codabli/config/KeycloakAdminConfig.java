@@ -29,9 +29,9 @@ public class KeycloakAdminConfig {
     }
 
     @Bean
-    public RestClient restClient(KeycloakProperties properties) {
+    public RestClient keycloakRestClient(KeycloakProperties properties) {
         return RestClient.builder()
-                .baseUrl(properties.serverUrl())
+                .baseUrl(properties.serverUrl() + "/realms/" + properties.realm())
                 .build();
     }
 }
