@@ -10,9 +10,10 @@ import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.DureeAbonnement;
 import com.codabli.entity.enums.PublicAbonnement;
 import com.codabli.entity.enums.StatutAbonnement;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.AbonnementRepository;
 import com.codabli.repository.OffreAbonnementRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -37,14 +38,15 @@ public class AbonnementService {
 
     private final OffreAbonnementRepository offreAbonnementRepository;
     private final AbonnementRepository abonnementRepository;
-    private final UtilisateurRepository utilisateurRepository;
+
+    private final UtilisateurService utilisateurService;
 
     public AbonnementService(OffreAbonnementRepository offreAbonnementRepository,
                              AbonnementRepository abonnementRepository,
-                             UtilisateurRepository utilisateurRepository) {
+                             UtilisateurService utilisateurService) {
         this.offreAbonnementRepository = offreAbonnementRepository;
         this.abonnementRepository = abonnementRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -124,7 +126,7 @@ public class AbonnementService {
     // ────────────────────────────────────────────────────────────────
 
     public AbonnementResponse souscrire(AbonnementRequest request, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         OffreAbonnement offre = getOffreOrThrow(request.offreId());
 
         if (!offre.isActif()) {
@@ -151,7 +153,7 @@ public class AbonnementService {
 
     @Transactional(readOnly = true)
     public List<AbonnementResponse> mesAbonnements(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         return abonnementRepository.findByUtilisateurIdOrderByDateCreationDesc(utilisateur.getId())
                 .stream()
                 .map(this::toAbonnementResponse)
@@ -211,11 +213,11 @@ public class AbonnementService {
      * proprietaire, ou dispose d'un role admin/super_admin.
      */
     private Abonnement getAbonnementAvecDroit(UUID id, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
 
         Abonnement abonnement = abonnementRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_ABONNEMENT,
                         "Abonnement non trouve avec l'ID: " + id));
 
         boolean estProprietaire = abonnement.getUtilisateur().getId().equals(utilisateur.getId());
@@ -234,25 +236,10 @@ public class AbonnementService {
 
     private OffreAbonnement getOffreOrThrow(UUID id) {
         return offreAbonnementRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_ABONNEMENT,
                         "Offre d'abonnement non trouvee avec l'ID: " + id));
     }
 
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
-        }
-        return (Collection<String>) realmAccess.get("roles");
-    }
 
     private OffreAbonnementResponse toOffreResponse(OffreAbonnement offre) {
         return new OffreAbonnementResponse(

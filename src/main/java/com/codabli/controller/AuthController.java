@@ -47,8 +47,7 @@ public class AuthController {
      */
     @GetMapping("/me")
     public ResponseEntity<UtilisateurResponse> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        UtilisateurResponse response = utilisateurService.getCurrentUser(keycloakId);
+        UtilisateurResponse response = utilisateurService.getCurrentUser(jwt);
         return ResponseEntity.ok(response);
     }
 
@@ -59,8 +58,7 @@ public class AuthController {
     public ResponseEntity<UtilisateurResponse> updateProfile(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody UpdateUtilisateurRequest request) {
-        String keycloakId = jwt.getSubject();
-        UtilisateurResponse response = utilisateurService.updateProfile(keycloakId, request);
+        UtilisateurResponse response = utilisateurService.updateProfile(jwt, request);
         return ResponseEntity.ok(response);
     }
 }

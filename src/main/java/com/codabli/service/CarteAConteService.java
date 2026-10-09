@@ -5,10 +5,13 @@ import com.codabli.dto.CarteAConteResponse;
 import com.codabli.entity.CarteAConte;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.Utilisateur;
+import com.codabli.entity.enums.StatutModeration;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.CarteAConteRepository;
-import com.codabli.repository.InscriptionClasseRepository;
-import com.codabli.repository.UtilisateurRepository;
 import jakarta.persistence.EntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -35,21 +38,22 @@ import java.util.UUID;
 public class CarteAConteService {
 
     private final CarteAConteRepository carteAConteRepository;
-    private final InscriptionClasseRepository inscriptionClasseRepository;
-    private final UtilisateurRepository utilisateurRepository;
+
     private final EntityManager entityManager;
+    private final InscriptionClasseService inscriptionClasseService;
     private final JournalActiviteService journalActiviteService;
+    private final UtilisateurService utilisateurService;
 
     public CarteAConteService(CarteAConteRepository carteAConteRepository,
-                              InscriptionClasseRepository inscriptionClasseRepository,
-                              UtilisateurRepository utilisateurRepository,
                               EntityManager entityManager,
-                              JournalActiviteService journalActiviteService) {
+                              InscriptionClasseService inscriptionClasseService,
+                              JournalActiviteService journalActiviteService,
+                              UtilisateurService utilisateurService) {
         this.carteAConteRepository = carteAConteRepository;
-        this.inscriptionClasseRepository = inscriptionClasseRepository;
-        this.utilisateurRepository = utilisateurRepository;
         this.entityManager = entityManager;
+        this.inscriptionClasseService = inscriptionClasseService;
         this.journalActiviteService = journalActiviteService;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -61,7 +65,7 @@ public class CarteAConteService {
      * Le createur est identifie via le JWT, jamais via le body de la requete.
      */
     public CarteAConteResponse creer(CarteAConteRequest request, Jwt jwt) {
-        Utilisateur createur = getUtilisateurFromJwt(jwt);
+        Utilisateur createur = utilisateurService.getUtilisateurFromJwt(jwt);
 
         CarteAConte carte = CarteAConte.builder()
                 .createur(createur)
@@ -96,8 +100,8 @@ public class CarteAConteService {
      */
     @Transactional(readOnly = true)
     public List<CarteAConteResponse> listerSelonRole(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
 
         List<CarteAConte> cartes;
 
@@ -159,7 +163,7 @@ public class CarteAConteService {
      * enseignant ne doit pas pouvoir depublier une creation deja validee.
      */
     public CarteAConteResponse retirer(UUID carteId, Jwt jwt) {
-        Collection<String> roles = extractRoles(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
         if (!estModerateurGlobal(roles)) {
             throw new AccessDeniedException(
                     "Seuls les administrateurs et moderateurs peuvent retirer une creation publiee");
@@ -178,19 +182,18 @@ public class CarteAConteService {
      */
     private CarteAConteResponse changerStatut(UUID carteId, Jwt jwt,
                                               com.codabli.entity.enums.StatutModeration nouveauStatut, String motif) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
 
         CarteAConte carte = carteAConteRepository.findById(carteId)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_CARTE_CONTE,
                         "Carte a conte non trouvee avec l'ID: " + carteId));
 
         if (!estModerateurGlobal(roles)) {
             // Enseignant : verification fine, l'eleve createur doit etre dans une
             // classe de cet enseignant
             UUID createurId = carte.getCreateur().getId();
-            boolean estDansSaClasse = inscriptionClasseRepository
-                    .existsByEleveIdAndClasseEnseignantId(createurId, utilisateur.getId());
+            boolean estDansSaClasse = inscriptionClasseService.estDansSaClasse(createurId, utilisateur.getId());
 
             if (!estDansSaClasse) {
                 throw new AccessDeniedException(
@@ -212,28 +215,15 @@ public class CarteAConteService {
     // METHODES UTILITAIRES
     // ────────────────────────────────────────────────────────────────
 
-    /**
-     * Recupere l'Utilisateur local a partir du keycloakId (claim "sub" du JWT).
-     */
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
+    Page<CarteAConte> rechercherValidees(StatutModeration statut, String query, Pageable pageable) {
+        return carteAConteRepository.rechercherValidees(statut, query, pageable);
     }
 
-    /**
-     * Extrait les roles depuis le claim realm_access.roles du JWT.
-     * Exemple de claim : { "realm_access": { "roles": ["eleve",
-     * "default-roles-codabli"] } }
-     */
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
-        }
-        return (Collection<String>) realmAccess.get("roles");
+    CarteAConte findByIdAndStatutModeration(UUID id, StatutModeration statut){
+        return carteAConteRepository
+                .findByIdAndStatutModeration(id, statut)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_CARTE_CONTE,
+                        "Carte non trouvée ou non validée avec l'ID: " + id));
     }
 
     /**

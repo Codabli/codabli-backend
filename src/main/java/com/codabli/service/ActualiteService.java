@@ -4,8 +4,9 @@ import com.codabli.dto.ActualiteRequest;
 import com.codabli.dto.ActualiteResponse;
 import com.codabli.entity.Actualite;
 import com.codabli.entity.Utilisateur;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ActualiteRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -28,12 +29,12 @@ import java.util.UUID;
 public class ActualiteService {
 
     private final ActualiteRepository actualiteRepository;
-    private final UtilisateurRepository utilisateurRepository;
 
-    public ActualiteService(ActualiteRepository actualiteRepository,
-                            UtilisateurRepository utilisateurRepository) {
+    private final UtilisateurService utilisateurService;
+
+    public ActualiteService(ActualiteRepository actualiteRepository, UtilisateurService utilisateurService) {
         this.actualiteRepository = actualiteRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ public class ActualiteService {
     // ────────────────────────────────────────────────────────────────
 
     public ActualiteResponse creer(ActualiteRequest request, Jwt jwt) {
-        Utilisateur auteur = getUtilisateurFromJwt(jwt);
+        Utilisateur auteur = utilisateurService.getUtilisateurFromJwt(jwt);
 
         Actualite actualite = Actualite.builder()
                 .auteur(auteur)
@@ -66,9 +67,7 @@ public class ActualiteService {
     // ────────────────────────────────────────────────────────────────
 
     public ActualiteResponse modifier(UUID id, ActualiteRequest request, Jwt jwt) {
-        Actualite actualite = actualiteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Actualite non trouvee avec l'ID: " + id));
+        Actualite actualite = findById(id);
 
         actualite.setTitre(request.titre());
         actualite.setImageUrl(request.imageUrl());
@@ -93,9 +92,7 @@ public class ActualiteService {
     // ────────────────────────────────────────────────────────────────
 
     public void supprimer(UUID id) {
-        Actualite actualite = actualiteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Actualite non trouvee avec l'ID: " + id));
+        Actualite actualite = findById(id);
         actualiteRepository.delete(actualite);
     }
 
@@ -115,10 +112,14 @@ public class ActualiteService {
 
     @Transactional(readOnly = true)
     public ActualiteResponse getById(UUID id) {
-        Actualite actualite = actualiteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Actualite non trouvee avec l'ID: " + id));
+        Actualite actualite = findById(id);
         return toResponse(actualite);
+    }
+
+    private Actualite findById(UUID id) {
+        return actualiteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_ACTUALITE,
+                        "Actualite non trouvee avec l'ID: " + id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -134,14 +135,6 @@ public class ActualiteService {
     // ────────────────────────────────────────────────────────────────
     // METHODES UTILITAIRES
     // ────────────────────────────────────────────────────────────────
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
-    }
-
     private ActualiteResponse toResponse(Actualite actualite) {
         return new ActualiteResponse(
                 actualite.getId(),

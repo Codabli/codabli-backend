@@ -3,6 +3,8 @@ package com.codabli.service;
 import com.codabli.dto.FicheActiviteRequest;
 import com.codabli.dto.FicheActiviteResponse;
 import com.codabli.entity.FicheActivite;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.FicheActiviteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,8 +31,11 @@ public class FicheActiviteService {
 
     private final FicheActiviteRepository ficheActiviteRepository;
 
-    public FicheActiviteService(FicheActiviteRepository ficheActiviteRepository) {
+    private final UtilisateurService utilisateurService;
+
+    public FicheActiviteService(FicheActiviteRepository ficheActiviteRepository, UtilisateurService utilisateurService) {
         this.ficheActiviteRepository = ficheActiviteRepository;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -50,15 +55,19 @@ public class FicheActiviteService {
 
     @Transactional(readOnly = true)
     public FicheActiviteResponse getById(UUID id, Jwt jwt) {
-        FicheActivite fiche = ficheActiviteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Fiche d'activite non trouvee avec l'ID: " + id));
+        FicheActivite fiche = findById(id);
 
         if (!fiche.isActif() && !hasWritePermission(jwt)) {
             throw new AccessDeniedException("Vous n'etes pas autorise a acceder a cette fiche inactive");
         }
 
         return toResponse(fiche);
+    }
+
+    private FicheActivite findById(UUID id) {
+        return ficheActiviteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_FICHE_ACTIVITE,
+                        "Fiche d'activite non trouvee avec l'ID: " + id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -91,9 +100,7 @@ public class FicheActiviteService {
     // ────────────────────────────────────────────────────────────────
 
     public FicheActiviteResponse modifier(UUID id, FicheActiviteRequest request) {
-        FicheActivite fiche = ficheActiviteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Fiche d'activite non trouvee avec l'ID: " + id));
+        FicheActivite fiche = findById(id);
 
         fiche.setTitre(request.titre());
         fiche.setObjectif(request.objectif());
@@ -124,9 +131,7 @@ public class FicheActiviteService {
             throw new AccessDeniedException("Seul un administrateur peut supprimer definitivement une fiche");
         }
 
-        FicheActivite fiche = ficheActiviteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Fiche d'activite non trouvee avec l'ID: " + id));
+        FicheActivite fiche = findById(id);
 
         ficheActiviteRepository.delete(fiche);
     }
@@ -136,24 +141,13 @@ public class FicheActiviteService {
     // ────────────────────────────────────────────────────────────────
 
     private boolean hasWritePermission(Jwt jwt) {
-        Collection<String> roles = extractRoles(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
         return roles.contains("admin") || roles.contains("super_admin") || roles.contains("comite_lecture");
     }
 
     private boolean isAdmin(Jwt jwt) {
-        Collection<String> roles = extractRoles(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
         return roles.contains("admin") || roles.contains("super_admin");
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        if (jwt == null || jwt.getClaimAsMap("realm_access") == null) {
-            return java.util.Collections.emptyList();
-        }
-        Object rolesObj = jwt.getClaimAsMap("realm_access").get("roles");
-        return rolesObj instanceof Collection<?> roles
-                ? (Collection<String>) roles
-                : java.util.Collections.emptyList();
     }
 
     // ────────────────────────────────────────────────────────────────

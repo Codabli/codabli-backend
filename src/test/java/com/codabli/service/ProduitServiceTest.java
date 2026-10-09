@@ -4,6 +4,7 @@ import com.codabli.dto.ProduitRequest;
 import com.codabli.dto.ProduitResponse;
 import com.codabli.entity.Produit;
 import com.codabli.entity.enums.TypeProduit;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ProduitRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

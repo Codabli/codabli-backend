@@ -6,8 +6,9 @@ import com.codabli.dto.WebinaireResponse;
 import com.codabli.entity.InscriptionWebinaire;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.Webinaire;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.InscriptionWebinaireRepository;
-import com.codabli.repository.UtilisateurRepository;
 import com.codabli.repository.WebinaireRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,14 +28,15 @@ public class WebinaireService {
 
     private final WebinaireRepository webinaireRepository;
     private final InscriptionWebinaireRepository inscriptionRepository;
-    private final UtilisateurRepository utilisateurRepository;
+
+    private final UtilisateurService utilisateurService;
 
     public WebinaireService(WebinaireRepository webinaireRepository,
                             InscriptionWebinaireRepository inscriptionRepository,
-                            UtilisateurRepository utilisateurRepository) {
+                            UtilisateurService utilisateurService) {
         this.webinaireRepository = webinaireRepository;
         this.inscriptionRepository = inscriptionRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -48,7 +50,7 @@ public class WebinaireService {
 
     @Transactional(readOnly = true)
     public WebinaireResponse getById(UUID id) {
-        return toResponse(getOrThrow(id));
+        return toResponse(findById(id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -74,7 +76,7 @@ public class WebinaireService {
     }
 
     public WebinaireResponse modifier(UUID id, WebinaireRequest request) {
-        Webinaire webinaire = getOrThrow(id);
+        Webinaire webinaire = findById(id);
 
         webinaire.setTitre(request.titre());
         webinaire.setDescription(request.description());
@@ -94,7 +96,7 @@ public class WebinaireService {
     }
 
     public void supprimer(UUID id) {
-        webinaireRepository.delete(getOrThrow(id));
+        webinaireRepository.delete(findById(id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -102,8 +104,8 @@ public class WebinaireService {
     // ────────────────────────────────────────────────────────────────
 
     public InscriptionWebinaireResponse sInscrire(UUID webinaireId, Jwt jwt) {
-        Webinaire webinaire = getOrThrow(webinaireId);
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Webinaire webinaire = findById(webinaireId);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
 
         if (inscriptionRepository.findByWebinaireIdAndUtilisateurId(webinaireId, utilisateur.getId()).isPresent()) {
             throw new IllegalStateException("Vous etes deja inscrit a ce webinaire");
@@ -124,16 +126,16 @@ public class WebinaireService {
     }
 
     public void seDesinscrire(UUID webinaireId, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         InscriptionWebinaire inscription = inscriptionRepository
                 .findByWebinaireIdAndUtilisateurId(webinaireId, utilisateur.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Inscription non trouvee"));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_WEBINAIRE_INSCRIPTION, "Inscription non trouvee"));
         inscriptionRepository.delete(inscription);
     }
 
     @Transactional(readOnly = true)
     public List<InscriptionWebinaireResponse> mesInscriptions(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         return inscriptionRepository.findByUtilisateurIdOrderByDateInscriptionDesc(utilisateur.getId()).stream()
                 .map(this::toInscriptionResponse)
                 .toList();
@@ -143,15 +145,9 @@ public class WebinaireService {
     // METHODES UTILITAIRES
     // ────────────────────────────────────────────────────────────────
 
-    private Webinaire getOrThrow(UUID id) {
+    private Webinaire findById(UUID id) {
         return webinaireRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Webinaire non trouve avec l'ID: " + id));
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        return utilisateurRepository.findByKeycloakId(jwt.getSubject())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + jwt.getSubject()));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_WEBINAIRE, "Webinaire non trouve avec l'ID: " + id));
     }
 
     private WebinaireResponse toResponse(Webinaire webinaire) {

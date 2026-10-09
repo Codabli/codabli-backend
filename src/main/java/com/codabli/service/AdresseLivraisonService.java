@@ -4,8 +4,10 @@ import com.codabli.dto.AdresseLivraisonRequest;
 import com.codabli.dto.AdresseLivraisonResponse;
 import com.codabli.entity.AdresseLivraison;
 import com.codabli.entity.Utilisateur;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.AdresseLivraisonRepository;
-import com.codabli.repository.UtilisateurRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,12 +28,12 @@ import java.util.UUID;
 public class AdresseLivraisonService {
 
     private final AdresseLivraisonRepository adresseLivraisonRepository;
-    private final UtilisateurRepository utilisateurRepository;
 
-    public AdresseLivraisonService(AdresseLivraisonRepository adresseLivraisonRepository,
-                                   UtilisateurRepository utilisateurRepository) {
+    private final UtilisateurService utilisateurService;
+
+    public AdresseLivraisonService(AdresseLivraisonRepository adresseLivraisonRepository, UtilisateurService utilisateurService) {
         this.adresseLivraisonRepository = adresseLivraisonRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -40,7 +42,7 @@ public class AdresseLivraisonService {
 
     @Transactional(readOnly = true)
     public List<AdresseLivraisonResponse> lister(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         return adresseLivraisonRepository.findByUtilisateurId(utilisateur.getId())
                 .stream()
                 .map(this::toResponse)
@@ -52,7 +54,7 @@ public class AdresseLivraisonService {
     // ────────────────────────────────────────────────────────────────
 
     public AdresseLivraisonResponse creer(AdresseLivraisonRequest request, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
 
         // Si cette adresse est par defaut, retirer le flag des autres
         if (request.parDefaut() != null && request.parDefaut()) {
@@ -78,14 +80,12 @@ public class AdresseLivraisonService {
     // ────────────────────────────────────────────────────────────────
 
     public AdresseLivraisonResponse modifier(UUID id, AdresseLivraisonRequest request, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        AdresseLivraison adresse = adresseLivraisonRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Adresse non trouvee avec l'ID: " + id));
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        AdresseLivraison adresse = findById(id);
 
         // Verification proprietaire
         if (!adresse.getUtilisateur().getId().equals(utilisateur.getId())) {
-            throw new SecurityException("Acces interdit a cette adresse");
+            throw new AccessDeniedException("Acces interdit a cette adresse");
         }
 
         if (request.parDefaut() != null && request.parDefaut()) {
@@ -110,13 +110,11 @@ public class AdresseLivraisonService {
     // ────────────────────────────────────────────────────────────────
 
     public void supprimer(UUID id, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        AdresseLivraison adresse = adresseLivraisonRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Adresse non trouvee avec l'ID: " + id));
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        AdresseLivraison adresse = findById(id);
 
         if (!adresse.getUtilisateur().getId().equals(utilisateur.getId())) {
-            throw new SecurityException("Acces interdit a cette adresse");
+            throw new AccessDeniedException("Acces interdit a cette adresse");
         }
 
         adresseLivraisonRepository.delete(adresse);
@@ -126,6 +124,13 @@ public class AdresseLivraisonService {
     // METHODES UTILITAIRES
     // ────────────────────────────────────────────────────────────────
 
+    AdresseLivraison findById(UUID id) {
+        return adresseLivraisonRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_ADRESSE,
+                        "Adresse non trouvee avec l'ID: " + id));
+    }
+
+
     private void resetParDefaut(UUID utilisateurId) {
         adresseLivraisonRepository.findByUtilisateurId(utilisateurId)
                 .forEach(a -> {
@@ -134,13 +139,6 @@ public class AdresseLivraisonService {
                         adresseLivraisonRepository.save(a);
                     }
                 });
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
     }
 
     private AdresseLivraisonResponse toResponse(AdresseLivraison adresse) {

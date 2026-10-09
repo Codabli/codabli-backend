@@ -8,8 +8,9 @@ import com.codabli.entity.Ecole;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.AccesConte;
 import com.codabli.entity.enums.StatutConte;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ConteDanseRepository;
-import com.codabli.repository.UtilisateurRepository;
 import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,14 +37,12 @@ import java.util.UUID;
 public class ConteDanseService {
 
     private final ConteDanseRepository conteDanseRepository;
-    private final UtilisateurRepository utilisateurRepository;
+    private final UtilisateurService utilisateurService;
     private final EntityManager entityManager;
 
-    public ConteDanseService(ConteDanseRepository conteDanseRepository,
-                             UtilisateurRepository utilisateurRepository,
-                             EntityManager entityManager) {
+    public ConteDanseService(ConteDanseRepository conteDanseRepository, UtilisateurService utilisateurService, EntityManager entityManager) {
         this.conteDanseRepository = conteDanseRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.utilisateurService = utilisateurService;
         this.entityManager = entityManager;
     }
 
@@ -52,7 +51,7 @@ public class ConteDanseService {
     // ────────────────────────────────────────────────────────────────
 
     public ConteDanseResponse creer(ConteDanseRequest request, Jwt jwt) {
-        Utilisateur createur = getUtilisateurFromJwt(jwt);
+        Utilisateur createur = utilisateurService.getUtilisateurFromJwt(jwt);
 
         ConteDanse conte = ConteDanse.builder()
                 .createur(createur)
@@ -93,10 +92,8 @@ public class ConteDanseService {
     // ────────────────────────────────────────────────────────────────
 
     public ConteDanseResponse modifier(UUID id, ConteDanseRequest request, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        ConteDanse conte = conteDanseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conte danse non trouve avec l'ID: " + id));
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        ConteDanse conte = findById(id);
 
         // Verification fine : seul l'auteur ou un admin peut modifier
         verifierAuteurOuAdmin(conte, utilisateur, jwt);
@@ -149,8 +146,8 @@ public class ConteDanseService {
      * moderation.
      */
     public ConteDanseResponse soumettre(UUID id, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        ConteDanse conte = getOrThrow(id);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        ConteDanse conte = findById(id);
 
         if (!conte.getCreateur().getId().equals(utilisateur.getId())) {
             throw new AccessDeniedException("Seul l'auteur peut soumettre son conte a la moderation");
@@ -174,9 +171,9 @@ public class ConteDanseService {
      * - admin/super_admin : droit total, publie directement
      */
     public ConteDanseResponse valider(UUID id, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
-        ConteDanse conte = getOrThrow(id);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
+        ConteDanse conte = findById(id);
 
         if (roles.contains("admin") || roles.contains("super_admin")) {
             publier(conte, utilisateur);
@@ -210,9 +207,9 @@ public class ConteDanseService {
      * le motif est enregistre).
      */
     public ConteDanseResponse refuser(UUID id, String motif, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
-        ConteDanse conte = getOrThrow(id);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
+        ConteDanse conte = findById(id);
 
         boolean autorise = roles.contains("admin") || roles.contains("super_admin")
                 || roles.contains("comite_lecture");
@@ -238,7 +235,7 @@ public class ConteDanseService {
 
     @Transactional(readOnly = true)
     public List<ConteDanseResponse> mesContes(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         return conteDanseRepository.findByCreateurId(utilisateur.getId()).stream()
                 .map(this::toResponse)
                 .toList();
@@ -250,8 +247,8 @@ public class ConteDanseService {
 
     @Transactional(readOnly = true)
     public List<ConteDanseResponse> listerEnAttente(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
 
         List<ConteDanse> contes;
         if (roles.contains("admin") || roles.contains("super_admin")) {
@@ -276,21 +273,13 @@ public class ConteDanseService {
         conte.setMotifModeration(null);
     }
 
-    private ConteDanse getOrThrow(UUID id) {
-        return conteDanseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conte danse non trouve avec l'ID: " + id));
-    }
-
     // ────────────────────────────────────────────────────────────────
     // SUPPRIMER — auteur ou admin
     // ────────────────────────────────────────────────────────────────
 
     public void supprimer(UUID id, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        ConteDanse conte = conteDanseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conte danse non trouve avec l'ID: " + id));
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        ConteDanse conte = findById(id);
 
         verifierAuteurOuAdmin(conte, utilisateur, jwt);
         conteDanseRepository.delete(conte);
@@ -325,10 +314,14 @@ public class ConteDanseService {
 
     @Transactional(readOnly = true)
     public ConteDanseResponse getById(UUID id) {
-        ConteDanse conte = conteDanseRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conte danse non trouve avec l'ID: " + id));
+        ConteDanse conte = findById(id);
         return toResponse(conte);
+    }
+
+    ConteDanse findById(UUID id) {
+        return conteDanseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_CONTE_DANSE,
+                        "Conte danse non trouve avec l'ID: " + id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -351,7 +344,7 @@ public class ConteDanseService {
      * Leve AccessDeniedException sinon.
      */
     private void verifierAuteurOuAdmin(ConteDanse conte, Utilisateur utilisateur, Jwt jwt) {
-        Collection<String> roles = extractRoles(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
         boolean estAuteur = conte.getCreateur().getId().equals(utilisateur.getId());
         boolean estAdmin = roles.contains("admin") || roles.contains("super_admin") || roles.contains("moderateur");
 
@@ -359,22 +352,6 @@ public class ConteDanseService {
             throw new AccessDeniedException(
                     "Vous ne pouvez modifier/supprimer que vos propres contes danses");
         }
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
-        }
-        return (Collection<String>) realmAccess.get("roles");
     }
 
     private ConteDanseResponse toResponse(ConteDanse conte) {

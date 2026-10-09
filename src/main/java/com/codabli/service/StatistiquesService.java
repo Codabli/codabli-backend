@@ -39,58 +39,58 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class StatistiquesService {
 
-    private final UtilisateurRepository utilisateurRepository;
-    private final EcoleRepository ecoleRepository;
-    private final ClasseRepository classeRepository;
-    private final ConteDanseRepository conteDanseRepository;
-    private final CarteAConteRepository carteAConteRepository;
-    private final RessourcePedagogiqueRepository ressourcePedagogiqueRepository;
-    private final FicheActiviteRepository ficheActiviteRepository;
-    private final ProduitRepository produitRepository;
-    private final CommandeRepository commandeRepository;
-    private final PartenaireRepository partenaireRepository;
-    private final OffreAbonnementRepository offreAbonnementRepository;
     private final AbonnementRepository abonnementRepository;
-    private final ProfilEnfantRepository profilEnfantRepository;
+    private final ActualiteRepository actualiteRepository;
+    private final CarteAConteRepository carteAConteRepository;
+    private final ClasseRepository classeRepository;
+    private final CommandeRepository commandeRepository;
+    private final ConteDanseRepository conteDanseRepository;
+    private final DemandeContactRepository demandeContactRepository;
+    private final EcoleRepository ecoleRepository;
+    private final FicheActiviteRepository ficheActiviteRepository;
+    private final OffreAbonnementRepository offreAbonnementRepository;
     private final PageCarnetLectureRepository pageCarnetLectureRepository;
     private final PageCarnetVoyageRepository pageCarnetVoyageRepository;
-    private final ActualiteRepository actualiteRepository;
-    private final DemandeContactRepository demandeContactRepository;
+    private final PartenaireRepository partenaireRepository;
+    private final ProduitRepository produitRepository;
+    private final ProfilEnfantRepository profilEnfantRepository;
+    private final RessourcePedagogiqueRepository ressourcePedagogiqueRepository;
+    private final UtilisateurRepository utilisateurRepository;
 
-    public StatistiquesService(UtilisateurRepository utilisateurRepository,
-                               EcoleRepository ecoleRepository,
-                               ClasseRepository classeRepository,
-                               ConteDanseRepository conteDanseRepository,
+    public StatistiquesService(AbonnementRepository abonnementRepository,
+                               ActualiteRepository actualiteRepository,
                                CarteAConteRepository carteAConteRepository,
-                               RessourcePedagogiqueRepository ressourcePedagogiqueRepository,
-                               FicheActiviteRepository ficheActiviteRepository,
-                               ProduitRepository produitRepository,
+                               ClasseRepository classeRepository,
                                CommandeRepository commandeRepository,
-                               PartenaireRepository partenaireRepository,
+                               ConteDanseRepository conteDanseRepository,
+                               DemandeContactRepository demandeContactRepository,
+                               EcoleRepository ecoleRepository,
+                               FicheActiviteRepository ficheActiviteRepository,
                                OffreAbonnementRepository offreAbonnementRepository,
-                               AbonnementRepository abonnementRepository,
-                               ProfilEnfantRepository profilEnfantRepository,
                                PageCarnetLectureRepository pageCarnetLectureRepository,
                                PageCarnetVoyageRepository pageCarnetVoyageRepository,
-                               ActualiteRepository actualiteRepository,
-                               DemandeContactRepository demandeContactRepository) {
-        this.utilisateurRepository = utilisateurRepository;
-        this.ecoleRepository = ecoleRepository;
-        this.classeRepository = classeRepository;
-        this.conteDanseRepository = conteDanseRepository;
-        this.carteAConteRepository = carteAConteRepository;
-        this.ressourcePedagogiqueRepository = ressourcePedagogiqueRepository;
-        this.ficheActiviteRepository = ficheActiviteRepository;
-        this.produitRepository = produitRepository;
-        this.commandeRepository = commandeRepository;
-        this.partenaireRepository = partenaireRepository;
-        this.offreAbonnementRepository = offreAbonnementRepository;
+                               PartenaireRepository partenaireRepository,
+                               ProduitRepository produitRepository,
+                               ProfilEnfantRepository profilEnfantRepository,
+                               RessourcePedagogiqueRepository ressourcePedagogiqueRepository,
+                               UtilisateurRepository utilisateurRepository) {
         this.abonnementRepository = abonnementRepository;
-        this.profilEnfantRepository = profilEnfantRepository;
+        this.actualiteRepository = actualiteRepository;
+        this.carteAConteRepository = carteAConteRepository;
+        this.classeRepository = classeRepository;
+        this.commandeRepository = commandeRepository;
+        this.conteDanseRepository = conteDanseRepository;
+        this.demandeContactRepository = demandeContactRepository;
+        this.ecoleRepository = ecoleRepository;
+        this.ficheActiviteRepository = ficheActiviteRepository;
+        this.offreAbonnementRepository = offreAbonnementRepository;
         this.pageCarnetLectureRepository = pageCarnetLectureRepository;
         this.pageCarnetVoyageRepository = pageCarnetVoyageRepository;
-        this.actualiteRepository = actualiteRepository;
-        this.demandeContactRepository = demandeContactRepository;
+        this.partenaireRepository = partenaireRepository;
+        this.produitRepository = produitRepository;
+        this.profilEnfantRepository = profilEnfantRepository;
+        this.ressourcePedagogiqueRepository = ressourcePedagogiqueRepository;
+        this.utilisateurRepository = utilisateurRepository;
     }
 
     public StatistiquesResponse consulter() {

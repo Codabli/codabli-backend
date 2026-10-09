@@ -1,5 +1,6 @@
 package com.codabli.service;
 
+import com.codabli.config.KeycloakProperties;
 import com.codabli.dto.LoginResponse;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.Keycloak;
@@ -8,15 +9,13 @@ import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import java.util.Collections;
 import java.util.List;
@@ -31,23 +30,13 @@ import java.util.Map;
 public class KeycloakAdminService {
 
     private final Keycloak keycloak;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
+    private final KeycloakProperties properties;
 
-    @Value("${keycloak.admin.server-url}")
-    private String serverUrl;
-
-    @Value("${keycloak.admin.realm}")
-    private String realm;
-
-    @Value("${keycloak.admin.client-id}")
-    private String clientId;
-
-    @Value("${keycloak.admin.client-secret}")
-    private String clientSecret;
-
-    public KeycloakAdminService(Keycloak keycloak) {
+    public KeycloakAdminService(Keycloak keycloak, @Qualifier("keycloakRestClient") RestClient restClient, KeycloakProperties properties) {
         this.keycloak = keycloak;
-        this.restTemplate = new RestTemplate();
+        this.restClient = restClient;
+        this.properties = properties;
     }
 
     /**
@@ -92,28 +81,20 @@ public class KeycloakAdminService {
      * Authenticates a user and returns JWT tokens from Keycloak's token endpoint.
      */
     public LoginResponse login(String email, String password) {
-        String tokenUrl = serverUrl + "/realms/" + realm + "/protocol/openid-connect/token";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("grant_type", "password");
-        body.add("client_id", clientId);
-        body.add("client_secret", clientSecret);
-        body.add("username", email);
-        body.add("password", password);
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "password");
+        form.add("client_id", properties.clientId());
+        form.add("client_secret", properties.clientSecret());
+        form.add("username", email);
+        form.add("password", password);
         try {
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    tokenUrl,
-                    org.springframework.http.HttpMethod.POST,
-                    request,
-                    new org.springframework.core.ParameterizedTypeReference<>() {
+            Map<String, Object> responseBody = restClient.post()
+                    .uri("/protocol/openid-connect/token")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
                     });
-            Map<String, Object> responseBody = response.getBody();
 
             if (responseBody == null) {
                 throw new RuntimeException("Réponse vide du serveur Keycloak");
@@ -149,7 +130,7 @@ public class KeycloakAdminService {
     }
 
     private RealmResource getRealmResource() {
-        return keycloak.realm(realm);
+        return keycloak.realm(properties.realm());
     }
 
     private void assignRealmRole(String userId, String roleName) {

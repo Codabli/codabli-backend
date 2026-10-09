@@ -13,10 +13,10 @@ import com.codabli.entity.Produit;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.StatutCommande;
 import com.codabli.entity.enums.TypeProduit;
-import com.codabli.repository.AdresseLivraisonRepository;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
+import com.codabli.exception.StockInsuffisantException;
 import com.codabli.repository.CommandeRepository;
-import com.codabli.repository.ProduitRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -43,21 +43,18 @@ public class CommandeService {
     private static final BigDecimal FRAIS_LIVRAISON_DEFAUT = new BigDecimal("5.00");
 
     private final CommandeRepository commandeRepository;
-    private final ProduitRepository produitRepository;
-    private final AdresseLivraisonRepository adresseLivraisonRepository;
-    private final UtilisateurRepository utilisateurRepository;
-    private final PanierService panierService;
 
-    public CommandeService(CommandeRepository commandeRepository,
-                           ProduitRepository produitRepository,
-                           AdresseLivraisonRepository adresseLivraisonRepository,
-                           UtilisateurRepository utilisateurRepository,
-                           PanierService panierService) {
+    private final AdresseLivraisonService adresseLivraisonService;
+    private final PanierService panierService;
+    private final ProduitService produitService;
+    private final UtilisateurService utilisateurService;
+
+    public CommandeService(CommandeRepository commandeRepository, AdresseLivraisonService adresseLivraisonService, PanierService panierService, ProduitService produitService, UtilisateurService utilisateurService) {
         this.commandeRepository = commandeRepository;
-        this.produitRepository = produitRepository;
-        this.adresseLivraisonRepository = adresseLivraisonRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.adresseLivraisonService = adresseLivraisonService;
         this.panierService = panierService;
+        this.produitService = produitService;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -65,7 +62,7 @@ public class CommandeService {
     // ────────────────────────────────────────────────────────────────
 
     public CommandeResponse creerCommande(CreerCommandeRequest request, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         Panier panier = panierService.getOrCreatePanier(utilisateur);
 
         // Verifier que le panier n'est pas vide
@@ -76,9 +73,7 @@ public class CommandeService {
         // Recuperer l'adresse de livraison si fournie
         AdresseLivraison adresseLivraison = null;
         if (request.adresseLivraisonId() != null) {
-            adresseLivraison = adresseLivraisonRepository.findById(request.adresseLivraisonId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Adresse de livraison non trouvee avec l'ID: " + request.adresseLivraisonId()));
+            adresseLivraison = adresseLivraisonService.findById(request.adresseLivraisonId());
 
             // Verifier que l'adresse appartient a l'utilisateur
             if (!adresseLivraison.getUtilisateur().getId().equals(utilisateur.getId())) {
@@ -110,15 +105,12 @@ public class CommandeService {
             // Verifier le stock pour les produits physiques
             if (produit.getType() == TypeProduit.produit_physique) {
                 if (produit.getStock() == null || produit.getStock() < lignePanier.getQuantite()) {
-                    throw new StockInsuffisantException(
-                            "Stock insuffisant pour le produit '" + produit.getNom()
-                                    + "'. Stock disponible: " + (produit.getStock() != null ? produit.getStock() : 0)
-                                    + ", quantite demandee: " + lignePanier.getQuantite());
+                    throw new StockInsuffisantException(produit.getNom(), (produit.getStock() != null ? produit.getStock() : 0), lignePanier.getQuantite());
                 }
 
                 // Decrementer le stock
                 produit.setStock(produit.getStock() - lignePanier.getQuantite());
-                produitRepository.save(produit);
+                produitService.save(produit);
             }
 
             // Snapshot du prix au moment de l'achat
@@ -155,7 +147,7 @@ public class CommandeService {
 
     @Transactional(readOnly = true)
     public Page<CommandeResponse> listerCommandes(Jwt jwt, Pageable pageable) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         return commandeRepository
                 .findByUtilisateurIdOrderByDateCommandeDesc(utilisateur.getId(), pageable)
                 .map(this::toResponse);
@@ -167,10 +159,8 @@ public class CommandeService {
 
     @Transactional(readOnly = true)
     public CommandeResponse getCommandeById(UUID id, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Commande commande = commandeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Commande non trouvee avec l'ID: " + id));
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Commande commande = findById(id);
 
         // Verification : l'utilisateur ne peut voir que ses propres commandes
         // sauf s'il est admin (verifie par @PreAuthorize dans le controller,
@@ -186,14 +176,18 @@ public class CommandeService {
         return toResponse(commande);
     }
 
+    private Commande findById(UUID id) {
+        return commandeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_COMMANDE,
+                        "Commande non trouvee avec l'ID: " + id));
+    }
+
     // ────────────────────────────────────────────────────────────────
     // CHANGER LE STATUT — admin uniquement (verifie par @PreAuthorize)
     // ────────────────────────────────────────────────────────────────
 
     public CommandeResponse changerStatut(UUID id, StatutCommande nouveauStatut) {
-        Commande commande = commandeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Commande non trouvee avec l'ID: " + id));
+        Commande commande = findById(id);
 
         commande.setStatut(nouveauStatut);
         Commande saved = commandeRepository.save(commande);
@@ -203,13 +197,6 @@ public class CommandeService {
     // ────────────────────────────────────────────────────────────────
     // METHODES UTILITAIRES
     // ────────────────────────────────────────────────────────────────
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
-    }
 
     private CommandeResponse toResponse(Commande commande) {
         List<LigneCommandeResponse> lignes = commande.getLignes().stream()

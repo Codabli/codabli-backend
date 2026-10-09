@@ -5,6 +5,8 @@ import com.codabli.entity.ConteDanse;
 import com.codabli.entity.Fresque;
 import com.codabli.entity.Hotspot;
 import com.codabli.entity.SalleGalerie;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.FresqueRepository;
 import com.codabli.repository.SalleGalerieRepository;
 import jakarta.persistence.EntityManager;
@@ -155,7 +157,7 @@ public class GalerieArtsService {
         Hotspot hotspot = fresque.getHotspots().stream()
                 .filter(h -> h.getId().equals(hotspotId))
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Hotspot non trouve avec l'ID: " + hotspotId));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_HOTSPOT, "Hotspot non trouve avec l'ID: " + hotspotId));
 
         hotspot.setTitre(request.titre());
         hotspot.setExplicationDecouverte(request.explicationDecouverte());
@@ -176,7 +178,7 @@ public class GalerieArtsService {
         Fresque fresque = getFresqueOrThrow(fresqueId);
         boolean supprime = fresque.getHotspots().removeIf(h -> h.getId().equals(hotspotId));
         if (!supprime) {
-            throw new ResourceNotFoundException("Hotspot non trouve avec l'ID: " + hotspotId);
+            throw new ResourceNotFoundException(ErrorCode.UNKNOWN_HOTSPOT, "Hotspot non trouve avec l'ID: " + hotspotId);
         }
         return toFresqueResponse(fresqueRepository.save(fresque));
     }
@@ -187,12 +189,12 @@ public class GalerieArtsService {
 
     private SalleGalerie getSalleOrThrow(UUID id) {
         return salleGalerieRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Salle de galerie non trouvee avec l'ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_GALERIE_SALLE, "Salle de galerie non trouvee avec l'ID: " + id));
     }
 
     private Fresque getFresqueOrThrow(UUID id) {
         return fresqueRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Fresque non trouvee avec l'ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_FRESQUE, "Fresque non trouvee avec l'ID: " + id));
     }
 
     private SalleGalerieResponse toSalleResponse(SalleGalerie salle) {

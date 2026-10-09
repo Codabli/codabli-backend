@@ -4,7 +4,6 @@ import com.codabli.dto.ConteDanseRequest;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.Utilisateur;
 import com.codabli.repository.ConteDanseRepository;
-import com.codabli.repository.UtilisateurRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,11 +14,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -32,7 +31,7 @@ class ConteDanseServiceTest {
     private ConteDanseRepository conteDanseRepository;
 
     @Mock
-    private UtilisateurRepository utilisateurRepository;
+    private UtilisateurService utilisateurService;
 
     @Mock
     private EntityManager entityManager;
@@ -66,10 +65,8 @@ class ConteDanseServiceTest {
     void modifier_withNonAuteurNonAdmin_shouldThrowAccessDenied() {
         ConteDanseRequest request = conteDanseRequest();
 
-        when(jwt.getSubject()).thenReturn("other-id");
-        when(utilisateurRepository.findByKeycloakId("other-id"))
-                .thenReturn(Optional.of(autreUser));
-        when(jwt.getClaimAsMap("realm_access")).thenReturn(Collections.emptyMap()); // no roles
+        when(utilisateurService.getUtilisateurFromJwt(any())).thenReturn(autreUser);
+        when(utilisateurService.extractRoles(any())).thenReturn(List.of()); // no roles
         when(conteDanseRepository.findById(conteId)).thenReturn(Optional.of(conte));
 
         assertThrows(AccessDeniedException.class, () -> conteDanseService.modifier(conteId, request, jwt));

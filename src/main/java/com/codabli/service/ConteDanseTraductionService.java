@@ -6,7 +6,8 @@ import com.codabli.entity.ConteDanse;
 import com.codabli.entity.ConteDanseTraduction;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.StatutTraduction;
-import com.codabli.repository.ConteDanseRepository;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ConteDanseTraductionRepository;
 import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
@@ -28,15 +29,13 @@ import java.util.UUID;
 public class ConteDanseTraductionService {
 
     private final ConteDanseTraductionRepository traductionRepository;
-    private final ConteDanseRepository conteDanseRepository;
     private final EntityManager entityManager;
+    private final ConteDanseService conteDanseService;
 
-    public ConteDanseTraductionService(ConteDanseTraductionRepository traductionRepository,
-                                       ConteDanseRepository conteDanseRepository,
-                                       EntityManager entityManager) {
+    public ConteDanseTraductionService(ConteDanseTraductionRepository traductionRepository, EntityManager entityManager, ConteDanseService conteDanseService) {
         this.traductionRepository = traductionRepository;
-        this.conteDanseRepository = conteDanseRepository;
         this.entityManager = entityManager;
+        this.conteDanseService = conteDanseService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -68,9 +67,7 @@ public class ConteDanseTraductionService {
     // ────────────────────────────────────────────────────────────────
 
     public ConteDanseTraductionResponse creer(UUID conteId, ConteDanseTraductionRequest request) {
-        ConteDanse conte = conteDanseRepository.findById(conteId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Conte danse non trouve avec l'ID: " + conteId));
+        ConteDanse conte = conteDanseService.findById(conteId);
 
         ConteDanseTraduction traduction = ConteDanseTraduction.builder()
                 .conte(conte)
@@ -93,7 +90,7 @@ public class ConteDanseTraductionService {
     // ────────────────────────────────────────────────────────────────
 
     public ConteDanseTraductionResponse modifier(UUID id, ConteDanseTraductionRequest request) {
-        ConteDanseTraduction traduction = getOrThrow(id);
+        ConteDanseTraduction traduction = findById(id);
 
         traduction.setLangue(request.langue());
         traduction.setVariante(request.variante());
@@ -117,7 +114,7 @@ public class ConteDanseTraductionService {
      * deja "validee" (ou deja publiees) peuvent passer a "publiee".
      */
     public ConteDanseTraductionResponse changerStatut(UUID id, StatutTraduction nouveauStatut) {
-        ConteDanseTraduction traduction = getOrThrow(id);
+        ConteDanseTraduction traduction = findById(id);
 
         if (nouveauStatut == StatutTraduction.publiee
                 && traduction.getStatut() != StatutTraduction.validee
@@ -136,7 +133,7 @@ public class ConteDanseTraductionService {
     // ────────────────────────────────────────────────────────────────
 
     public void supprimer(UUID id) {
-        ConteDanseTraduction traduction = getOrThrow(id);
+        ConteDanseTraduction traduction = findById(id);
         traductionRepository.delete(traduction);
     }
 
@@ -153,9 +150,9 @@ public class ConteDanseTraductionService {
         }
     }
 
-    private ConteDanseTraduction getOrThrow(UUID id) {
+    private ConteDanseTraduction findById(UUID id) {
         return traductionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_CONTE_TRADUCTION,
                         "Traduction non trouvee avec l'ID: " + id));
     }
 

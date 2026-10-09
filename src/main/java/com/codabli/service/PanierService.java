@@ -8,9 +8,9 @@ import com.codabli.entity.LignePanier;
 import com.codabli.entity.Panier;
 import com.codabli.entity.Produit;
 import com.codabli.entity.Utilisateur;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.PanierRepository;
-import com.codabli.repository.ProduitRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,15 +33,16 @@ import java.util.UUID;
 public class PanierService {
 
     private final PanierRepository panierRepository;
-    private final ProduitRepository produitRepository;
-    private final UtilisateurRepository utilisateurRepository;
+
+    private final ProduitService produitService;
+    private final UtilisateurService utilisateurService;
 
     public PanierService(PanierRepository panierRepository,
-                         ProduitRepository produitRepository,
-                         UtilisateurRepository utilisateurRepository) {
+                         ProduitService produitService,
+                         UtilisateurService utilisateurService) {
         this.panierRepository = panierRepository;
-        this.produitRepository = produitRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.produitService = produitService;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ public class PanierService {
 
     @Transactional(readOnly = true)
     public PanierResponse getPanier(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         Panier panier = getOrCreatePanier(utilisateur);
         return toResponse(panier);
     }
@@ -60,12 +61,10 @@ public class PanierService {
     // ────────────────────────────────────────────────────────────────
 
     public PanierResponse ajouterProduit(AjoutPanierRequest request, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         Panier panier = getOrCreatePanier(utilisateur);
 
-        Produit produit = produitRepository.findById(request.produitId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Produit non trouve avec l'ID: " + request.produitId()));
+        Produit produit = produitService.findById(request.produitId());
 
         if (!produit.isActif()) {
             throw new IllegalArgumentException("Ce produit n'est plus disponible");
@@ -99,13 +98,13 @@ public class PanierService {
     // ────────────────────────────────────────────────────────────────
 
     public PanierResponse modifierQuantite(UUID ligneId, ModifQuantiteRequest request, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         Panier panier = getOrCreatePanier(utilisateur);
 
         LignePanier ligne = panier.getLignes().stream()
                 .filter(l -> l.getId().equals(ligneId))
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_PANIER_LIGNE,
                         "Ligne de panier non trouvee avec l'ID: " + ligneId));
 
         ligne.setQuantite(request.quantite());
@@ -119,12 +118,12 @@ public class PanierService {
     // ────────────────────────────────────────────────────────────────
 
     public PanierResponse supprimerLigne(UUID ligneId, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         Panier panier = getOrCreatePanier(utilisateur);
 
         boolean removed = panier.getLignes().removeIf(l -> l.getId().equals(ligneId));
         if (!removed) {
-            throw new ResourceNotFoundException(
+            throw new ResourceNotFoundException(ErrorCode.UNKNOWN_PANIER_LIGNE,
                     "Ligne de panier non trouvee avec l'ID: " + ligneId);
         }
 
@@ -137,7 +136,7 @@ public class PanierService {
     // ────────────────────────────────────────────────────────────────
 
     public void viderPanier(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         Panier panier = getOrCreatePanier(utilisateur);
         panier.getLignes().clear();
         panierRepository.save(panier);
@@ -155,13 +154,6 @@ public class PanierService {
                             .build();
                     return panierRepository.save(nouveauPanier);
                 });
-    }
-
-    Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
     }
 
     private PanierResponse toResponse(Panier panier) {

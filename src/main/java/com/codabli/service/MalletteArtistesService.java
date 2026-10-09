@@ -8,7 +8,6 @@ import com.codabli.entity.ProfilEnfant;
 import com.codabli.entity.enums.StatutPageCarnet;
 import com.codabli.entity.enums.TypeElementCarnetLecture;
 import com.codabli.entity.enums.TypeElementCarnetVoyage;
-import com.codabli.repository.ProfilEnfantRepository;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,14 +31,12 @@ public class MalletteArtistesService {
 
     private final CarnetLectureService carnetLectureService;
     private final CarnetVoyageService carnetVoyageService;
-    private final ProfilEnfantRepository profilEnfantRepository;
+    private final ProfilEnfantService profilEnfantService;
 
-    public MalletteArtistesService(CarnetLectureService carnetLectureService,
-                                   CarnetVoyageService carnetVoyageService,
-                                   ProfilEnfantRepository profilEnfantRepository) {
+    public MalletteArtistesService(CarnetLectureService carnetLectureService, CarnetVoyageService carnetVoyageService, ProfilEnfantService profilEnfantService) {
         this.carnetLectureService = carnetLectureService;
         this.carnetVoyageService = carnetVoyageService;
-        this.profilEnfantRepository = profilEnfantRepository;
+        this.profilEnfantService = profilEnfantService;
     }
 
     public MalletteArtistesResponse consulter(UUID profilEnfantId, Jwt jwt) {
@@ -48,7 +45,7 @@ public class MalletteArtistesService {
 
         // Si on arrive ici, la propriete du profil a deja ete verifiee par les
         // deux appels ci-dessus (ils levent une exception sinon).
-        ProfilEnfant profil = profilEnfantRepository.findById(profilEnfantId).orElseThrow();
+        ProfilEnfant profil = profilEnfantService.getById(profilEnfantId);
 
         List<CreationMalletteResponse> creations = new ArrayList<>();
         for (PageCarnetLectureResponse page : carnetLecture) {

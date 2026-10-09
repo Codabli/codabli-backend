@@ -6,9 +6,10 @@ import com.codabli.entity.RessourceFavorite;
 import com.codabli.entity.RessourcePedagogique;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.TypeRessource;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.RessourceFavoriteRepository;
 import com.codabli.repository.RessourcePedagogiqueRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +17,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,14 +30,13 @@ public class RessourcePedagogiqueService {
 
     private final RessourcePedagogiqueRepository ressourcePedagogiqueRepository;
     private final RessourceFavoriteRepository ressourceFavoriteRepository;
-    private final UtilisateurRepository utilisateurRepository;
 
-    public RessourcePedagogiqueService(RessourcePedagogiqueRepository ressourcePedagogiqueRepository,
-            RessourceFavoriteRepository ressourceFavoriteRepository,
-            UtilisateurRepository utilisateurRepository) {
+    private final UtilisateurService utilisateurService;
+
+    public RessourcePedagogiqueService(RessourcePedagogiqueRepository ressourcePedagogiqueRepository, RessourceFavoriteRepository ressourceFavoriteRepository, UtilisateurService utilisateurService) {
         this.ressourcePedagogiqueRepository = ressourcePedagogiqueRepository;
         this.ressourceFavoriteRepository = ressourceFavoriteRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -43,13 +44,11 @@ public class RessourcePedagogiqueService {
     // ────────────────────────────────────────────────────────────────
 
     public void ajouterFavori(UUID ressourceId, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         if (ressourceFavoriteRepository.findByUtilisateurIdAndRessourceId(utilisateur.getId(), ressourceId).isPresent()) {
             return;
         }
-        RessourcePedagogique ressource = ressourcePedagogiqueRepository.findById(ressourceId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Ressource pedagogique non trouvee avec l'ID: " + ressourceId));
+        RessourcePedagogique ressource = findById(ressourceId);
 
         RessourceFavorite favori = RessourceFavorite.builder()
                 .utilisateur(utilisateur)
@@ -59,23 +58,17 @@ public class RessourcePedagogiqueService {
     }
 
     public void retirerFavori(UUID ressourceId, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         ressourceFavoriteRepository.findByUtilisateurIdAndRessourceId(utilisateur.getId(), ressourceId)
                 .ifPresent(ressourceFavoriteRepository::delete);
     }
 
     @Transactional(readOnly = true)
     public List<RessourcePedagogiqueResponse> mesFavoris(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         return ressourceFavoriteRepository.findByUtilisateurId(utilisateur.getId()).stream()
                 .map(f -> toResponse(f.getRessource()))
                 .toList();
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        return utilisateurRepository.findByKeycloakId(jwt.getSubject())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + jwt.getSubject()));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -107,9 +100,7 @@ public class RessourcePedagogiqueService {
 
     @Transactional(readOnly = true)
     public RessourcePedagogiqueResponse getById(UUID id, Jwt jwt) {
-        RessourcePedagogique ressource = ressourcePedagogiqueRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Ressource pedagogique non trouvee avec l'ID: " + id));
+        RessourcePedagogique ressource = findById(id);
 
         // Vérification explicite du flag actif
         if (!ressource.isActif() && !hasWritePermission(jwt)) {
@@ -117,6 +108,12 @@ public class RessourcePedagogiqueService {
         }
 
         return toResponse(ressource);
+    }
+
+    private RessourcePedagogique findById(UUID id) {
+        return ressourcePedagogiqueRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_RESSOURCE_PEDAGOGIQUE,
+                        "Ressource pedagogique non trouvee avec l'ID: " + id));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -143,9 +140,7 @@ public class RessourcePedagogiqueService {
     // ────────────────────────────────────────────────────────────────
 
     public RessourcePedagogiqueResponse modifier(UUID id, RessourcePedagogiqueRequest request) {
-        RessourcePedagogique ressource = ressourcePedagogiqueRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Ressource pedagogique non trouvee avec l'ID: " + id));
+        RessourcePedagogique ressource = findById(id);
 
         ressource.setTitre(request.titre());
         ressource.setDescription(request.description());
@@ -170,9 +165,7 @@ public class RessourcePedagogiqueService {
             throw new AccessDeniedException("Seul un administrateur peut supprimer definitivement une ressource");
         }
 
-        RessourcePedagogique ressource = ressourcePedagogiqueRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Ressource pedagogique non trouvee avec l'ID: " + id));
+        RessourcePedagogique ressource = findById(id);
 
         ressourcePedagogiqueRepository.delete(ressource);
     }
@@ -182,25 +175,13 @@ public class RessourcePedagogiqueService {
     // ────────────────────────────────────────────────────────────────
 
     private boolean hasWritePermission(Jwt jwt) {
-        if (jwt == null || jwt.getClaimAsMap("realm_access") == null) {
-            return false;
-        }
-        Object rolesObj = jwt.getClaimAsMap("realm_access").get("roles");
-        if (rolesObj instanceof List<?> roles) {
-            return roles.contains("admin") || roles.contains("comite_lecture");
-        }
-        return false;
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
+        return roles.contains("admin") || roles.contains("super_admin") || roles.contains("comite_lecture");
     }
 
     private boolean isAdmin(Jwt jwt) {
-        if (jwt == null || jwt.getClaimAsMap("realm_access") == null) {
-            return false;
-        }
-        Object rolesObj = jwt.getClaimAsMap("realm_access").get("roles");
-        if (rolesObj instanceof List<?> roles) {
-            return roles.contains("admin");
-        }
-        return false;
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
+        return roles.contains("admin") || roles.contains("super_admin");
     }
 
     // ────────────────────────────────────────────────────────────────

@@ -4,8 +4,9 @@ import com.codabli.dto.ProfilEnfantRequest;
 import com.codabli.dto.ProfilEnfantResponse;
 import com.codabli.entity.ProfilEnfant;
 import com.codabli.entity.Utilisateur;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ProfilEnfantRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -30,12 +31,11 @@ import java.util.UUID;
 public class ProfilEnfantService {
 
     private final ProfilEnfantRepository profilEnfantRepository;
-    private final UtilisateurRepository utilisateurRepository;
+    private final UtilisateurService utilisateurService;
 
-    public ProfilEnfantService(ProfilEnfantRepository profilEnfantRepository,
-                               UtilisateurRepository utilisateurRepository) {
+    public ProfilEnfantService(ProfilEnfantRepository profilEnfantRepository, UtilisateurService utilisateurService) {
         this.profilEnfantRepository = profilEnfantRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ public class ProfilEnfantService {
     // ────────────────────────────────────────────────────────────────
 
     public ProfilEnfantResponse creer(ProfilEnfantRequest request, Jwt jwt) {
-        Utilisateur responsable = getUtilisateurFromJwt(jwt);
+        Utilisateur responsable = utilisateurService.getUtilisateurFromJwt(jwt);
 
         ProfilEnfant profil = ProfilEnfant.builder()
                 .responsable(responsable)
@@ -66,7 +66,7 @@ public class ProfilEnfantService {
 
     @Transactional(readOnly = true)
     public List<ProfilEnfantResponse> mesProfils(Jwt jwt) {
-        Utilisateur responsable = getUtilisateurFromJwt(jwt);
+        Utilisateur responsable = utilisateurService.getUtilisateurFromJwt(jwt);
         return profilEnfantRepository.findByResponsableIdOrderByPseudonyme(responsable.getId())
                 .stream()
                 .map(this::toResponse)
@@ -115,6 +115,11 @@ public class ProfilEnfantService {
     // ────────────────────────────────────────────────────────────────
     // METHODES UTILITAIRES
     // ────────────────────────────────────────────────────────────────
+    public ProfilEnfant getById(UUID id){
+        return profilEnfantRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_PROFIL_ENFANT,
+                        "Profil enfant non trouve avec l'ID: " + id));
+    }
 
     /**
      * RG-04 : l'autorisation parentale est datee des qu'elle passe a true, et
@@ -132,12 +137,10 @@ public class ProfilEnfantService {
     }
 
     private ProfilEnfant getProfilAvecDroit(UUID id, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
 
-        ProfilEnfant profil = profilEnfantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Profil enfant non trouve avec l'ID: " + id));
+        ProfilEnfant profil = getById(id);
 
         boolean estResponsable = profil.getResponsable().getId().equals(utilisateur.getId());
         boolean estAdmin = roles.contains("admin") || roles.contains("super_admin");
@@ -147,22 +150,6 @@ public class ProfilEnfantService {
         }
 
         return profil;
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
-        }
-        return (Collection<String>) realmAccess.get("roles");
     }
 
     private ProfilEnfantResponse toResponse(ProfilEnfant profil) {

@@ -8,7 +8,7 @@ import com.codabli.entity.GalerieMiseEnAvant;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.StatutModeration;
 import com.codabli.entity.enums.TypeCarte;
-import com.codabli.repository.CarteAConteRepository;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.GalerieMiseEnAvantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,12 +23,10 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -41,7 +39,7 @@ class GalerieServiceTest {
     private GalerieMiseEnAvantRepository galerieMiseEnAvantRepository;
 
     @Mock
-    private CarteAConteRepository carteAConteRepository;
+    private CarteAConteService carteAConteService;
 
     @InjectMocks
     private GalerieService galerieService;
@@ -94,9 +92,7 @@ class GalerieServiceTest {
 
     @Test
     void getById_whenValid_shouldReturn() {
-        when(carteAConteRepository.findByIdAndStatutModeration(
-                carteValide.getId(), StatutModeration.valide))
-                .thenReturn(Optional.of(carteValide));
+        when(carteAConteService.findByIdAndStatutModeration(any(), any())).thenReturn(carteValide);
 
         GalerieItemResponse result = galerieService.getCarteGalerie(carteValide.getId());
 
@@ -107,33 +103,19 @@ class GalerieServiceTest {
     }
 
     @Test
-    void getById_whenNotValid_shouldThrow404() {
+    void getById_whenNotFound_shouldThrow404() {
         UUID id = UUID.randomUUID();
-        when(carteAConteRepository.findByIdAndStatutModeration(id, StatutModeration.valide))
-                .thenReturn(Optional.empty());
+        when(carteAConteService.findByIdAndStatutModeration(any(), any())).thenThrow(ResourceNotFoundException.class);
 
         assertThrows(ResourceNotFoundException.class,
                 () -> galerieService.getCarteGalerie(id));
     }
 
     @Test
-    void getById_whenNotFound_shouldThrow404() {
-        UUID id = UUID.randomUUID();
-        when(carteAConteRepository.findByIdAndStatutModeration(id, StatutModeration.valide))
-                .thenReturn(Optional.empty());
-
-        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
-                () -> galerieService.getCarteGalerie(id));
-        assertTrue(ex.getMessage().contains(id.toString()));
-    }
-
-    @Test
     void ajouterMiseEnAvant_whenCarteValide_shouldSave() {
         GalerieMiseEnAvantRequest request = new GalerieMiseEnAvantRequest(carteValide.getId(), null, 1);
 
-        when(carteAConteRepository.findByIdAndStatutModeration(
-                carteValide.getId(), StatutModeration.valide))
-                .thenReturn(Optional.of(carteValide));
+        when(carteAConteService.findByIdAndStatutModeration(any(), any())).thenReturn(carteValide);
 
         GalerieMiseEnAvant saved = GalerieMiseEnAvant.builder()
                 .id(UUID.randomUUID())
@@ -160,9 +142,7 @@ class GalerieServiceTest {
         UUID nonValideId = UUID.randomUUID();
         GalerieMiseEnAvantRequest request = new GalerieMiseEnAvantRequest(nonValideId, null, 1);
 
-        when(carteAConteRepository.findByIdAndStatutModeration(
-                nonValideId, StatutModeration.valide))
-                .thenReturn(Optional.empty());
+        when(carteAConteService.findByIdAndStatutModeration(any(),any())).thenThrow(ResourceNotFoundException.class);
 
         assertThrows(ResourceNotFoundException.class,
                 () -> galerieService.ajouterMiseEnAvant(request));

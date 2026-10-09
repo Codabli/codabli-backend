@@ -1,16 +1,26 @@
 package com.codabli.service;
 
-import com.codabli.dto.*;
+import com.codabli.dto.LoginRequest;
+import com.codabli.dto.LoginResponse;
+import com.codabli.dto.RegisterRequest;
+import com.codabli.dto.UpdateUtilisateurRequest;
+import com.codabli.dto.UtilisateurMapper;
+import com.codabli.dto.UtilisateurResponse;
 import com.codabli.entity.Ecole;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.RoleUtilisateur;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.UtilisateurRepository;
 import jakarta.persistence.EntityManager;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -95,19 +105,44 @@ public class UtilisateurService {
      * claim).
      */
     @Transactional(readOnly = true)
-    public UtilisateurResponse getCurrentUser(String keycloakId) {
-        Utilisateur utilisateur = utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(
-                        () -> new ResourceNotFoundException("Utilisateur non trouvé pour keycloakId: " + keycloakId));
+    public UtilisateurResponse getCurrentUser(Jwt jwt) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
         return utilisateurMapper.toResponse(utilisateur);
+    }
+
+    Utilisateur getUtilisateurFromJwt(Jwt jwt) {
+        String keycloakId = jwt.getSubject();
+        return findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_KEYCLOAK_USER,
+                        "Utilisateur non trouve pour keycloakId: " + keycloakId));
+    }
+
+    Optional<Utilisateur> findByKeycloakId(String id) {
+        return utilisateurRepository.findByKeycloakId(id);
+    }
+
+    /**
+     * Extrait les roles depuis le claim realm_access.roles du JWT.
+     * Exemple de claim : { "realm_access": { "roles": ["eleve",
+     * "default-roles-codabli"] } }
+     */
+    @SuppressWarnings("unchecked")
+    public Collection<String> extractRoles(Jwt jwt) {
+        if (jwt == null || jwt.getClaimAsMap("realm_access") == null) {
+            return List.of();
+        }
+        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+        if (realmAccess == null || !realmAccess.containsKey("roles")) {
+            return List.of();
+        }
+        return (Collection<String>) realmAccess.get("roles");
     }
 
     /**
      * Updates the current user's profile.
      */
-    public UtilisateurResponse updateProfile(String keycloakId, UpdateUtilisateurRequest request) {
-        Utilisateur utilisateur = utilisateurRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé"));
+    public UtilisateurResponse updateProfile(Jwt jwt, UpdateUtilisateurRequest request) {
+        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
 
         if (request.nom() != null) {
             utilisateur.setNom(request.nom());
@@ -134,7 +169,7 @@ public class UtilisateurService {
      */
     public UtilisateurResponse anonymiserUser(UUID id, Jwt jwt) {
         Utilisateur utilisateur = utilisateurRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_USER, "Utilisateur non trouvé avec l'ID: " + id));
 
         if (utilisateur.getKeycloakId() != null) {
             keycloakAdminService.deleteUser(utilisateur.getKeycloakId());
@@ -169,7 +204,7 @@ public class UtilisateurService {
     @Transactional(readOnly = true)
     public UtilisateurResponse getUserById(UUID id) {
         Utilisateur utilisateur = utilisateurRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_USER, "Utilisateur non trouvé avec l'ID: " + id));
         return utilisateurMapper.toResponse(utilisateur);
     }
 
@@ -179,7 +214,7 @@ public class UtilisateurService {
      */
     public void deleteUser(UUID id, Jwt jwt) {
         Utilisateur utilisateur = utilisateurRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_USER, "Utilisateur non trouvé avec l'ID: " + id));
 
         // Delete from Keycloak first
         if (utilisateur.getKeycloakId() != null) {
@@ -198,7 +233,7 @@ public class UtilisateurService {
      */
     public UtilisateurResponse changeUserStatus(UUID id, String newStatus, Jwt jwt) {
         Utilisateur utilisateur = utilisateurRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_USER, "Utilisateur non trouvé avec l'ID: " + id));
 
         List<String> validStatuses = List.of("actif", "inactif", "suspendu");
         if (!validStatuses.contains(newStatus)) {

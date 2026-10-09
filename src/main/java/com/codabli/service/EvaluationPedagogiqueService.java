@@ -5,8 +5,9 @@ import com.codabli.dto.EvaluationPedagogiqueResponse;
 import com.codabli.entity.Classe;
 import com.codabli.entity.EvaluationPedagogique;
 import com.codabli.entity.Utilisateur;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.EvaluationPedagogiqueRepository;
-import com.codabli.repository.UtilisateurRepository;
 import jakarta.persistence.EntityManager;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -28,19 +29,17 @@ import java.util.UUID;
 public class EvaluationPedagogiqueService {
 
     private final EvaluationPedagogiqueRepository evaluationRepository;
-    private final UtilisateurRepository utilisateurRepository;
     private final EntityManager entityManager;
+    private final UtilisateurService utilisateurService;
 
-    public EvaluationPedagogiqueService(EvaluationPedagogiqueRepository evaluationRepository,
-                                        UtilisateurRepository utilisateurRepository,
-                                        EntityManager entityManager) {
+    public EvaluationPedagogiqueService(EvaluationPedagogiqueRepository evaluationRepository, EntityManager entityManager, UtilisateurService utilisateurService) {
         this.evaluationRepository = evaluationRepository;
-        this.utilisateurRepository = utilisateurRepository;
         this.entityManager = entityManager;
+        this.utilisateurService = utilisateurService;
     }
 
     public EvaluationPedagogiqueResponse creer(EvaluationPedagogiqueRequest request, Jwt jwt) {
-        Utilisateur enseignant = getUtilisateurFromJwt(jwt);
+        Utilisateur enseignant = utilisateurService.getUtilisateurFromJwt(jwt);
 
         EvaluationPedagogique evaluation = EvaluationPedagogique.builder()
                 .enseignant(enseignant)
@@ -64,7 +63,7 @@ public class EvaluationPedagogiqueService {
 
     @Transactional(readOnly = true)
     public List<EvaluationPedagogiqueResponse> mesEvaluations(Jwt jwt) {
-        Utilisateur enseignant = getUtilisateurFromJwt(jwt);
+        Utilisateur enseignant = utilisateurService.getUtilisateurFromJwt(jwt);
         return evaluationRepository.findByEnseignantIdOrderByDateEvaluationDesc(enseignant.getId()).stream()
                 .map(this::toResponse)
                 .toList();
@@ -100,11 +99,11 @@ public class EvaluationPedagogiqueService {
     }
 
     private EvaluationPedagogique getAvecDroit(UUID id, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
 
         EvaluationPedagogique evaluation = evaluationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_EVALUATION_PEDAGOGIQUE,
                         "Evaluation pedagogique non trouvee avec l'ID: " + id));
 
         boolean estAuteur = evaluation.getEnseignant().getId().equals(utilisateur.getId());
@@ -115,21 +114,6 @@ public class EvaluationPedagogiqueService {
         }
 
         return evaluation;
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        return utilisateurRepository.findByKeycloakId(jwt.getSubject())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + jwt.getSubject()));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
-        }
-        return (Collection<String>) realmAccess.get("roles");
     }
 
     private EvaluationPedagogiqueResponse toResponse(EvaluationPedagogique evaluation) {

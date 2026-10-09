@@ -6,7 +6,8 @@ import com.codabli.dto.GalerieMiseEnAvantResponse;
 import com.codabli.entity.CarteAConte;
 import com.codabli.entity.GalerieMiseEnAvant;
 import com.codabli.entity.enums.StatutModeration;
-import com.codabli.repository.CarteAConteRepository;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.GalerieMiseEnAvantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,12 +34,11 @@ import java.util.UUID;
 public class GalerieService {
 
     private final GalerieMiseEnAvantRepository galerieMiseEnAvantRepository;
-    private final CarteAConteRepository carteAConteRepository;
+    private final CarteAConteService carteAConteService;
 
-    public GalerieService(GalerieMiseEnAvantRepository galerieMiseEnAvantRepository,
-                          CarteAConteRepository carteAConteRepository) {
+    public GalerieService(GalerieMiseEnAvantRepository galerieMiseEnAvantRepository, CarteAConteService carteAConteService) {
         this.galerieMiseEnAvantRepository = galerieMiseEnAvantRepository;
-        this.carteAConteRepository = carteAConteRepository;
+        this.carteAConteService = carteAConteService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ public class GalerieService {
 
     @Transactional(readOnly = true)
     public Page<GalerieItemResponse> rechercher(String query, Pageable pageable) {
-        return carteAConteRepository.rechercherValidees(StatutModeration.valide, query, pageable)
+        return carteAConteService.rechercherValidees(StatutModeration.valide, query, pageable)
                 .map(carte -> new GalerieItemResponse(
                         carte.getId(),
                         carte.getType(),
@@ -85,10 +85,7 @@ public class GalerieService {
      */
     @Transactional(readOnly = true)
     public GalerieItemResponse getCarteGalerie(UUID id) {
-        CarteAConte carte = carteAConteRepository
-                .findByIdAndStatutModeration(id, StatutModeration.valide)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Carte non trouvée ou non validée avec l'ID: " + id));
+        CarteAConte carte = carteAConteService.findByIdAndStatutModeration(id, StatutModeration.valide);
 
         return new GalerieItemResponse(
                 carte.getId(),
@@ -109,10 +106,7 @@ public class GalerieService {
      * Vérifie que la carte existe et est validée avant l'ajout.
      */
     public GalerieMiseEnAvantResponse ajouterMiseEnAvant(GalerieMiseEnAvantRequest request) {
-        CarteAConte carte = carteAConteRepository
-                .findByIdAndStatutModeration(request.carteAConteId(), StatutModeration.valide)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Carte non trouvée ou non validée avec l'ID: " + request.carteAConteId()));
+        CarteAConte carte = carteAConteService.findByIdAndStatutModeration(request.carteAConteId(), StatutModeration.valide);
 
         GalerieMiseEnAvant miseEnAvant = GalerieMiseEnAvant.builder()
                 .carteAConte(carte)
@@ -134,7 +128,7 @@ public class GalerieService {
      */
     public void supprimerMiseEnAvant(UUID id) {
         GalerieMiseEnAvant miseEnAvant = galerieMiseEnAvantRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_GALERIE_MISE_AVANT,
                         "Mise en avant non trouvée avec l'ID: " + id));
         galerieMiseEnAvantRepository.delete(miseEnAvant);
     }

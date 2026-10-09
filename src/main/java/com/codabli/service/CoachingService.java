@@ -8,9 +8,10 @@ import com.codabli.entity.OffreCoaching;
 import com.codabli.entity.ReservationCoaching;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.StatutReservationCoaching;
+import com.codabli.exception.ErrorCode;
+import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.OffreCoachingRepository;
 import com.codabli.repository.ReservationCoachingRepository;
-import com.codabli.repository.UtilisateurRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -29,14 +30,15 @@ public class CoachingService {
 
     private final OffreCoachingRepository offreCoachingRepository;
     private final ReservationCoachingRepository reservationCoachingRepository;
-    private final UtilisateurRepository utilisateurRepository;
+
+    private final UtilisateurService utilisateurService;
 
     public CoachingService(OffreCoachingRepository offreCoachingRepository,
                            ReservationCoachingRepository reservationCoachingRepository,
-                           UtilisateurRepository utilisateurRepository) {
+                           UtilisateurService utilisateurService) {
         this.offreCoachingRepository = offreCoachingRepository;
         this.reservationCoachingRepository = reservationCoachingRepository;
-        this.utilisateurRepository = utilisateurRepository;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -82,7 +84,7 @@ public class CoachingService {
     // ────────────────────────────────────────────────────────────────
 
     public ReservationCoachingResponse reserver(ReservationCoachingRequest request, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         OffreCoaching offre = getOffreOrThrow(request.offreCoachingId());
 
         if (!offre.isActif()) {
@@ -100,18 +102,18 @@ public class CoachingService {
 
     @Transactional(readOnly = true)
     public List<ReservationCoachingResponse> mesReservations(Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
         return reservationCoachingRepository.findByUtilisateurIdOrderByDateCreneauDesc(utilisateur.getId()).stream()
                 .map(this::toReservationResponse)
                 .toList();
     }
 
     public ReservationCoachingResponse changerStatut(UUID reservationId, StatutReservationCoaching statut, Jwt jwt) {
-        Utilisateur utilisateur = getUtilisateurFromJwt(jwt);
-        Collection<String> roles = extractRoles(jwt);
+        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
 
         ReservationCoaching reservation = reservationCoachingRepository.findById(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_RESERVATION_COACHING,
                         "Reservation de coaching non trouvee avec l'ID: " + reservationId));
 
         boolean estProprietaire = reservation.getUtilisateur().getId().equals(utilisateur.getId());
@@ -137,23 +139,8 @@ public class CoachingService {
 
     private OffreCoaching getOffreOrThrow(UUID id) {
         return offreCoachingRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_OFFRE_COACHING,
                         "Offre de coaching non trouvee avec l'ID: " + id));
-    }
-
-    private Utilisateur getUtilisateurFromJwt(Jwt jwt) {
-        return utilisateurRepository.findByKeycloakId(jwt.getSubject())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Utilisateur non trouve pour keycloakId: " + jwt.getSubject()));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> extractRoles(Jwt jwt) {
-        java.util.Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
-        if (realmAccess == null || !realmAccess.containsKey("roles")) {
-            return java.util.Collections.emptyList();
-        }
-        return (Collection<String>) realmAccess.get("roles");
     }
 
     private OffreCoachingResponse toOffreResponse(OffreCoaching offre) {

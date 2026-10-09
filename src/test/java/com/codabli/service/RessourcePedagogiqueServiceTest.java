@@ -5,7 +5,6 @@ import com.codabli.dto.RessourcePedagogiqueResponse;
 import com.codabli.entity.RessourcePedagogique;
 import com.codabli.entity.enums.TypeRessource;
 import com.codabli.repository.RessourcePedagogiqueRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,13 +19,11 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,27 +32,15 @@ class RessourcePedagogiqueServiceTest {
     @Mock
     private RessourcePedagogiqueRepository repository;
 
+    @Mock
+    private UtilisateurService utilisateurService;
+
     @InjectMocks
     private RessourcePedagogiqueService service;
 
     private Jwt teacherJwt;
     private Jwt comiteJwt;
     private Jwt adminJwt;
-
-    @BeforeEach
-    void setUp() {
-        // JWT partages par plusieurs tests : chaque test n'en utilise qu'un ou
-        // deux, donc les stubs sont declares lenient() pour ne pas declencher
-        // UnnecessaryStubbingException (Mockito strict) sur ceux non utilises.
-        teacherJwt = mock(Jwt.class);
-        lenient().when(teacherJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("enseignant")));
-
-        comiteJwt = mock(Jwt.class);
-        lenient().when(comiteJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("comite_lecture")));
-
-        adminJwt = mock(Jwt.class);
-        lenient().when(adminJwt.getClaimAsMap("realm_access")).thenReturn(Map.of("roles", List.of("admin")));
-    }
 
     @Test
     void lister_asTeacher_shouldForceActifTrue() {
@@ -93,6 +78,7 @@ class RessourcePedagogiqueServiceTest {
 
         when(repository.findByFilters(eq(TypeRessource.guide), eq("Maths"), eq("6eme"), eq(false), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(mockRes)));
+        when(utilisateurService.extractRoles(comiteJwt)).thenReturn(List.of("comite_lecture"));
 
         Page<RessourcePedagogiqueResponse> result = service.lister(
                 TypeRessource.guide, "Maths", "6eme", false, comiteJwt, pageable);
@@ -133,6 +119,7 @@ class RessourcePedagogiqueServiceTest {
                 .build();
 
         when(repository.findById(id)).thenReturn(Optional.of(mockRes));
+        when(utilisateurService.extractRoles(any())).thenReturn(List.of("enseignant"));
 
         assertThrows(AccessDeniedException.class, () -> service.getById(id, teacherJwt));
     }
@@ -147,6 +134,9 @@ class RessourcePedagogiqueServiceTest {
                 .actif(false)
                 .dateAjout(OffsetDateTime.now())
                 .build();
+        when(utilisateurService.extractRoles(comiteJwt)).thenReturn(List.of("comite_lecture"));
+        when(utilisateurService.extractRoles(adminJwt)).thenReturn(List.of("admin"));
+
 
         when(repository.findById(id)).thenReturn(Optional.of(mockRes));
 
@@ -207,6 +197,7 @@ class RessourcePedagogiqueServiceTest {
         RessourcePedagogique mockRes = RessourcePedagogique.builder()
                 .id(id)
                 .build();
+        when(utilisateurService.extractRoles(any())).thenReturn(List.of("admin"));
 
         when(repository.findById(id)).thenReturn(Optional.of(mockRes));
 
@@ -217,6 +208,8 @@ class RessourcePedagogiqueServiceTest {
     @Test
     void supprimer_asComiteOrTeacher_shouldThrowAccessDenied() {
         UUID id = UUID.randomUUID();
+        when(utilisateurService.extractRoles(comiteJwt)).thenReturn(List.of("comite_lecture"));
+        when(utilisateurService.extractRoles(teacherJwt)).thenReturn(List.of("enseignant"));
 
         assertThrows(AccessDeniedException.class, () -> service.supprimer(id, comiteJwt));
         assertThrows(AccessDeniedException.class, () -> service.supprimer(id, teacherJwt));
