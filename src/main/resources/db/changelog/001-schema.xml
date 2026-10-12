@@ -1,0 +1,1124 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="sandra-giraud" id="1791818209676-1">
+        <createTable tableName="abonnements">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="abonnements_pkey"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_debut" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_fin" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="facture_url" type="TEXT"/>
+            <column name="renouvellement_automatique" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="statut" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="offre_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="utilisateur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-2">
+        <createTable tableName="cartes_a_conte">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="cartes_a_conte_pkey"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="image_url" type="TEXT"/>
+            <column name="motif_moderation" type="TEXT"/>
+            <column name="statut_moderation" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="texte_associe" type="TEXT"/>
+            <column name="type" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="conte_id" type="UUID"/>
+            <column name="createur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-3">
+        <createTable tableName="commandes">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="commandes_pkey"/>
+            </column>
+            <column name="date_commande" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="frais_livraison" type="numeric(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_paiement" type="VARCHAR(255)"/>
+            <column name="sous_total" type="numeric(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="statut" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total" type="numeric(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="adresse_livraison_id" type="UUID"/>
+            <column name="utilisateur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-4">
+        <createTable tableName="contes_danses">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="contes_danses_pkey"/>
+            </column>
+            <column name="acces" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="age_max" type="INTEGER"/>
+            <column name="age_min" type="INTEGER"/>
+            <column name="couverture_url" type="TEXT"/>
+            <column name="credits" type="TEXT"/>
+            <column name="culture" type="VARCHAR(150)"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_publication" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="description" type="TEXT"/>
+            <column name="duree_minutes" type="INTEGER"/>
+            <column name="fichier_audio_url" type="TEXT"/>
+            <column name="fichier_texte_url" type="TEXT"/>
+            <column name="fichier_video_url" type="TEXT"/>
+            <column name="isbn" type="VARCHAR(20)"/>
+            <column name="langue_originale" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="motif_moderation" type="TEXT"/>
+            <column name="pays" type="VARCHAR(100)"/>
+            <column name="statut" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="thematique" type="VARCHAR(150)"/>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="classe_id" type="UUID"/>
+            <column name="createur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ecole_id" type="UUID"/>
+            <column name="valide_par_comite_id" type="UUID"/>
+            <column name="valide_par_enseignant_id" type="UUID"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-5">
+        <createTable tableName="contes_danses_traductions">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="contes_danses_traductions_pkey"/>
+            </column>
+            <column name="audio_url" type="TEXT"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="langue" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sous_titres_url" type="TEXT"/>
+            <column name="statut" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="texte" type="TEXT"/>
+            <column name="variante" type="VARCHAR(50)"/>
+            <column name="video_url" type="TEXT"/>
+            <column name="conte_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="relecteur_id" type="UUID"/>
+            <column name="traducteur_id" type="UUID"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-6">
+        <createTable tableName="demandes_contact">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="demandes_contact_pkey"/>
+            </column>
+            <column name="categorie" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="message" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nom" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sujet" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="traite" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="utilisateur_id" type="UUID"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-7">
+        <createTable tableName="elements_carnet_lecture">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="elements_carnet_lecture_pkey"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="image_url" type="TEXT"/>
+            <column name="nom" type="VARCHAR(150)"/>
+            <column name="ordre_affichage" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="page_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-8">
+        <createTable tableName="elements_carnet_voyage">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="elements_carnet_voyage_pkey"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="image_url" type="TEXT"/>
+            <column name="nom" type="VARCHAR(150)"/>
+            <column name="ordre_affichage" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="page_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-9">
+        <createTable tableName="mises_en_avant">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="mises_en_avant_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cible_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_debut" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_fin" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="ordre_affichage" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="titre" type="VARCHAR(255)"/>
+            <column name="type_cible" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-10">
+        <createTable tableName="offres_abonnement">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="offres_abonnement_pkey"/>
+            </column>
+            <column name="acces_coaching" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acces_exports" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="acces_webinaires" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="duree" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limite_classes" type="INTEGER"/>
+            <column name="limite_profils" type="INTEGER"/>
+            <column name="nom" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="public_cible" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stockage_mo" type="INTEGER"/>
+            <column name="tarif" type="numeric(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-11">
+        <createTable tableName="pages_carnet_lecture">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pages_carnet_lecture_pkey"/>
+            </column>
+            <column name="auteur" type="VARCHAR(255)"/>
+            <column name="couverture_url" type="TEXT"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_lecture" type="date"/>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fichier_export_url" type="TEXT"/>
+            <column name="langue" type="VARCHAR(10)"/>
+            <column name="mots_preferes" type="TEXT"/>
+            <column name="questions_reponses" type="TEXT"/>
+            <column name="resume" type="TEXT"/>
+            <column name="statut" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="theme" type="VARCHAR(255)"/>
+            <column name="titre" type="VARCHAR(255)"/>
+            <column name="conte_id" type="UUID"/>
+            <column name="profil_enfant_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-12">
+        <createTable tableName="pages_carnet_voyage">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="pages_carnet_voyage_pkey"/>
+            </column>
+            <column name="culture_notes" type="TEXT"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_visite" type="date"/>
+            <column name="drapeau_url" type="TEXT"/>
+            <column name="experience_notes" type="TEXT"/>
+            <column name="fichier_export_url" type="TEXT"/>
+            <column name="identite_notes" type="TEXT"/>
+            <column name="langues_decouvertes" type="VARCHAR(255)"/>
+            <column name="nature_notes" type="TEXT"/>
+            <column name="pays" type="VARCHAR(100)"/>
+            <column name="societe_notes" type="TEXT"/>
+            <column name="statut" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="conte_id" type="UUID"/>
+            <column name="profil_enfant_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-13">
+        <createTable tableName="partenaires">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="partenaires_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="categorie" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lien" type="TEXT"/>
+            <column name="logo_url" type="TEXT"/>
+            <column name="nom" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="periode_debut" type="date"/>
+            <column name="periode_fin" type="date"/>
+            <column name="presentation" type="TEXT"/>
+            <column name="role_projet" type="VARCHAR(255)"/>
+            <column name="territoire" type="VARCHAR(150)"/>
+            <column name="video_url" type="TEXT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-14">
+        <createTable tableName="produits">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="produits_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="image_url" type="TEXT"/>
+            <column name="nom" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="prix" type="numeric(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stock" type="INTEGER"/>
+            <column name="type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-15">
+        <createTable tableName="reservations_coaching">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="reservations_coaching_pkey"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creneau" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="statut" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="offre_coaching_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="utilisateur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-16">
+        <createTable tableName="ressources_pedagogiques">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="ressources_pedagogiques_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_ajout" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="fichier_url" type="VARCHAR(255)"/>
+            <column name="niveau_scolaire" type="VARCHAR(255)"/>
+            <column name="thematique" type="VARCHAR(255)"/>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-17">
+        <createTable tableName="utilisateurs">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="utilisateurs_pkey"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_naissance" type="date"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="keycloak_id" type="VARCHAR(100)"/>
+            <column name="langue_preferee" type="VARCHAR(10)"/>
+            <column name="nom" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="prenom" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="statut" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ecole_id" type="UUID"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-18">
+        <createTable tableName="fresques">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="fresques_pkey"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="image_url" type="TEXT"/>
+            <column name="introduction" type="TEXT"/>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="conte_id" type="UUID"/>
+            <column name="salle_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-19">
+        <createTable tableName="ressources_favorites">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="ressources_favorites_pkey"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ressource_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="utilisateur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-20">
+        <createTable tableName="galerie_mises_en_avant">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="galerie_mises_en_avant_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_debut" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_fin" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="ordre_affichage" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="carte_a_conte_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-21">
+        <createTable tableName="inscriptions_classes">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="inscriptions_classes_pkey"/>
+            </column>
+            <column name="date_inscription" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="classe_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="eleve_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-22">
+        <createTable tableName="inscriptions_webinaire">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="inscriptions_webinaire_pkey"/>
+            </column>
+            <column name="attestation_url" type="TEXT"/>
+            <column name="date_inscription" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="presence_confirmee" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="utilisateur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="webinaire_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-23">
+        <createTable tableName="lignes_panier">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="lignes_panier_pkey"/>
+            </column>
+            <column name="quantite" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="panier_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="produit_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-24">
+        <createTable tableName="paniers">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="paniers_pkey"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="utilisateur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-25">
+        <addUniqueConstraint columnNames="conte_id, langue" constraintName="uk_traduction_conte_langue" tableName="contes_danses_traductions"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-26">
+        <addUniqueConstraint columnNames="code" constraintName="uk_offres_abonnement_code" tableName="offres_abonnement"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-27">
+        <addUniqueConstraint columnNames="email" constraintName="uk_utilisateurs_email" tableName="utilisateurs"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-28">
+        <addUniqueConstraint columnNames="keycloak_id" constraintName="uk_utilisateurs_keycloak_id" tableName="utilisateurs"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-29">
+        <addUniqueConstraint columnNames="conte_id" constraintName="uk6apnfv51bodmfw7inf118qtob" tableName="fresques"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-30">
+        <addUniqueConstraint columnNames="salle_id" constraintName="ukg3hlf743pj20veh0ebsalu0j4" tableName="fresques"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-31">
+        <addUniqueConstraint columnNames="utilisateur_id, ressource_id" constraintName="uk_favori_utilisateur_ressource" tableName="ressources_favorites"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-32">
+        <addUniqueConstraint columnNames="carte_a_conte_id" constraintName="uk_galerie_carte_a_conte" tableName="galerie_mises_en_avant"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-33">
+        <addUniqueConstraint columnNames="eleve_id, classe_id" constraintName="uk_inscription_eleve_classe" tableName="inscriptions_classes"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-34">
+        <addUniqueConstraint columnNames="webinaire_id, utilisateur_id" constraintName="uk_inscription_webinaire_utilisateur" tableName="inscriptions_webinaire"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-35">
+        <addUniqueConstraint columnNames="panier_id, produit_id" constraintName="uk_panier_produit" tableName="lignes_panier"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-36">
+        <addUniqueConstraint columnNames="utilisateur_id" constraintName="ukfuwnphllc7qsy1h9wmhdqbok0" tableName="paniers"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-37">
+        <createTable tableName="actualites">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="actualites_pkey"/>
+            </column>
+            <column name="contenu" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_publication" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="image_url" type="TEXT"/>
+            <column name="publie" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resume" type="TEXT"/>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="auteur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-38">
+        <createTable tableName="adresses_livraison">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="adresses_livraison_pkey"/>
+            </column>
+            <column name="adresse" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code_postal" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nom" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="par_defaut" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="telephone" type="VARCHAR(20)"/>
+            <column name="ville" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="utilisateur_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-39">
+        <createTable tableName="classes">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="classes_pkey"/>
+            </column>
+            <column name="annee_scolaire" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="niveau" type="VARCHAR(50)"/>
+            <column name="nom" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ecole_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="enseignant_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-40">
+        <createTable tableName="ecoles">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="ecoles_pkey"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="niveau_abonnement" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nom" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pays" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="statut" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ville" type="VARCHAR(100)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-41">
+        <createTable tableName="evaluations_pedagogiques">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="evaluations_pedagogiques_pkey"/>
+            </column>
+            <column name="bilan" type="TEXT"/>
+            <column name="competences_evaluees" type="TEXT"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_evaluation" type="date"/>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fichier_export_url" type="TEXT"/>
+            <column name="observations" type="TEXT"/>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="classe_id" type="UUID"/>
+            <column name="eleve_id" type="UUID"/>
+            <column name="enseignant_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-42">
+        <createTable tableName="fiches_activites">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="fiches_activites_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="adaptations" type="TEXT"/>
+            <column name="age_max" type="INTEGER"/>
+            <column name="age_min" type="INTEGER"/>
+            <column name="competences" type="TEXT"/>
+            <column name="consignes" type="TEXT"/>
+            <column name="credits" type="TEXT"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deroulement" type="TEXT"/>
+            <column name="duree_minutes" type="INTEGER"/>
+            <column name="fichier_pdf_url" type="TEXT"/>
+            <column name="materiel" type="TEXT"/>
+            <column name="objectif" type="TEXT"/>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-43">
+        <createTable tableName="hotspots">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="hotspots_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="audio_url" type="TEXT"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="explication_approfondie" type="TEXT"/>
+            <column name="explication_decouverte" type="TEXT"/>
+            <column name="image_url" type="TEXT"/>
+            <column name="ordre_affichage" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fresque_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-44">
+        <createTable tableName="journal_activite">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="journal_activite_pkey"/>
+            </column>
+            <column name="action" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cible" type="VARCHAR(255)"/>
+            <column name="date_action" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="details" type="TEXT"/>
+            <column name="acteur_id" type="UUID"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-45">
+        <createTable tableName="lignes_commande">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="lignes_commande_pkey"/>
+            </column>
+            <column name="nom_produit" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="prix_unitaire" type="numeric(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantite" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="commande_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="produit_id" type="UUID"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-46">
+        <createTable tableName="offres_coaching">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="offres_coaching_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="duree_minutes" type="INTEGER"/>
+            <column name="tarif" type="numeric(10, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-47">
+        <createTable tableName="profils_enfants">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="profils_enfants_pkey"/>
+            </column>
+            <column name="accessibilite" type="TEXT"/>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="autorisation_parentale" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_autorisation" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_naissance" type="date"/>
+            <column name="langue_preferee" type="VARCHAR(10)"/>
+            <column name="preferences" type="TEXT"/>
+            <column name="pseudonyme" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="responsable_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-48">
+        <createTable tableName="salles_galerie">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="salles_galerie_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ambiance_sonore_url" type="TEXT"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="introduction" type="TEXT"/>
+            <column name="ordre_affichage" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="palette_couleurs" type="VARCHAR(255)"/>
+            <column name="pays" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-49">
+        <createTable tableName="webinaires">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="webinaires_pkey"/>
+            </column>
+            <column name="actif" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="capacite_max" type="INTEGER"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_debut" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_fin" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="date_mise_a_jour" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="documents_url" type="TEXT"/>
+            <column name="intervenant" type="VARCHAR(255)"/>
+            <column name="lien_rediffusion_url" type="TEXT"/>
+            <column name="lien_url" type="TEXT"/>
+            <column name="titre" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-50">
+        <addForeignKeyConstraint baseColumnNames="traducteur_id" baseTableName="contes_danses_traductions" constraintName="fk17242gybu7ugmc4mbwt7smi2i" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-51">
+        <addForeignKeyConstraint baseColumnNames="webinaire_id" baseTableName="inscriptions_webinaire" constraintName="fk17yq7m4sircau2pwb4057d1u" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="webinaires" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-52">
+        <addForeignKeyConstraint baseColumnNames="eleve_id" baseTableName="inscriptions_classes" constraintName="fk1gobpnsxvh0lf7o9chd9y31am" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-53">
+        <addForeignKeyConstraint baseColumnNames="salle_id" baseTableName="fresques" constraintName="fk1l4btchylf5jbo48t3wsxc7p6" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="salles_galerie" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-54">
+        <addForeignKeyConstraint baseColumnNames="utilisateur_id" baseTableName="demandes_contact" constraintName="fk2xic6aapopm3qa2ay1511okec" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-55">
+        <addForeignKeyConstraint baseColumnNames="utilisateur_id" baseTableName="commandes" constraintName="fk394iuksyq22ka7rwo7pynmwam" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-56">
+        <addForeignKeyConstraint baseColumnNames="ecole_id" baseTableName="classes" constraintName="fk3ll92kbec6lt8pcm0oxmxpr5f" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="ecoles" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-57">
+        <addForeignKeyConstraint baseColumnNames="acteur_id" baseTableName="journal_activite" constraintName="fk5gctv69kfo9l5o3hs0j0jkanv" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-58">
+        <addForeignKeyConstraint baseColumnNames="panier_id" baseTableName="lignes_panier" constraintName="fk5urbu5yw99sn79ntt7n64osyx" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="paniers" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-59">
+        <addForeignKeyConstraint baseColumnNames="utilisateur_id" baseTableName="adresses_livraison" constraintName="fk60o5hbm13sw4uhvi1y1ojswe0" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-60">
+        <addForeignKeyConstraint baseColumnNames="profil_enfant_id" baseTableName="pages_carnet_voyage" constraintName="fk6xpv7behrdvji2m7hqumy4ht1" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="profils_enfants" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-61">
+        <addForeignKeyConstraint baseColumnNames="fresque_id" baseTableName="hotspots" constraintName="fk70692b8jv4gicjvqshou298m7" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="fresques" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-62">
+        <addForeignKeyConstraint baseColumnNames="conte_id" baseTableName="pages_carnet_voyage" constraintName="fk85tfa0ttc5y30du44iqkdgu9j" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="contes_danses" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-63">
+        <addForeignKeyConstraint baseColumnNames="produit_id" baseTableName="lignes_commande" constraintName="fk97125vvuxcin9rytjad4u9bm4" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="produits" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-64">
+        <addForeignKeyConstraint baseColumnNames="offre_id" baseTableName="abonnements" constraintName="fkaispfl3hh7c3a46mlbvolnoyw" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="offres_abonnement" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-65">
+        <addForeignKeyConstraint baseColumnNames="profil_enfant_id" baseTableName="pages_carnet_lecture" constraintName="fkb31wmqws7kr1rmnanb21khqw0" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="profils_enfants" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-66">
+        <addForeignKeyConstraint baseColumnNames="offre_coaching_id" baseTableName="reservations_coaching" constraintName="fkc1y0m0lepwk27yjhdwle2e0jo" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="offres_coaching" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-67">
+        <addForeignKeyConstraint baseColumnNames="ecole_id" baseTableName="contes_danses" constraintName="fkd3sjn26xcy0voy1kbx3t2eif8" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="ecoles" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-68">
+        <addForeignKeyConstraint baseColumnNames="conte_id" baseTableName="pages_carnet_lecture" constraintName="fkdboootyonolf6a5fpv4b6mh6q" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="contes_danses" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-69">
+        <addForeignKeyConstraint baseColumnNames="classe_id" baseTableName="inscriptions_classes" constraintName="fkdf5i6y8j7kee7m4t30x6hbkyo" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="classes" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-70">
+        <addForeignKeyConstraint baseColumnNames="valide_par_comite_id" baseTableName="contes_danses" constraintName="fkdlnjmdbihj2ft6qmnp1im24s4" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-71">
+        <addForeignKeyConstraint baseColumnNames="eleve_id" baseTableName="evaluations_pedagogiques" constraintName="fkdn8uf6xgxqsm0cse10rt7k3ij" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-72">
+        <addForeignKeyConstraint baseColumnNames="classe_id" baseTableName="evaluations_pedagogiques" constraintName="fkdwx4a9273074cmo1e3gbbx9c3" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="classes" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-73">
+        <addForeignKeyConstraint baseColumnNames="auteur_id" baseTableName="actualites" constraintName="fkeqtrflps03lwno1h8oei1m00p" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-74">
+        <addForeignKeyConstraint baseColumnNames="utilisateur_id" baseTableName="abonnements" constraintName="fkextfiij75i99s0eokbeayf1wf" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-75">
+        <addForeignKeyConstraint baseColumnNames="relecteur_id" baseTableName="contes_danses_traductions" constraintName="fkeydqpnvgdqqgf2vq4n4ek1c3c" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-76">
+        <addForeignKeyConstraint baseColumnNames="enseignant_id" baseTableName="evaluations_pedagogiques" constraintName="fkf625m2s90ugvduudujnardmxd" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-77">
+        <addForeignKeyConstraint baseColumnNames="produit_id" baseTableName="lignes_panier" constraintName="fkfmpx2g06on6xvqw7m3n5h3rll" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="produits" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-78">
+        <addForeignKeyConstraint baseColumnNames="utilisateur_id" baseTableName="inscriptions_webinaire" constraintName="fkgmv76t6e0f3896xyme3cm0r3n" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-79">
+        <addForeignKeyConstraint baseColumnNames="ecole_id" baseTableName="utilisateurs" constraintName="fkh4gsdednsojukv4qbbdggepo7" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="ecoles" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-80">
+        <addForeignKeyConstraint baseColumnNames="conte_id" baseTableName="contes_danses_traductions" constraintName="fkhrpeqaanvdmb6m1gkgv0xcvu5" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="contes_danses" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-81">
+        <addForeignKeyConstraint baseColumnNames="utilisateur_id" baseTableName="reservations_coaching" constraintName="fkj2gky5no7kh1yr9nrng7v6ab3" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-82">
+        <addForeignKeyConstraint baseColumnNames="utilisateur_id" baseTableName="paniers" constraintName="fkjy2tpcxy4ew6hh6aqpa8uyeix" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-83">
+        <addForeignKeyConstraint baseColumnNames="page_id" baseTableName="elements_carnet_voyage" constraintName="fkk5wvqovq9tbjtoc00cxria546" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="pages_carnet_voyage" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-84">
+        <addForeignKeyConstraint baseColumnNames="page_id" baseTableName="elements_carnet_lecture" constraintName="fkko5irymn8i7cajhja09653bni" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="pages_carnet_lecture" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-85">
+        <addForeignKeyConstraint baseColumnNames="utilisateur_id" baseTableName="ressources_favorites" constraintName="fklm1v59s3jbxeksjyggcwrd2vg" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-86">
+        <addForeignKeyConstraint baseColumnNames="conte_id" baseTableName="fresques" constraintName="fknglki8dhbw51lqvcgx7o2yd86" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="contes_danses" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-87">
+        <addForeignKeyConstraint baseColumnNames="valide_par_enseignant_id" baseTableName="contes_danses" constraintName="fknwek8x243y3fx5v08x60pgd85" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-88">
+        <addForeignKeyConstraint baseColumnNames="adresse_livraison_id" baseTableName="commandes" constraintName="fko2a2qfwx8ixr46uiriq04u5jg" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="adresses_livraison" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-89">
+        <addForeignKeyConstraint baseColumnNames="classe_id" baseTableName="contes_danses" constraintName="fkpjibkbbbi6x51cdbudmoppxfv" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="classes" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-90">
+        <addForeignKeyConstraint baseColumnNames="responsable_id" baseTableName="profils_enfants" constraintName="fkq6v8t6ohdl5wk3ld7uicol34i" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-91">
+        <addForeignKeyConstraint baseColumnNames="conte_id" baseTableName="cartes_a_conte" constraintName="fkqgvn0d76tntosfy32c6xswynj" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="contes_danses" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-92">
+        <addForeignKeyConstraint baseColumnNames="createur_id" baseTableName="contes_danses" constraintName="fkrtht8w3exi6h5y46il2hg2cgm" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-93">
+        <addForeignKeyConstraint baseColumnNames="enseignant_id" baseTableName="classes" constraintName="fks64mvm6sx54ci705w0d66harl" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-94">
+        <addForeignKeyConstraint baseColumnNames="ressource_id" baseTableName="ressources_favorites" constraintName="fksrljggx9d8fvb2f883bqjw8ph" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="ressources_pedagogiques" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-95">
+        <addForeignKeyConstraint baseColumnNames="carte_a_conte_id" baseTableName="galerie_mises_en_avant" constraintName="fkt65hg9joc21f9m4k71mdct2b8" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="cartes_a_conte" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-96">
+        <addForeignKeyConstraint baseColumnNames="createur_id" baseTableName="cartes_a_conte" constraintName="fktabu2cw2py1c58vcvnb0x8xrh" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="utilisateurs" validate="true"/>
+    </changeSet>
+    <changeSet author="sandra-giraud" id="1791818209676-97">
+        <addForeignKeyConstraint baseColumnNames="commande_id" baseTableName="lignes_commande" constraintName="fktry44xh8jbos217m4nk3wyyem" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="commandes" validate="true"/>
+    </changeSet>
+</databaseChangeLog>
