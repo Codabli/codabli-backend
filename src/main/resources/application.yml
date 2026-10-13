@@ -17,15 +17,22 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8081/realms/codabli
-          jwk-set-uri: http://localhost:8081/realms/codabli/protocol/openid-connect/certs
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:8081}/realms/codabli
+          jwk-set-uri: ${KEYCLOAK_URL:http://localhost:8081}/realms/codabli/protocol/openid-connect/certs
 
 server:
   port: 8082
 
 keycloak:
   admin:
-    server-url: http://localhost:8081
-    realm: codabli
-    client-id: codabli-backend
+    server-url: ${KEYCLOAK_URL:http://localhost:8081/}
+    realm: ${KEYCLOAK_REALM:codabli}
+    client-id: ${KEYCLOAK_ADMIN_MANAGEMENT_CLIENT_ID:codabli-backend}
     client-secret: ${KEYCLOAK_CLIENT_SECRET:changeme-dev-secret}
+
+ovh:
+  storage:
+    access-key: ${S3_ACCESS_KEY:access_key}
+    secret-key: ${S3_SECRET_KEY:secret_key}
+    region: ${S3_REGION:gra}
+    bucket-name: ${S3_BUCKET:codabli}

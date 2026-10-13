@@ -35,7 +35,7 @@ realm n'est nécessaire : tout est provisionné automatiquement.
 | API backend    | http://localhost:8082                 | —                     |
 | Swagger UI     | http://localhost:8082/swagger-ui.html | —                     |
 | PostgreSQL     | `localhost:5442` (base `codabli_dev`) | `codabli` / `codabli` |
-| Keycloak admin | http://localadmhost:8081               | `admin` / `admin`     |
+| Keycloak admin | http://localhost:8081               | `admin` / `admin`     |
 
 > ℹ️ PostgreSQL est exposé sur **5442** (et non 5432) car le port 5432 de l'hôte
 > est susceptible d'être déjà occupé par un autre projet. `application.yml` est

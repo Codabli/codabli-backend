@@ -20,3 +20,10 @@ keycloak:
     realm: test
     client-id: test
     client-secret: test
+
+ovh:
+  storage:
+    access-key: test
+    secret-key: test
+    region: gra # ex: gra, sbg, bhs
+    bucket-name: test
