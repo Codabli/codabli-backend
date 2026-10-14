@@ -29,3 +29,24 @@ keycloak:
     realm: codabli
     client-id: codabli-backend
     client-secret: ${KEYCLOAK_CLIENT_SECRET:changeme-dev-secret}
+
+# Client LLM souverain — OVHcloud AI Endpoints (EA-107).
+# base-url DOIT cibler un endpoint OVH en HTTPS (garde-fou au demarrage).
+# La cle API provient d'une variable d'environnement, jamais en dur ni loguee.
+codabli:
+  llm:
+    base-url: https://oai.endpoints.kepler.ai.cloud.ovh.net/v1
+    api-key: ${OVH_AI_ENDPOINT_API_KEY:changeme-dev-key}
+    model: Mistral-Small-3.2-24B-Instruct-2506
+    temperature: 0.3
+    max-tokens: 1024
+    timeout: 60s
+    standby-message: "Oups, la magie fait une petite pause. Reessaie dans un instant !"
+
+# Ne jamais exposer la configuration (dont la cle API) via Actuator (RGPD/securite).
+management:
+  endpoint:
+    env:
+      show-values: never
+    configprops:
+      show-values: never

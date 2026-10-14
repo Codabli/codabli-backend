@@ -70,6 +70,8 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      # Cle API du LLM souverain (EA-107) : transmise au conteneur depuis le .env.
+      OVH_AI_ENDPOINT_API_KEY: ${OVH_AI_ENDPOINT_API_KEY}
     volumes:
       - .:/app
       - codabli-m2:/root/.m2
