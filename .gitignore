@@ -11,6 +11,7 @@ target/
 *.log
 *.tmp
 *.bak
+*.md
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.next
