@@ -38,6 +38,17 @@ services:
       timeout: 5s
       retries: 10
 
+  adminer:
+    image: adminer
+    container_name: codabli-postgre-admin
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+    ports:
+      - "8083:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.0
     container_name: codabli-keycloak
