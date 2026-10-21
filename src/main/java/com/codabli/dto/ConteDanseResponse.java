@@ -4,6 +4,7 @@ import com.codabli.entity.enums.AccesConte;
 import com.codabli.entity.enums.StatutConte;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -36,5 +37,6 @@ public record ConteDanseResponse(
         String createurNom,
         String createurPrenom,
         UUID ecoleId,
-        UUID classeId) {
+        UUID classeId,
+        List<ConteDanseTraductionResponse> traductions) {
 }

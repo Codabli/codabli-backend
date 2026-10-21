@@ -3,6 +3,7 @@ package com.codabli.repository;
 import com.codabli.entity.ConteDanseTraduction;
 import com.codabli.entity.enums.StatutTraduction;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -24,4 +25,10 @@ public interface ConteDanseTraductionRepository extends JpaRepository<ConteDanse
      * traducteur/comite de lecture/admin, LAN-02).
      */
     List<ConteDanseTraduction> findByConteId(UUID conteId);
+
+    /**
+     * Traductions publiees de plusieurs contes, pour eviter un appel par conte.
+     */
+    @EntityGraph(attributePaths = {"traducteur", "relecteur"})
+    List<ConteDanseTraduction> findByConteIdInAndStatut(List<UUID> conteIds, StatutTraduction statut);
 }

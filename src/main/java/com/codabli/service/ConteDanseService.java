@@ -2,8 +2,10 @@ package com.codabli.service;
 
 import com.codabli.dto.ConteDanseRequest;
 import com.codabli.dto.ConteDanseResponse;
+import com.codabli.dto.ConteDanseTraductionResponse;
 import com.codabli.entity.Classe;
 import com.codabli.entity.ConteDanse;
+import com.codabli.entity.ConteDanseTraduction;
 import com.codabli.entity.Ecole;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.AccesConte;
@@ -11,9 +13,17 @@ import com.codabli.entity.enums.StatutConte;
 import com.codabli.exception.ErrorCode;
 import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ConteDanseRepository;
+import com.codabli.entity.enums.StatutTraduction;
+import com.codabli.repository.ConteDanseTraductionRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
@@ -22,7 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service metier pour les contes danses.
@@ -38,11 +50,16 @@ public class ConteDanseService {
 
     private final ConteDanseRepository conteDanseRepository;
     private final UtilisateurService utilisateurService;
+    private final ConteDanseTraductionRepository traductionRepository;
     private final EntityManager entityManager;
 
-    public ConteDanseService(ConteDanseRepository conteDanseRepository, UtilisateurService utilisateurService, EntityManager entityManager) {
+    public ConteDanseService(ConteDanseRepository conteDanseRepository,
+                             UtilisateurService utilisateurService,
+                             ConteDanseTraductionRepository traductionRepository,
+                             EntityManager entityManager) {
         this.conteDanseRepository = conteDanseRepository;
         this.utilisateurService = utilisateurService;
+        this.traductionRepository = traductionRepository;
         this.entityManager = entityManager;
     }
 
@@ -291,9 +308,8 @@ public class ConteDanseService {
 
     @Transactional(readOnly = true)
     public Page<ConteDanseResponse> listerPublies(Pageable pageable) {
-        return conteDanseRepository
-                .findByStatutOrderByDatePublicationDesc(StatutConte.publie, pageable)
-                .map(this::toResponse);
+        return ajouterTraductions(conteDanseRepository
+                .findByStatutOrderByDatePublicationDesc(StatutConte.publie, pageable));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -303,9 +319,73 @@ public class ConteDanseService {
     @Transactional(readOnly = true)
     public Page<ConteDanseResponse> filtrerPublies(String langue, String pays, String thematique,
                                                    AccesConte acces, Integer age, Pageable pageable) {
-        return conteDanseRepository
-                .filtrerPublies(StatutConte.publie, langue, pays, thematique, acces, age, pageable)
-                .map(this::toResponse);
+        return ajouterTraductions(conteDanseRepository
+                .findAll(filtrerPubliesPar(langue, pays, thematique, acces, age),
+                        pageable.getSort().isSorted()
+                                ? pageable
+                                : PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                                        Sort.by(Sort.Direction.DESC, "datePublication"))));
+    }
+
+    private Page<ConteDanseResponse> ajouterTraductions(Page<ConteDanse> page) {
+        List<UUID> conteIds = page.getContent().stream()
+                .map(ConteDanse::getId)
+                .toList();
+        if (conteIds.isEmpty()) {
+            return page.map(this::toResponse);
+        }
+
+        Map<UUID, List<ConteDanseTraductionResponse>> traductionsParConte = traductionRepository
+                .findByConteIdInAndStatut(conteIds, StatutTraduction.publiee)
+                .stream()
+                .collect(Collectors.groupingBy(traduction -> traduction.getConte().getId(),
+                        Collectors.mapping(this::toTraductionResponse, Collectors.toList())));
+
+        return page.map(conte -> toResponse(conte,
+                traductionsParConte.getOrDefault(conte.getId(), List.of())));
+    }
+
+    private Specification<ConteDanse> filtrerPubliesPar(String langue, String pays, String thematique,
+                                                        AccesConte acces, Integer age) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new java.util.ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("statut"), StatutConte.publie));
+            ajouterEgaliteIgnoree(predicates, criteriaBuilder, root.get("langueOriginale"), langue);
+            ajouterEgaliteIgnoree(predicates, criteriaBuilder, root.get("pays"), pays);
+
+            if (estRenseigne(thematique)) {
+                predicates.add(criteriaBuilder.like(
+                        criteriaBuilder.lower(root.get("thematique")),
+                        "%" + thematique.trim().toLowerCase(java.util.Locale.ROOT) + "%"));
+            }
+            if (acces != null) {
+                predicates.add(criteriaBuilder.equal(root.get("acces"), acces));
+            }
+            if (age != null) {
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.isNull(root.get("ageMin")),
+                        criteriaBuilder.lessThanOrEqualTo(root.get("ageMin"), age)));
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.isNull(root.get("ageMax")),
+                        criteriaBuilder.greaterThanOrEqualTo(root.get("ageMax"), age)));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+    }
+
+    private void ajouterEgaliteIgnoree(List<Predicate> predicates,
+                                       CriteriaBuilder criteriaBuilder,
+                                       Expression<String> expression,
+                                       String value) {
+        if (estRenseigne(value)) {
+            predicates.add(criteriaBuilder.equal(
+                    criteriaBuilder.lower(expression), value.trim().toLowerCase(java.util.Locale.ROOT)));
+        }
+    }
+
+    private boolean estRenseigne(String value) {
+        return value != null && !value.isBlank();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -355,6 +435,11 @@ public class ConteDanseService {
     }
 
     private ConteDanseResponse toResponse(ConteDanse conte) {
+        return toResponse(conte, List.of());
+    }
+
+    private ConteDanseResponse toResponse(ConteDanse conte,
+                                          List<ConteDanseTraductionResponse> traductions) {
         return new ConteDanseResponse(
                 conte.getId(),
                 conte.getTitre(),
@@ -381,6 +466,26 @@ public class ConteDanseService {
                 conte.getCreateur().getNom(),
                 conte.getCreateur().getPrenom(),
                 conte.getEcole() != null ? conte.getEcole().getId() : null,
-                conte.getClasse() != null ? conte.getClasse().getId() : null);
+                conte.getClasse() != null ? conte.getClasse().getId() : null,
+                traductions);
+    }
+
+    private ConteDanseTraductionResponse toTraductionResponse(ConteDanseTraduction traduction) {
+        return new ConteDanseTraductionResponse(
+                traduction.getId(),
+                traduction.getConte().getId(),
+                traduction.getLangue(),
+                traduction.getVariante(),
+                traduction.getTexte(),
+                traduction.getAudioUrl(),
+                traduction.getVideoUrl(),
+                traduction.getSousTitresUrl(),
+                traduction.getTraducteur() != null ? traduction.getTraducteur().getId() : null,
+                traduction.getTraducteur() != null ? traduction.getTraducteur().getNom() : null,
+                traduction.getRelecteur() != null ? traduction.getRelecteur().getId() : null,
+                traduction.getRelecteur() != null ? traduction.getRelecteur().getNom() : null,
+                traduction.getStatut(),
+                traduction.getDateCreation(),
+                traduction.getDateMiseAJour());
     }
 }
