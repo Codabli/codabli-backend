@@ -158,6 +158,9 @@ public class OvhOpenAiClient implements LlmClient {
                     objectMapper.createObjectNode().put("include_usage", true));
         }
         ArrayNode messages = corps.putArray("messages");
+        messages.addObject()
+                .put("role", LlmMessage.ROLE_SYSTEM)
+                .put("content", properties.systemPrompt());
         for (LlmMessage m : request.messages()) {
             messages.addObject().put("role", m.role()).put("content", m.content());
         }

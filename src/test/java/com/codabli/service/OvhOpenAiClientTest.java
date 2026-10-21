@@ -7,6 +7,8 @@ import ch.qos.logback.core.read.ListAppender;
 import com.codabli.config.LlmProperties;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,11 +36,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OvhOpenAiClientTest {
 
     private static final String PROMPT_SECRET = "SECRET-PROMPT-NE-DOIT-PAS-FUIR-42";
+    private static final String SYSTEM_PROMPT = "Tu es un assistant pedagogique.";
     private static final String STANDBY = "Message de repli enfant";
 
     private HttpServer server;
     private OvhOpenAiClient client;
     private ListAppender<ILoggingEvent> logs;
+    private final AtomicReference<String> lastRequestBody = new AtomicReference<>();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -46,7 +51,7 @@ class OvhOpenAiClientTest {
 
         String baseUrl = "http://localhost:" + server.getAddress().getPort() + "/v1";
         LlmProperties props = new LlmProperties(
-                baseUrl, "cle-test", "modele-test", 0.3, 256,
+                baseUrl, "cle-test", "modele-test", SYSTEM_PROMPT, 0.3, 256,
                 Duration.ofSeconds(5), STANDBY);
 
         client = new OvhOpenAiClient(HttpClient.newHttpClient(), props);
@@ -76,6 +81,7 @@ class OvhOpenAiClientTest {
         assertThat(response.finishReason()).isEqualTo("stop");
         assertThat(response.tokensIn()).isEqualTo(12);
         assertThat(response.tokensOut()).isEqualTo(5);
+        assertSystemPromptFirst();
     }
 
     @Test
@@ -99,6 +105,7 @@ class OvhOpenAiClientTest {
         client.stream(LlmRequest.of("systeme", PROMPT_SECRET), fragments::add);
 
         assertThat(fragments).containsExactly("Bonjour ", "petit");
+        assertSystemPromptFirst();
     }
 
     @Test
@@ -140,6 +147,8 @@ class OvhOpenAiClientTest {
 
     private void repondre(int statut, String corps) {
         remplacerHandler(exchange -> {
+            lastRequestBody.set(new String(
+                    exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             byte[] bytes = corps.getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(statut, bytes.length);
             try (OutputStream os = exchange.getResponseBody()) {
@@ -150,6 +159,8 @@ class OvhOpenAiClientTest {
 
     private void repondreSse(List<String> lignes) {
         remplacerHandler(exchange -> {
+            lastRequestBody.set(new String(
+                    exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
             exchange.sendResponseHeaders(200, 0);
             try (OutputStream os = exchange.getResponseBody()) {
@@ -159,6 +170,18 @@ class OvhOpenAiClientTest {
                 }
             }
         });
+    }
+
+    private void assertSystemPromptFirst() {
+        try {
+            JsonNode messages = new ObjectMapper().readTree(lastRequestBody.get()).path("messages");
+            assertThat(messages.get(0).path("role").asText()).isEqualTo("system");
+            assertThat(messages.get(0).path("content").asText()).isEqualTo(SYSTEM_PROMPT);
+            assertThat(messages.get(1).path("role").asText()).isEqualTo("system");
+            assertThat(messages.get(2).path("role").asText()).isEqualTo("user");
+        } catch (Exception e) {
+            throw new AssertionError("La requete LLM doit contenir un tableau de messages valide", e);
+        }
     }
 
     @FunctionalInterface
