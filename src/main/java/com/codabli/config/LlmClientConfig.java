@@ -4,7 +4,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -24,14 +26,18 @@ public class LlmClientConfig {
         // base URL n'est pas un endpoint OVHcloud en HTTPS. Empeche tout appel
         // accidentel hors du perimetre souverain (ex. api.mistral.ai).
         String baseUrl = properties.baseUrl();
-        if (!baseUrl.startsWith("https://")) {
-            throw new IllegalStateException(
-                    "codabli.llm.base-url doit etre en HTTPS (perimetre souverain) : " + baseUrl);
+        URI uri;
+        try {
+            uri = URI.create(baseUrl);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("codabli.llm.base-url doit etre une URL valide", e);
         }
-        if (!baseUrl.contains(".ai.cloud.ovh.net")) {
+
+        String host = uri.getHost();
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || host == null || !host.toLowerCase(Locale.ROOT)
+                .endsWith(".ai.cloud.ovh.net")) {
             throw new IllegalStateException(
-                    "codabli.llm.base-url doit cibler OVHcloud AI Endpoints (*.ai.cloud.ovh.net) : "
-                            + baseUrl);
+                    "codabli.llm.base-url doit cibler un endpoint OVHcloud AI en HTTPS (*.ai.cloud.ovh.net)");
         }
     }
 
