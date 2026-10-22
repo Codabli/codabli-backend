@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.codabli.config.LlmProperties;
+import com.codabli.dto.LlmMessage;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -73,7 +74,7 @@ class OvhOpenAiClientTest {
                  "finish_reason":"stop"}],
                  "usage":{"prompt_tokens":12,"completion_tokens":5}}""");
 
-        LlmResponse response = client.complete(LlmRequest.of("systeme", PROMPT_SECRET));
+        LlmResponse response = client.complete(LlmRequest.of(PROMPT_SECRET));
 
         assertThat(response.degrade()).isFalse();
         assertThat(response.texte()).isEqualTo("Il etait une fois...");
@@ -87,7 +88,7 @@ class OvhOpenAiClientTest {
     void complete_renvoie_le_standby_quand_le_llm_echoue() {
         repondre(500, "erreur interne cote fournisseur");
 
-        LlmResponse response = client.complete(LlmRequest.of("systeme", PROMPT_SECRET));
+        LlmResponse response = client.complete(LlmRequest.of(PROMPT_SECRET));
 
         assertThat(response.degrade()).isTrue();
         assertThat(response.texte()).isEqualTo(STANDBY);
@@ -99,7 +100,7 @@ class OvhOpenAiClientTest {
                 "data: {\"choices\":[{\"delta\":{\"content\":\"petit\"}}]}", "data: [DONE]"));
 
         List<String> fragments = new ArrayList<>();
-        client.stream(LlmRequest.of("systeme", PROMPT_SECRET), fragments::add);
+        client.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
 
         assertThat(fragments).containsExactly("Bonjour ", "petit");
         assertSystemPromptFirst();
@@ -110,7 +111,7 @@ class OvhOpenAiClientTest {
         repondre(503, "service indisponible");
 
         List<String> fragments = new ArrayList<>();
-        client.stream(LlmRequest.of("systeme", PROMPT_SECRET), fragments::add);
+        client.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
 
         assertThat(fragments).containsExactly(STANDBY);
     }
@@ -133,7 +134,7 @@ class OvhOpenAiClientTest {
 
         List<String> fragments = new ArrayList<>();
         long startedAt = System.nanoTime();
-        timeoutClient.stream(LlmRequest.of("systeme", PROMPT_SECRET), fragments::add);
+        timeoutClient.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
         long elapsedMillis = Duration.ofNanos(System.nanoTime() - startedAt).toMillis();
 
         assertThat(fragments).containsExactly("debut", STANDBY);
@@ -146,9 +147,10 @@ class OvhOpenAiClientTest {
                 {"choices":[{"message":{"content":"REPONSE-MODELE-CONFIDENTIELLE"},
                  "finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1}}""");
 
-        client.complete(LlmRequest.of("consigne systeme sensible", PROMPT_SECRET));
+        client.complete(new LlmRequest(List.of(LlmMessage.system("consigne systeme sensible"),
+                LlmMessage.user(PROMPT_SECRET)), null));
         repondre(500, PROMPT_SECRET); // le fournisseur echoe le prompt dans l'erreur
-        client.complete(LlmRequest.of("systeme", PROMPT_SECRET));
+        client.complete(LlmRequest.of(PROMPT_SECRET));
 
         for (ILoggingEvent event : logs.list) {
             String rendu = event.getFormattedMessage();
@@ -157,6 +159,36 @@ class OvhOpenAiClientTest {
             assertThat(rendu).doesNotContain("consigne systeme sensible");
         }
         assertThat(logs.list).anySatisfy(e -> assertThat(e.getLevel()).isEqualTo(Level.WARN));
+    }
+
+    @Test
+    void complete_filtre_et_aligne_la_fenetre_des_12_derniers_messages() {
+        List<LlmMessage> messages = historiqueTermineParAssistant();
+        List<String> attendus = contenusDe(6, 16);
+
+        assertPayload(false, new LlmRequest(messages, 0.7), attendus);
+    }
+
+    @Test
+    void stream_filtre_et_aligne_la_fenetre_des_12_derniers_messages() {
+        List<LlmMessage> messages = historiqueTermineParAssistant();
+        List<String> attendus = contenusDe(6, 16);
+
+        assertPayload(true, new LlmRequest(messages, 0.7), attendus);
+    }
+
+    @Test
+    void complete_conserve_12_messages_quand_la_fenetre_commence_par_user() {
+        List<LlmMessage> messages = historiqueCommencantParUserDansLaFenetre();
+
+        assertPayload(false, new LlmRequest(messages, null), contenusDe(2, 13));
+    }
+
+    @Test
+    void stream_conserve_12_messages_quand_la_fenetre_commence_par_user() {
+        List<LlmMessage> messages = historiqueCommencantParUserDansLaFenetre();
+
+        assertPayload(true, new LlmRequest(messages, null), contenusDe(2, 13));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -197,11 +229,79 @@ class OvhOpenAiClientTest {
             JsonNode messages = new ObjectMapper().readTree(lastRequestBody.get()).path("messages");
             assertThat(messages.get(0).path("role").asText()).isEqualTo("system");
             assertThat(messages.get(0).path("content").asText()).isEqualTo(SYSTEM_PROMPT);
-            assertThat(messages.get(1).path("role").asText()).isEqualTo("system");
-            assertThat(messages.get(2).path("role").asText()).isEqualTo("user");
+            assertThat(messages).hasSize(2);
+            assertThat(messages.get(1).path("role").asText()).isEqualTo("user");
+            assertThat(messages.get(1).path("content").asText()).isEqualTo(PROMPT_SECRET);
         } catch (Exception e) {
             throw new AssertionError("La requete LLM doit contenir un tableau de messages valide", e);
         }
+    }
+
+    private void assertPayload(boolean stream, LlmRequest request, List<String> expectedContents) {
+        if (stream) {
+            repondreSse(List.of("data: [DONE]"));
+            client.stream(request, ignored -> { });
+        } else {
+            repondre200("""
+                    {"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}""");
+            client.complete(request);
+        }
+
+        try {
+            JsonNode root = new ObjectMapper().readTree(lastRequestBody.get());
+            JsonNode sentMessages = root.path("messages");
+            assertThat(root.path("model").asText()).isEqualTo("modele-test");
+            assertThat(root.path("max_tokens").asInt()).isEqualTo(256);
+            assertThat(root.path("temperature").asDouble()).isEqualTo(request.temperature() == null ? 0.3 : 0.7);
+            assertThat(sentMessages).hasSize(expectedContents.size() + 1);
+            assertThat(sentMessages.get(0).path("role").asText()).isEqualTo("system");
+            assertThat(sentMessages.get(0).path("content").asText()).isEqualTo(SYSTEM_PROMPT);
+            for (int i = 0; i < expectedContents.size(); i++) {
+                JsonNode message = sentMessages.get(i + 1);
+                String content = expectedContents.get(i);
+                assertThat(message.path("content").asText()).isEqualTo(content);
+                String expectedRole = request.messages().stream()
+                        .filter(candidate -> candidate.content().equals(content))
+                        .findFirst()
+                        .orElseThrow()
+                        .role();
+                assertThat(message.path("role").asText()).isEqualTo(expectedRole);
+            }
+            assertThat(sentMessages.get(sentMessages.size() - 1).path("role").asText()).isEqualTo("user");
+        } catch (Exception e) {
+            throw new AssertionError("Le payload LLM doit contenir une requete JSON valide", e);
+        }
+    }
+
+    private static List<LlmMessage> historiqueTermineParAssistant() {
+        List<LlmMessage> messages = new ArrayList<>();
+        messages.add(LlmMessage.system("system prompt fourni par le client"));
+        for (int i = 0; i <= 16; i++) {
+            messages.add(i % 2 == 0 ? LlmMessage.user("message-" + i) : LlmMessage.assistant("message-" + i));
+        }
+        messages.add(LlmMessage.assistant("assistant-apres-user"));
+        messages.add(5, LlmMessage.system("autre system prompt client"));
+        return messages;
+    }
+
+    private static List<LlmMessage> historiqueCommencantParUserDansLaFenetre() {
+        List<LlmMessage> messages = new ArrayList<>();
+        messages.add(LlmMessage.user("message-0"));
+        messages.add(LlmMessage.assistant("message-1"));
+        for (int i = 2; i <= 13; i++) {
+            boolean user = i == 2 || i == 4 || i == 6 || i == 8 || i == 10 || i == 13;
+            messages.add(user ? LlmMessage.user("message-" + i) : LlmMessage.assistant("message-" + i));
+        }
+        messages.add(3, LlmMessage.system("system prompt client"));
+        return messages;
+    }
+
+    private static List<String> contenusDe(int premier, int dernier) {
+        List<String> contenus = new ArrayList<>();
+        for (int i = premier; i <= dernier; i++) {
+            contenus.add("message-" + i);
+        }
+        return contenus;
     }
 
     @FunctionalInterface
