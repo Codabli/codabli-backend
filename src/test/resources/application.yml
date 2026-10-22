@@ -20,3 +20,14 @@ keycloak:
     realm: test
     client-id: test
     client-secret: test
+
+codabli:
+  llm:
+    base-url: https://test.ai.cloud.ovh.net/v1
+    api-key: test-api-key
+    model: test-model
+    system-prompt: Test system prompt
+    temperature: 0.3
+    max-tokens: 256
+    timeout: 5s
+    standby-message: Test standby message
