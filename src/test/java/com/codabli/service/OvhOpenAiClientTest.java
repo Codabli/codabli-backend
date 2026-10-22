@@ -50,8 +50,7 @@ class OvhOpenAiClientTest {
         server.start();
 
         String baseUrl = "http://localhost:" + server.getAddress().getPort() + "/v1";
-        LlmProperties props = new LlmProperties(
-                baseUrl, "cle-test", "modele-test", SYSTEM_PROMPT, 0.3, 256,
+        LlmProperties props = new LlmProperties(baseUrl, "cle-test", "modele-test", SYSTEM_PROMPT, 0.3, 256,
                 Duration.ofSeconds(5), STANDBY);
 
         client = new OvhOpenAiClient(HttpClient.newHttpClient(), props);
@@ -96,10 +95,8 @@ class OvhOpenAiClientTest {
 
     @Test
     void stream_pousse_les_fragments_au_fur_et_a_mesure() {
-        repondreSse(List.of(
-                "data: {\"choices\":[{\"delta\":{\"content\":\"Bonjour \"}}]}",
-                "data: {\"choices\":[{\"delta\":{\"content\":\"petit\"}}]}",
-                "data: [DONE]"));
+        repondreSse(List.of("data: {\"choices\":[{\"delta\":{\"content\":\"Bonjour \"}}]}",
+                "data: {\"choices\":[{\"delta\":{\"content\":\"petit\"}}]}", "data: [DONE]"));
 
         List<String> fragments = new ArrayList<>();
         client.stream(LlmRequest.of("systeme", PROMPT_SECRET), fragments::add);
@@ -116,6 +113,31 @@ class OvhOpenAiClientTest {
         client.stream(LlmRequest.of("systeme", PROMPT_SECRET), fragments::add);
 
         assertThat(fragments).containsExactly(STANDBY);
+    }
+
+    @Test
+    void stream_interrompt_la_lecture_du_corps_apres_le_timeout() {
+        remplacerHandler(exchange -> {
+            exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, 0);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(("data: {\"choices\":[{\"delta\":{\"content\":\"debut\"}}]}\n\n").getBytes(
+                        StandardCharsets.UTF_8));
+                os.flush();
+                Thread.sleep(3000);
+            }
+        });
+        LlmProperties shortTimeout = new LlmProperties("http://localhost:" + server.getAddress().getPort() + "/v1",
+                "cle-test", "modele-test", "system-prompt", 0.3, 256, Duration.ofMillis(300), STANDBY);
+        OvhOpenAiClient timeoutClient = new OvhOpenAiClient(HttpClient.newHttpClient(), shortTimeout);
+
+        List<String> fragments = new ArrayList<>();
+        long startedAt = System.nanoTime();
+        timeoutClient.stream(LlmRequest.of("systeme", PROMPT_SECRET), fragments::add);
+        long elapsedMillis = Duration.ofNanos(System.nanoTime() - startedAt).toMillis();
+
+        assertThat(fragments).containsExactly("debut", STANDBY);
+        assertThat(elapsedMillis).isLessThan(1500);
     }
 
     @Test
@@ -147,8 +169,7 @@ class OvhOpenAiClientTest {
 
     private void repondre(int statut, String corps) {
         remplacerHandler(exchange -> {
-            lastRequestBody.set(new String(
-                    exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            lastRequestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             byte[] bytes = corps.getBytes(StandardCharsets.UTF_8);
             exchange.sendResponseHeaders(statut, bytes.length);
             try (OutputStream os = exchange.getResponseBody()) {
@@ -159,8 +180,7 @@ class OvhOpenAiClientTest {
 
     private void repondreSse(List<String> lignes) {
         remplacerHandler(exchange -> {
-            lastRequestBody.set(new String(
-                    exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            lastRequestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             exchange.getResponseHeaders().add("Content-Type", "text/event-stream");
             exchange.sendResponseHeaders(200, 0);
             try (OutputStream os = exchange.getResponseBody()) {

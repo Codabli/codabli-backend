@@ -22,6 +22,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -42,6 +46,8 @@ public class OvhOpenAiClient implements LlmClient {
 
     private static final Logger log = LoggerFactory.getLogger(OvhOpenAiClient.class);
     private static final String DONE = "[DONE]";
+    private static final ScheduledExecutorService STREAM_TIMEOUT_EXECUTOR = Executors.newSingleThreadScheduledExecutor(
+            Thread.ofPlatform().daemon().name("llm-stream-timeout").factory());
 
     // Mapper dedie au format de fil OVH (compatible OpenAI). Instancie en interne
     // plutot qu'injecte : Spring Boot 4.1 expose Jackson 3 (tools.jackson), pas
@@ -77,8 +83,7 @@ public class OvhOpenAiClient implements LlmClient {
             Integer tokensOut = entierOuNull(racine.path("usage").path("completion_tokens"));
 
             loguerSucces("complete", appelId, model, tokensIn, tokensOut, finishReason, t0);
-            return LlmResponse.ok(texte.strip(), reasoning.strip(), finishReason,
-                    tokensIn, tokensOut);
+            return LlmResponse.ok(texte.strip(), reasoning.strip(), finishReason, tokensIn, tokensOut);
         } catch (Exception e) {
             return replierSurStandby("complete", appelId, model, t0, e);
         }
@@ -96,41 +101,57 @@ public class OvhOpenAiClient implements LlmClient {
             HttpRequest httpRequest = construireRequete(request, model, true);
             HttpResponse<InputStream> response = httpClient.send(httpRequest,
                     HttpResponse.BodyHandlers.ofInputStream());
-            verifierStatut(response.statusCode());
 
-            try (BufferedReader lecteur = new BufferedReader(
-                    new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
-                String ligne;
-                while ((ligne = lecteur.readLine()) != null) {
-                    if (!ligne.startsWith("data:")) {
-                        continue; // lignes vides / commentaires SSE
+            try (InputStream body = response.body()) {
+                verifierStatut(response.statusCode());
+                long elapsedMillis = Duration.ofNanos(System.nanoTime() - t0).toMillis();
+                long remainingMillis = Math.max(0, properties.timeout().toMillis() - elapsedMillis);
+                ScheduledFuture<?> bodyTimeout = STREAM_TIMEOUT_EXECUTOR.schedule(() -> {
+                    try {
+                        body.close();
+                    } catch (java.io.IOException e) {
+                        log.warn("Impossible de fermer le flux LLM a l'expiration du timeout: {}",
+                                e.getClass().getSimpleName());
                     }
-                    String charge = ligne.substring("data:".length()).strip();
-                    if (charge.isEmpty()) {
-                        continue;
+                }, remainingMillis, TimeUnit.MILLISECONDS);
+                try {
+                    try (BufferedReader lecteur = new BufferedReader(
+                            new InputStreamReader(body, StandardCharsets.UTF_8))) {
+                        String ligne;
+                        while ((ligne = lecteur.readLine()) != null) {
+                            if (!ligne.startsWith("data:")) {
+                                continue; // lignes vides / commentaires SSE
+                            }
+                            String charge = ligne.substring("data:".length()).strip();
+                            if (charge.isEmpty()) {
+                                continue;
+                            }
+                            if (DONE.equals(charge)) {
+                                break;
+                            }
+                            JsonNode chunk = objectMapper.readTree(charge);
+                            JsonNode usage = chunk.path("usage");
+                            if (usage.isObject()) {
+                                tokensIn = entierOuNull(usage.path("prompt_tokens"));
+                                tokensOut = entierOuNull(usage.path("completion_tokens"));
+                            }
+                            JsonNode choix = chunk.path("choices");
+                            if (!choix.isArray() || choix.isEmpty()) {
+                                continue;
+                            }
+                            JsonNode premier = choix.get(0);
+                            String fr = texteOuNull(premier.path("finish_reason"));
+                            if (fr != null) {
+                                finishReason = fr;
+                            }
+                            String fragment = premier.path("delta").path("content").asText("");
+                            if (!fragment.isEmpty()) {
+                                onToken.accept(fragment);
+                            }
+                        }
                     }
-                    if (DONE.equals(charge)) {
-                        break;
-                    }
-                    JsonNode chunk = objectMapper.readTree(charge);
-                    JsonNode usage = chunk.path("usage");
-                    if (usage.isObject()) {
-                        tokensIn = entierOuNull(usage.path("prompt_tokens"));
-                        tokensOut = entierOuNull(usage.path("completion_tokens"));
-                    }
-                    JsonNode choix = chunk.path("choices");
-                    if (!choix.isArray() || choix.isEmpty()) {
-                        continue;
-                    }
-                    JsonNode premier = choix.get(0);
-                    String fr = texteOuNull(premier.path("finish_reason"));
-                    if (fr != null) {
-                        finishReason = fr;
-                    }
-                    String fragment = premier.path("delta").path("content").asText("");
-                    if (!fragment.isEmpty()) {
-                        onToken.accept(fragment);
-                    }
+                } finally {
+                    bodyTimeout.cancel(false);
                 }
             }
             loguerSucces("stream", appelId, model, tokensIn, tokensOut, finishReason, t0);
@@ -148,19 +169,14 @@ public class OvhOpenAiClient implements LlmClient {
     private HttpRequest construireRequete(LlmRequest request, String model, boolean stream) {
         ObjectNode corps = objectMapper.createObjectNode();
         corps.put("model", model);
-        corps.put("temperature",
-                request.temperature() != null ? request.temperature() : properties.temperature());
-        corps.put("max_tokens",
-                request.maxTokens() != null ? request.maxTokens() : properties.maxTokens());
+        corps.put("temperature", request.temperature() != null ? request.temperature() : properties.temperature());
+        corps.put("max_tokens", request.maxTokens() != null ? request.maxTokens() : properties.maxTokens());
         corps.put("stream", stream);
         if (stream) {
-            corps.set("stream_options",
-                    objectMapper.createObjectNode().put("include_usage", true));
+            corps.set("stream_options", objectMapper.createObjectNode().put("include_usage", true));
         }
         ArrayNode messages = corps.putArray("messages");
-        messages.addObject()
-                .put("role", LlmMessage.ROLE_SYSTEM)
-                .put("content", properties.systemPrompt());
+        messages.addObject().put("role", LlmMessage.ROLE_SYSTEM).put("content", properties.systemPrompt());
         for (LlmMessage m : request.messages()) {
             messages.addObject().put("role", m.role()).put("content", m.content());
         }
@@ -172,14 +188,11 @@ public class OvhOpenAiClient implements LlmClient {
             throw new LlmIndisponibleException("Serialisation de la requete LLM impossible", e);
         }
 
-        return HttpRequest.newBuilder()
-                .uri(URI.create(properties.baseUrl() + "/chat/completions"))
-                .timeout(properties.timeout())
-                .header("Authorization", "Bearer " + properties.apiKey())
+        return HttpRequest.newBuilder().uri(URI.create(properties.baseUrl() + "/chat/completions"))
+                .timeout(properties.timeout()).header("Authorization", "Bearer " + properties.apiKey())
                 .header("Content-Type", "application/json")
                 .header("Accept", stream ? "text/event-stream" : "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
-                .build();
+                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8)).build();
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -187,8 +200,7 @@ public class OvhOpenAiClient implements LlmClient {
     // ────────────────────────────────────────────────────────────────
 
     private String modele(LlmRequest request) {
-        return (request.model() != null && !request.model().isBlank())
-                ? request.model() : properties.model();
+        return (request.model() != null && !request.model().isBlank()) ? request.model() : properties.model();
     }
 
     private void verifierStatut(int statut) {
@@ -219,8 +231,7 @@ public class OvhOpenAiClient implements LlmClient {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
-    private LlmResponse replierSurStandby(String mode, String appelId, String model,
-                                          long t0, Exception e) {
+    private LlmResponse replierSurStandby(String mode, String appelId, String model, long t0, Exception e) {
         loguerEchec(mode, appelId, model, t0, e);
         return LlmResponse.standby(properties.standbyMessage());
     }
@@ -229,18 +240,17 @@ public class OvhOpenAiClient implements LlmClient {
     // Journalisation — METADONNEES UNIQUEMENT (jamais de contenu, RGPD)
     // ────────────────────────────────────────────────────────────────
 
-    private void loguerSucces(String mode, String appelId, String model, Integer tokensIn,
-                              Integer tokensOut, String finishReason, long t0) {
-        log.info("LLM {} ok [appel={}] model={} tokensIn={} tokensOut={} finish={} dureeMs={}",
-                mode, appelId, model, tokensIn, tokensOut, finishReason, dureeMs(t0));
+    private void loguerSucces(String mode, String appelId, String model, Integer tokensIn, Integer tokensOut,
+                              String finishReason, long t0) {
+        log.info("LLM {} ok [appel={}] model={} tokensIn={} tokensOut={} finish={} dureeMs={}", mode, appelId, model,
+                tokensIn, tokensOut, finishReason, dureeMs(t0));
     }
 
     private void loguerEchec(String mode, String appelId, String model, long t0, Exception e) {
         // On logue le type d'erreur et un message technique maitrise, pas l'exception
         // complete : une stacktrace ou un message de SDK peut echoer le prompt.
-        log.warn("LLM {} indisponible [appel={}] model={} dureeMs={} cause={}: {}",
-                mode, appelId, model, dureeMs(t0), e.getClass().getSimpleName(),
-                messageTechnique(e));
+        log.warn("LLM {} indisponible [appel={}] model={} dureeMs={} cause={}: {}", mode, appelId, model, dureeMs(t0),
+                e.getClass().getSimpleName(), messageTechnique(e));
     }
 
     private static String messageTechnique(Exception e) {
