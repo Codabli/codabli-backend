@@ -170,10 +170,10 @@ class OvhOpenAiClientTest {
         List<String> fragments = new ArrayList<>();
 
         org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> client.stream(LlmRequest.of(PROMPT_SECRET), fragment -> {
-                    fragments.add(fragment);
-                    throw new IllegalStateException("client deconnecte");
-                }))
+                        () -> client.stream(LlmRequest.of(PROMPT_SECRET), fragment -> {
+                            fragments.add(fragment);
+                            throw new IllegalStateException("client deconnecte");
+                        }))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("client deconnecte");
 
@@ -326,14 +326,15 @@ class OvhOpenAiClientTest {
         Object responseBody = stream
                 ? new ByteArrayInputStream("data: [DONE]\n\n".getBytes(StandardCharsets.UTF_8))
                 : """
-                        {"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}""";
+                {"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}""";
         doReturn(reponseHttp(responseBody)).when(mockedHttpClient).send(any(HttpRequest.class), any());
 
         OvhOpenAiClient unitClient = new OvhOpenAiClient(mockedHttpClient,
                 new LlmProperties("https://ovh.example/v1", "cle-test", "modele-test", SYSTEM_PROMPT, 0.3, 256,
                         Duration.ofSeconds(5), STANDBY));
         if (stream) {
-            unitClient.stream(request, ignored -> { });
+            unitClient.stream(request, ignored -> {
+            });
         } else {
             unitClient.complete(request);
         }
@@ -492,7 +493,8 @@ class OvhOpenAiClientTest {
     private void assertPayload(boolean stream, LlmRequest request, List<String> expectedContents) {
         if (stream) {
             repondreSse(List.of("data: [DONE]"));
-            client.stream(request, ignored -> { });
+            client.stream(request, ignored -> {
+            });
         } else {
             repondre200("""
                     {"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}""");
