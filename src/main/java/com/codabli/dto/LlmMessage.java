@@ -6,10 +6,13 @@ import jakarta.validation.constraints.NotNull;
 /**
  * Message structure d'un echange avec le LLM (format role / contenu, commun a
  * l'API compatible OpenAI d'OVHcloud AI Endpoints).
- * <p>
- * Les roles attendus sont {@code system}, {@code user} et {@code assistant}.
- * Les fabriques statiques evitent les fautes de frappe sur le role.
- */
+ * Les trois roles principaux sont :
+ * - system : definit les consignes, le rôle et le contexte (contient le system_prompt par défaut);
+ * - user : porte la demande ou le message transmis au LLM ;
+ * - assistant : porte une reponse precedente du LLM dans l'echange.
+ *
+ * Les valeurs envoyees a l'API sont en minuscules. 
+ *  */
 public record LlmMessage(
         @NotNull @NotBlank String role,
         @NotNull @NotBlank String content) {
