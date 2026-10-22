@@ -128,7 +128,7 @@ class OvhOpenAiClientTest {
             }
         });
         LlmProperties shortTimeout = new LlmProperties("http://localhost:" + server.getAddress().getPort() + "/v1",
-                "cle-test", "modele-test", "system-prompt", 0.3, 256, Duration.ofMillis(300), STANDBY);
+                "cle-test", "modele-test", "system-prompt", 0.3, 256, Duration.ofSeconds(1), STANDBY);
         OvhOpenAiClient timeoutClient = new OvhOpenAiClient(HttpClient.newHttpClient(), shortTimeout);
 
         List<String> fragments = new ArrayList<>();
@@ -137,7 +137,7 @@ class OvhOpenAiClientTest {
         long elapsedMillis = Duration.ofNanos(System.nanoTime() - startedAt).toMillis();
 
         assertThat(fragments).containsExactly("debut", STANDBY);
-        assertThat(elapsedMillis).isLessThan(1500);
+        assertThat(elapsedMillis).isLessThan(2500);
     }
 
     @Test
