@@ -5,27 +5,19 @@ générale et le lancement de l'application, voir le [README principal](../READM
 
 ---
 
-## ⚠️ Prérequis important : la base de données doit tourner
+## Base de données des tests
 
-Une partie des tests (les tests de **contrôleurs**) sont des `@SpringBootTest` :
-ils démarrent le **contexte Spring complet**, donc la couche JPA/Hibernate, qui
-se connecte à **PostgreSQL sur `localhost:5442`**.
+Les tests de contrôleurs et de migrations chargent le contexte Spring complet
+et utilisent **H2 en mémoire**, configuré dans `src/test/resources/application.yml`.
+Le schéma `codabli_test` est créé à la connexion, puis Liquibase exécute le même
+changelog que l'application. Aucun serveur PostgreSQL ou Keycloak n'est requis,
+en local comme en CI. Les tests de services Mockito n'ont pas besoin de base.
 
-**Sans base démarrée, ces tests échouent tous** avec :
-
-```
-Connection to localhost:5442 refused. Check that the hostname and port are correct...
-```
-
-Ce n'est pas un bug du code : c'est le prérequis normal. Démarre l'infra avant de
-lancer les tests :
-
-```bash
-docker compose up -d postgres
-```
-
-> 💡 Les tests de **services** (Mockito) n'ont, eux, **pas** besoin de base — voir
-> le tableau plus bas.
+`LiquibaseMigrationTest` vérifie le schéma dédié, une seconde application sans
+modification de l'historique et la lecture/écriture JPA. Hibernate ne crée,
+ne modifie et ne valide pas les tables (`ddl-auto: none`) ; seul Liquibase gère
+le DDL. H2 ne remplace pas une vérification du déploiement sur PostgreSQL :
+les différences de types et de dialectes restent à prendre en compte.
 
 ---
 
@@ -34,7 +26,6 @@ docker compose up -d postgres
 ### Option A — natif (nécessite un JDK 25+)
 
 ```bash
-docker compose up -d postgres   # si ce n'est pas déjà fait
 ./mvnw test
 ```
 
@@ -44,14 +35,10 @@ Si la machine n'a qu'un JRE (pas de `javac`), on compile/exécute les tests dans
 conteneur Maven + JDK 25 :
 
 ```bash
-docker compose up -d postgres
-docker run --rm --network host \
+docker run --rm \
   -v "$PWD":/app -w /app \
   maven:3.9-eclipse-temurin-25 mvn -B test
 ```
-
-*(`--network host` permet au conteneur d'atteindre le PostgreSQL publié sur
-`localhost:5442`.)*
 
 ### Commandes utiles
 
@@ -72,16 +59,17 @@ Les rapports détaillés sont générés dans **`../target/surefire-reports`**.
 
 ## 🗂️ Organisation de la suite
 
-**59 tests** répartis en **2 familles** :
+La suite comporte les familles suivantes :
 
 | Famille | Annotation | Base requise ? | Rôle |
 | --- | --- | :---: | --- |
-| Tests de **contrôleurs** | `@SpringBootTest` + `@AutoConfigureMockMvc` | ✅ Oui | Vérifient les endpoints HTTP de bout en bout (routes, statuts, sécurité par rôle) avec le contexte Spring réel |
+| Tests de **contrôleurs** | `@SpringBootTest` + `@AutoConfigureMockMvc` | H2 en mémoire | Vérifient les endpoints HTTP (routes, statuts, sécurité par rôle) avec le contexte Spring réel |
 | Tests de **services** | `@ExtendWith(MockitoExtension.class)` | ❌ Non | Vérifient la logique métier isolée (dépôt mocké) : règles d'accès, filtres, calculs |
+| Tests de **migrations** | `@SpringBootTest` | H2 en mémoire | Vérifient schéma dédié, idempotence Liquibase et persistance JPA |
 
 ### Inventaire
 
-**Contrôleurs — `@SpringBootTest` (BDD requise) — 27 tests**
+**Contrôleurs — `@SpringBootTest` (H2 en mémoire) — 27 tests**
 
 | Classe | Nb tests |
 | --- | :---: |
@@ -122,6 +110,6 @@ Les rapports détaillés sont générés dans **`../target/surefire-reports`**.
 
 | Symptôme                                                                    | Cause probable | Solution                                                     |
 |-----------------------------------------------------------------------------| --- |--------------------------------------------------------------|
-| Tous les `*ControllerTest` échouent, `Connection to localhost:5442 refused` | PostgreSQL non démarré | `docker compose up -d postgres`                              |
+| Les tests tentent une connexion à PostgreSQL | Configuration de test surchargée | Vérifier les variables `SPRING_DATASOURCE_*` et la configuration IDE ; H2 est le défaut |
 | `release version 25 not supported`                                          | Pas de JDK (seulement un JRE) sur l'hôte | Utiliser l'**option B** (tout Docker) ou installer un JDK 25+ |
 | `UnnecessaryStubbingException`                                              | Stub partagé non utilisé par tous les tests | Passer le stub en `lenient().when(...)`                      |

@@ -1,4 +1,8 @@
 -- ============================================================================
+-- HISTORIQUE : correctif manuel pour les anciennes bases Hibernate dans public.
+-- Ne pas executer sur le nouveau schema Liquibase, ce fichier n'est pas inclus
+-- dans le changelog. Voir documentation/LIQUIBASE.md.
+--
 -- Correctif : contraintes CHECK obsoletes generees par Hibernate sur les
 -- colonnes d'enum (role, statut_moderation).
 --

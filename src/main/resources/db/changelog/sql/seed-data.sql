@@ -1,8 +1,9 @@
 -- ============================================================================
 -- Codabli — Script de données de test (seed)
 -- ============================================================================
--- A EXECUTER APRES avoir lance l'application au moins une fois depuis IntelliJ
--- (ddl-auto: update cree/met a jour les tables au demarrage).
+-- A EXECUTER APRES avoir lancé l'application au moins une fois depuis IntelliJ
+-- (Liquibase créé les tables dans le schema dédié au démarrage).
+-- Ce script reste manuel et n'est PAS inclus dans le changelog Liquibase.
 --
 -- Ce script s'execute directement sur la base PostgreSQL "codabli_dev",
 -- PAS depuis IntelliJ "Run" : utiliser l'onglet Database d'IntelliJ

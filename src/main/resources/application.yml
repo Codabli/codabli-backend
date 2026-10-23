@@ -2,16 +2,16 @@ spring:
   application:
     name: codabli-backend
   datasource:
-    url: jdbc:postgresql://localhost:5442/${POSTGRES_DB:codabli_dev}?currentSchema=${DB_SCHEMA}
+    url: jdbc:postgresql://localhost:5442/${POSTGRES_DB:codabli_dev}?currentSchema=${POSTGRES_SCHEMA:codabli}
     username: ${POSTGRES_USER:codabli}
     password: ${POSTGRES_PASSWORD:codabli}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: none
-      default_schema: ${POSTGRES_SCHEMA:codabli}
     properties:
       hibernate:
+        default_schema: ${POSTGRES_SCHEMA:codabli}
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
   liquibase:
