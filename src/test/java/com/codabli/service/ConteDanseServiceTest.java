@@ -3,6 +3,8 @@ package com.codabli.service;
 import com.codabli.dto.ConteDanseRequest;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.Utilisateur;
+import com.codabli.entity.enums.StatutConte;
+import com.codabli.event.ConteDansePublieEvent;
 import com.codabli.repository.ConteDanseRepository;
 import com.codabli.repository.ConteDanseTraductionRepository;
 import jakarta.persistence.EntityManager;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.data.domain.Page;
@@ -41,6 +44,9 @@ class ConteDanseServiceTest {
 
     @Mock
     private EntityManager entityManager;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Mock
     private Jwt jwt;
@@ -113,6 +119,19 @@ class ConteDanseServiceTest {
         assertEquals(1L, result.getTotalElements());
         verify(traductionRepository).findByConteIdInAndStatut(
                 List.of(conteId), com.codabli.entity.enums.StatutTraduction.publiee);
+    }
+
+    @Test
+    void valider_asAdmin_shouldPublishEventWhenConteIsPublished() {
+        when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
+        when(utilisateurService.extractRoles(jwt)).thenReturn(List.of("admin"));
+        when(conteDanseRepository.findById(conteId)).thenReturn(Optional.of(conte));
+        when(conteDanseRepository.save(conte)).thenReturn(conte);
+
+        conteDanseService.valider(conteId, jwt);
+
+        assertEquals(StatutConte.publie, conte.getStatut());
+        verify(eventPublisher).publishEvent(new ConteDansePublieEvent(conteId));
     }
 
     private ConteDanseRequest conteDanseRequest() {

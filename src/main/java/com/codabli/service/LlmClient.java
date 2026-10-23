@@ -31,5 +31,5 @@ public interface LlmClient {
      *
      * @param onToken consommateur appele pour chaque fragment de texte
      */
-    void stream(LlmRequest request, Consumer<String> onToken);
+    LlmResponse stream(LlmRequest request, Consumer<String> onToken);
 }
