@@ -10,6 +10,7 @@ import com.codabli.entity.Ecole;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.AccesConte;
 import com.codabli.entity.enums.StatutConte;
+import com.codabli.event.ConteDansePublieEvent;
 import com.codabli.exception.ErrorCode;
 import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ConteDanseRepository;
@@ -19,6 +20,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -52,15 +54,18 @@ public class ConteDanseService {
     private final UtilisateurService utilisateurService;
     private final ConteDanseTraductionRepository traductionRepository;
     private final EntityManager entityManager;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ConteDanseService(ConteDanseRepository conteDanseRepository,
                              UtilisateurService utilisateurService,
                              ConteDanseTraductionRepository traductionRepository,
-                             EntityManager entityManager) {
+                             EntityManager entityManager,
+                             ApplicationEventPublisher eventPublisher) {
         this.conteDanseRepository = conteDanseRepository;
         this.utilisateurService = utilisateurService;
         this.traductionRepository = traductionRepository;
         this.entityManager = entityManager;
+        this.eventPublisher = eventPublisher;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -285,6 +290,7 @@ public class ConteDanseService {
 
     private void publier(ConteDanse conte, Utilisateur validateur) {
         conte.setStatut(StatutConte.publie);
+        eventPublisher.publishEvent(new ConteDansePublieEvent(conte.getId()));
         conte.setValideParComite(validateur);
         conte.setDatePublication(OffsetDateTime.now());
         conte.setMotifModeration(null);

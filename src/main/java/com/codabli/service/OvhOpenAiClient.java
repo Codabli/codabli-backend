@@ -92,13 +92,15 @@ public class OvhOpenAiClient implements LlmClient {
     }
 
     @Override
-    public void stream(LlmRequest request, Consumer<String> onToken) {
+    public LlmResponse stream(LlmRequest request, Consumer<String> onToken) {
         String appelId = nouvelAppelId();
         String model = properties.model();
         long t0 = System.nanoTime();
         String finishReason = null;
         Integer tokensIn = null;
         Integer tokensOut = null;
+        StringBuilder texteGenere = new StringBuilder();
+        boolean marqueurFinRecu = false;
         try {
             HttpRequest httpRequest = construireRequete(request, model, true);
             HttpResponse<InputStream> response = httpClient.send(httpRequest,
@@ -129,6 +131,7 @@ public class OvhOpenAiClient implements LlmClient {
                                 continue;
                             }
                             if (DONE.equals(charge)) {
+                                marqueurFinRecu = true;
                                 break;
                             }
                             JsonNode chunk = objectMapper.readTree(charge);
@@ -148,7 +151,8 @@ public class OvhOpenAiClient implements LlmClient {
                             }
                             String fragment = premier.path("delta").path("content").asText("");
                             if (!fragment.isEmpty()) {
-                                onToken.accept(fragment);
+                                texteGenere.append(fragment);
+                                notifierFragment(onToken, fragment);
                             }
                         }
                     }
@@ -156,11 +160,34 @@ public class OvhOpenAiClient implements LlmClient {
                     bodyTimeout.cancel(false);
                 }
             }
+            if (!marqueurFinRecu) {
+                throw new LlmIndisponibleException("Flux LLM interrompu avant son marqueur de fin");
+            }
             loguerSucces("stream", appelId, model, tokensIn, tokensOut, finishReason, t0);
+            return LlmResponse.ok(texteGenere.toString().strip(), "", finishReason, tokensIn, tokensOut);
+        } catch (StreamConsumerException e) {
+            throw e.cause;
         } catch (Exception e) {
             loguerEchec("stream", appelId, model, t0, e);
-            // Degradation gracieuse : on pousse le message de repli dans le flux.
+            // Le résultat permet à l'appelant de ne pas persister ce fallback comme réponse du modèle.
             onToken.accept(properties.standbyMessage());
+            return LlmResponse.standby(properties.standbyMessage());
+        }
+    }
+
+    private void notifierFragment(Consumer<String> onToken, String fragment) {
+        try {
+            onToken.accept(fragment);
+        } catch (RuntimeException e) {
+            throw new StreamConsumerException(e);
+        }
+    }
+
+    private static final class StreamConsumerException extends RuntimeException {
+        private final RuntimeException cause;
+
+        private StreamConsumerException(RuntimeException cause) {
+            this.cause = cause;
         }
     }
 

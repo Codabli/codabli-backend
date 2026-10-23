@@ -118,9 +118,11 @@ class OvhOpenAiClientTest {
                 "data: {\"choices\":[{\"delta\":{\"content\":\"petit\"}}]}", "data: [DONE]"));
 
         List<String> fragments = new ArrayList<>();
-        client.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
+        LlmResponse response = client.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
 
         assertThat(fragments).containsExactly("Bonjour ", "petit");
+        assertThat(response.degrade()).isFalse();
+        assertThat(response.texte()).isEqualTo("Bonjour petit");
         assertSystemPromptFirst();
     }
 
@@ -129,9 +131,11 @@ class OvhOpenAiClientTest {
         repondre(503, "service indisponible");
 
         List<String> fragments = new ArrayList<>();
-        client.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
+        LlmResponse response = client.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
 
         assertThat(fragments).containsExactly(STANDBY);
+        assertThat(response.degrade()).isTrue();
+        assertThat(response.texte()).isEqualTo(STANDBY);
     }
 
     @Test
@@ -152,11 +156,28 @@ class OvhOpenAiClientTest {
 
         List<String> fragments = new ArrayList<>();
         long startedAt = System.nanoTime();
-        timeoutClient.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
+        LlmResponse response = timeoutClient.stream(LlmRequest.of(PROMPT_SECRET), fragments::add);
         long elapsedMillis = Duration.ofNanos(System.nanoTime() - startedAt).toMillis();
 
         assertThat(fragments).containsExactly("debut", STANDBY);
+        assertThat(response.degrade()).isTrue();
         assertThat(elapsedMillis).isLessThan(2500);
+    }
+
+    @Test
+    void stream_propage_les_erreurs_du_consommateur_sans_emettre_de_fallback() {
+        repondreSse(List.of("data: {\"choices\":[{\"delta\":{\"content\":\"Bonjour\"}}]}", "data: [DONE]"));
+        List<String> fragments = new ArrayList<>();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> client.stream(LlmRequest.of(PROMPT_SECRET), fragment -> {
+                    fragments.add(fragment);
+                    throw new IllegalStateException("client deconnecte");
+                }))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("client deconnecte");
+
+        assertThat(fragments).containsExactly("Bonjour");
     }
 
     @Test
