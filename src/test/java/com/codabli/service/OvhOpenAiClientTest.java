@@ -13,19 +13,37 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * Tests du client LLM contre un stub HTTP local.
@@ -191,9 +209,222 @@ class OvhOpenAiClientTest {
         assertPayload(true, new LlmRequest(messages, null), contenusDe(2, 13));
     }
 
+    @Test
+    @DisplayName("complete prepends the backend system prompt and keeps valid history")
+    void complete_shouldPrependSystemPromptAndKeepValidHistory() throws Exception {
+        List<LlmMessage> history = List.of(
+                LlmMessage.user("question-1"),
+                LlmMessage.assistant("reponse-1"),
+                LlmMessage.user("question-2"));
+
+        assertCapturedPayload(false, new LlmRequest(history, null), history);
+    }
+
+    @Test
+    @DisplayName("stream prepends the backend system prompt and keeps valid history")
+    void stream_shouldPrependSystemPromptAndKeepValidHistory() throws Exception {
+        List<LlmMessage> history = List.of(
+                LlmMessage.user("question-1"),
+                LlmMessage.assistant("reponse-1"),
+                LlmMessage.user("question-2"));
+
+        assertCapturedPayload(true, new LlmRequest(history, null), history);
+    }
+
+    @Test
+    @DisplayName("complete ignores incoming system messages")
+    void complete_shouldIgnoreIncomingSystemMessages() throws Exception {
+        List<LlmMessage> history = List.of(
+                LlmMessage.system("consigne entrante"),
+                LlmMessage.user("question"));
+
+        assertCapturedPayload(false, new LlmRequest(history, null), List.of(LlmMessage.user("question")));
+    }
+
+    @Test
+    @DisplayName("stream ignores incoming system messages")
+    void stream_shouldIgnoreIncomingSystemMessages() throws Exception {
+        List<LlmMessage> history = List.of(
+                LlmMessage.system("consigne entrante"),
+                LlmMessage.user("question"));
+
+        assertCapturedPayload(true, new LlmRequest(history, null), List.of(LlmMessage.user("question")));
+    }
+
+    @Test
+    @DisplayName("complete applies the sliding window and starts history with a user message")
+    void complete_shouldApplySlidingWindowAndEnsureFirstMessageIsUser() throws Exception {
+        List<LlmMessage> history = historiqueDe15Messages();
+        List<LlmMessage> retained = history.subList(4, 15);
+
+        assertThat(history.get(3).role()).isEqualTo(LlmMessage.ROLE_ASSISTANT);
+        assertCapturedPayload(false, new LlmRequest(history, null), retained);
+    }
+
+    @Test
+    @DisplayName("stream applies the sliding window and starts history with a user message")
+    void stream_shouldApplySlidingWindowAndEnsureFirstMessageIsUser() throws Exception {
+        List<LlmMessage> history = historiqueDe15Messages();
+        List<LlmMessage> retained = history.subList(4, 15);
+
+        assertThat(history.get(3).role()).isEqualTo(LlmMessage.ROLE_ASSISTANT);
+        assertCapturedPayload(true, new LlmRequest(history, null), retained);
+    }
+
+    @Test
+    @DisplayName("complete removes a trailing assistant message")
+    void complete_shouldRemoveTrailingAssistantMessage() throws Exception {
+        List<LlmMessage> history = List.of(
+                LlmMessage.user("question-1"),
+                LlmMessage.assistant("reponse-1"),
+                LlmMessage.user("question-2"),
+                LlmMessage.assistant("reponse finale invalide"));
+
+        assertCapturedPayload(false, new LlmRequest(history, null), history.subList(0, 3));
+    }
+
+    @Test
+    @DisplayName("stream removes a trailing assistant message")
+    void stream_shouldRemoveTrailingAssistantMessage() throws Exception {
+        List<LlmMessage> history = List.of(
+                LlmMessage.user("question-1"),
+                LlmMessage.assistant("reponse-1"),
+                LlmMessage.user("question-2"),
+                LlmMessage.assistant("reponse finale invalide"));
+
+        assertCapturedPayload(true, new LlmRequest(history, null), history.subList(0, 3));
+    }
+
     // ────────────────────────────────────────────────────────────────
     // Stub HTTP
     // ────────────────────────────────────────────────────────────────
+
+    private void assertCapturedPayload(boolean stream, LlmRequest request, List<LlmMessage> expectedHistory)
+            throws Exception {
+        HttpClient mockedHttpClient = mock(HttpClient.class);
+        Object responseBody = stream
+                ? new ByteArrayInputStream("data: [DONE]\n\n".getBytes(StandardCharsets.UTF_8))
+                : """
+                        {"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}""";
+        doReturn(reponseHttp(responseBody)).when(mockedHttpClient).send(any(HttpRequest.class), any());
+
+        OvhOpenAiClient unitClient = new OvhOpenAiClient(mockedHttpClient,
+                new LlmProperties("https://ovh.example/v1", "cle-test", "modele-test", SYSTEM_PROMPT, 0.3, 256,
+                        Duration.ofSeconds(5), STANDBY));
+        if (stream) {
+            unitClient.stream(request, ignored -> { });
+        } else {
+            unitClient.complete(request);
+        }
+
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(mockedHttpClient).send(requestCaptor.capture(), any());
+        JsonNode sentMessages = new ObjectMapper().readTree(lireCorps(requestCaptor.getValue())).path("messages");
+
+        assertThat(sentMessages).hasSize(expectedHistory.size() + 1);
+        assertThat(sentMessages.get(0).path("role").asText()).isEqualTo(LlmMessage.ROLE_SYSTEM);
+        assertThat(sentMessages.get(0).path("content").asText()).isEqualTo(SYSTEM_PROMPT);
+        for (int i = 0; i < expectedHistory.size(); i++) {
+            JsonNode message = sentMessages.get(i + 1);
+            assertThat(message.path("role").asText()).isEqualTo(expectedHistory.get(i).role());
+            assertThat(message.path("content").asText()).isEqualTo(expectedHistory.get(i).content());
+        }
+        assertThat(sentMessages.size()).isLessThanOrEqualTo(12);
+        assertThat(sentMessages.get(1).path("role").asText()).isEqualTo(LlmMessage.ROLE_USER);
+        assertThat(sentMessages.get(sentMessages.size() - 1).path("role").asText())
+                .isEqualTo(LlmMessage.ROLE_USER);
+    }
+
+    private static HttpResponse<Object> reponseHttp(Object body) {
+        return new HttpResponse<>() {
+            @Override
+            public int statusCode() {
+                return 200;
+            }
+
+            @Override
+            public HttpRequest request() {
+                return HttpRequest.newBuilder(URI.create("https://ovh.example/v1/chat/completions")).build();
+            }
+
+            @Override
+            public Optional<HttpResponse<Object>> previousResponse() {
+                return Optional.empty();
+            }
+
+            @Override
+            public HttpHeaders headers() {
+                return HttpHeaders.of(Map.of(), (name, value) -> true);
+            }
+
+            @Override
+            public Object body() {
+                return body;
+            }
+
+            @Override
+            public Optional<javax.net.ssl.SSLSession> sslSession() {
+                return Optional.empty();
+            }
+
+            @Override
+            public URI uri() {
+                return URI.create("https://ovh.example/v1/chat/completions");
+            }
+
+            @Override
+            public HttpClient.Version version() {
+                return HttpClient.Version.HTTP_1_1;
+            }
+        };
+    }
+
+    private static String lireCorps(HttpRequest request) throws InterruptedException {
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+        CountDownLatch completed = new CountDownLatch(1);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        request.bodyPublisher().orElseThrow().subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(ByteBuffer item) {
+                byte[] bytes = new byte[item.remaining()];
+                item.get(bytes);
+                body.writeBytes(bytes);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                failure.set(throwable);
+                completed.countDown();
+            }
+
+            @Override
+            public void onComplete() {
+                completed.countDown();
+            }
+        });
+        if (!completed.await(1, TimeUnit.SECONDS)) {
+            throw new AssertionError("Le corps de la requete HTTP n'a pas ete publie");
+        }
+        if (failure.get() != null) {
+            throw new AssertionError("Impossible de lire le corps de la requete HTTP", failure.get());
+        }
+        return body.toString(StandardCharsets.UTF_8);
+    }
+
+    private static List<LlmMessage> historiqueDe15Messages() {
+        List<LlmMessage> messages = new ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            messages.add(i % 2 == 0
+                    ? LlmMessage.user("message-" + i)
+                    : LlmMessage.assistant("message-" + i));
+        }
+        return messages;
+    }
 
     private void repondre200(String json) {
         repondre(200, json);
