@@ -9,7 +9,7 @@ L'application est disponible en recette, lien pour le swagger : https://recette.
 ## 🛠️ Stack Technique
 
 * **Framework principal** : Spring Boot 4.1.1
-* **Persistance** : Spring Data JPA / Hibernate / PostgreSQL
+* **Persistance** : Spring Data JPA / Hibernate / PostgreSQL, migrations Liquibase
 * **Sécurité & IAM** : Spring Security & Keycloak (OAuth2 Resource Server)
 * **Outillage & Doc** : Lombok, Springdoc OpenAPI (Swagger UI)
 * **Tests** : JUnit 5, Mockito, MockMvc
@@ -58,7 +58,9 @@ Les valeurs par défaut conviennent pour un environnement de dev local.
 docker compose up -d
 ```
 
-Cela lance PostgreSQL et Keycloak. Le realm `codabli` (rôles, client
+Cela lance PostgreSQL et Keycloak. Le service ponctuel `postgres-init` crée
+le schéma dédié défini par `POSTGRES_SCHEMA` (`codabli` par défaut), y compris
+si le volume PostgreSQL existe déjà. Le realm `codabli` (rôles, client
 `codabli-backend`, service account) est importé automatiquement au premier
 démarrage.
 
@@ -74,6 +76,15 @@ démarrage.
 docker compose --profile app up -d
 ```
 Le backend est alors compilé et exécuté dans un conteneur Maven+JDK 25.
+
+Au démarrage, Liquibase crée les tables et enregistre les migrations dans le
+schéma dédié. Hibernate ne crée, ne modifie et ne valide pas la structure
+de la base (`ddl-auto: none`).
+
+Pour un lancement natif, Spring Boot ne charge pas automatiquement le fichier
+`.env` : exporter les variables personnalisées dans le terminal ou les définir
+dans la configuration de lancement de l'IDE. Les valeurs par défaut correspondent
+à `.env.example`.
 
 L'API est accessible sur **http://localhost:8082**, la documentation Swagger sur
 **http://localhost:8082/swagger-ui.html**.
@@ -112,13 +123,10 @@ docker compose down -v              # arrêter ET repartir de zéro (efface DB +
 
 ## 🧪 Exécution des tests
 
-> ⚠️ **Prérequis : PostgreSQL doit être démarré.** Les tests de contrôleurs sont
-> des `@SpringBootTest` : ils chargent le contexte Spring complet et se
-> connectent à la base sur `localhost:5442`. Sans base, ils échouent tous avec
-> `Connection to localhost:5442 refused`. Démarre l'infrastructure avant :
-> ```bash
-> docker compose up -d postgres
-> ```
+Les tests d'intégration utilisent **H2 en mémoire**, dans un schéma dédié
+initialisé par la configuration de test. Liquibase y exécute le même changelog
+que l'application, avec `ddl-auto: none`.
+Aucun serveur PostgreSQL ou Keycloak n'est nécessaire, en local comme en CI.
 
 Pour lancer la suite de tests unitaires et d'intégration (nécessite un JDK 25+) :
 ```bash
@@ -152,6 +160,7 @@ Le détail des modules fonctionnels du backend et de leurs règles d'accès est
 documenté dans **[MODULES.md](documentation/MODULES.md)**.
 
 Documentation complémentaire :
+* [`documentation/LIQUIBASE.md`](documentation/LIQUIBASE.md) — schéma dédié, rôle des fichiers DB et bascule de la recette.
 * [`documentation/DOC_FONCTIONNELLE.md`](documentation/DOC_FONCTIONNELLE.md) — spécification fonctionnelle détaillée.
 * [`documentation/FICHE_TECHNIQUE.md`](documentation/FICHE_TECHNIQUE.md) — fiche technique (entités, sécurité, endpoints).
 * [`documentation/TESTS.md`](documentation/TESTS.md) — guide d'exécution et d'organisation des tests.

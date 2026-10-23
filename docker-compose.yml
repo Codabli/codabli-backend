@@ -38,6 +38,36 @@ services:
       timeout: 5s
       retries: 10
 
+  # Service ponctuel : cree le schema, sans copier ni supprimer les donnees.
+  postgres-init:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_SCHEMA: ${POSTGRES_SCHEMA:-codabli}
+    command:
+      - sh
+      - -ec
+      - 'psql --no-psqlrc --set=ON_ERROR_STOP=1 --set=schema="$$POSTGRES_SCHEMA" --file=/init-schema.sql'
+    volumes:
+      - ./infrastructure/db/init-schema.sql:/init-schema.sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  adminer:
+    image: adminer
+    container_name: codabli-postgre-admin
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+    ports:
+      - "8083:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.0
     container_name: codabli-keycloak
@@ -60,7 +90,7 @@ services:
       postgres:
         condition: service_healthy
 
-  # Service OPTIONNEL : lance le backend dans un conteneur Maven+JDK 17,
+  # Service OPTIONNEL : lance le backend dans un conteneur Maven+JDK 25,
   # utile si aucun JDK n'est installé sur l'hôte (seul un JRE l'est ici).
   # NON démarré par `docker compose up` : il faut le profil "app" ->
   #   docker compose --profile app up -d
@@ -78,6 +108,8 @@ services:
       # pour rester cohérent avec les identifiants de PostgreSQL et Keycloak.
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_SCHEMA: ${POSTGRES_SCHEMA:-codabli}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
       # Cle API du LLM souverain (EA-107) : transmise au conteneur depuis le .env.
       OVH_AI_ENDPOINT_API_KEY: ${OVH_AI_ENDPOINT_API_KEY}
@@ -85,6 +117,8 @@ services:
       - .:/app
       - codabli-m2:/root/.m2
     depends_on:
+      postgres-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
 
