@@ -53,18 +53,18 @@ public class AssistantIaController {
     }
 
     /**
-     * POST /api/ia/completion — reponse complete (tout d'un coup).
+     * POST /api/ia/test-completion — reponse complete (tout d'un coup).
      */
-    @PostMapping("/api/ia/completion")
+    @PostMapping("/api/ia/test-completion")
     public ResponseEntity<LlmResponse> completion(@Valid @RequestBody LlmRequest request) {
         return ResponseEntity.ok(llmClient.complete(request));
     }
 
     /**
-     * POST /api/ia/stream — reponse en streaming (au fur et a mesure), via SSE.
+     * POST /api/ia/test-stream — reponse en streaming (au fur et a mesure), via SSE.
      * Chaque fragment de texte est pousse dans un evenement {@code token}.
      */
-    @PostMapping(value = "/api/ia/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping(value = "/api/ia/test-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@Valid @RequestBody LlmRequest request) {
         return streamer(onToken -> llmClient.stream(request, onToken));
     }

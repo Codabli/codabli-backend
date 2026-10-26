@@ -10,6 +10,7 @@ import com.codabli.dto.LlmResponse;
 import com.codabli.dto.MessageIaDto;
 import com.codabli.entity.enums.RoleMessage;
 import com.codabli.service.AssistantIaService;
+import com.codabli.service.LlmClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -46,6 +47,46 @@ class AssistantIaControllerTest {
 
     @MockitoBean
     private AssistantIaService assistantIaService;
+
+    @MockitoBean
+    private LlmClient llmClient;
+
+    @Test
+    @WithMockUser
+    void testCompletion_shouldReturnCompleteResponse() throws Exception {
+        LlmRequest request = LlmRequest.of("Bonjour");
+        LlmResponse response = LlmResponse.ok("Réponse", "", "stop", null, null);
+        when(llmClient.complete(request)).thenReturn(response);
+
+        mockMvc.perform(post("/api/ia/test-completion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.texte").value("Réponse"));
+
+        verify(llmClient).complete(request);
+    }
+
+    @Test
+    @WithMockUser
+    void testStream_shouldStartSseRoute() throws Exception {
+        LlmRequest request = LlmRequest.of("Bonjour");
+        when(llmClient.stream(eq(request), any()))
+                .thenAnswer(invocation -> {
+                    invocation.<java.util.function.Consumer<String>>getArgument(1).accept("Réponse");
+                    return LlmResponse.ok("Réponse", "", "stop", null, null);
+                });
+
+        MvcResult asyncResult = mockMvc.perform(post("/api/ia/test-stream")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(status().isOk());
+        verify(llmClient).stream(eq(request), any());
+    }
 
     @Test
     @WithMockUser
