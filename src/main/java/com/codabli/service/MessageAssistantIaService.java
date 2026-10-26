@@ -27,13 +27,16 @@ public class MessageAssistantIaService {
     private final MessageAssistantIaRepository messageRepository;
     private final ConteDanseService conteDanseService;
     private final UtilisateurService utilisateurService;
+    private final PromptAnonymizerService promptAnonymizerService;
 
     public MessageAssistantIaService(MessageAssistantIaRepository messageRepository,
                                      ConteDanseService conteDanseService,
-                                     UtilisateurService utilisateurService) {
+                                     UtilisateurService utilisateurService,
+                                     PromptAnonymizerService promptAnonymizerService) {
         this.messageRepository = messageRepository;
         this.conteDanseService = conteDanseService;
         this.utilisateurService = utilisateurService;
+        this.promptAnonymizerService = promptAnonymizerService;
     }
 
     @Transactional(readOnly = true)
@@ -51,7 +54,7 @@ public class MessageAssistantIaService {
         MessageAssistantIa message = new MessageAssistantIa();
         message.setConteDanseId(request.conteDanseId());
         message.setRole(request.role());
-        message.setContenu(request.contenu());
+        message.setContenu(promptAnonymizerService.anonymize(request.contenu()));
 
         return toDto(messageRepository.save(message));
     }
@@ -63,8 +66,10 @@ public class MessageAssistantIaService {
         ConteDanse conte = verifierAcces(conteDanseId, jwt);
         verifierConteNonPublie(conte);
 
-        MessageAssistantIa messageUtilisateur = creerMessage(conteDanseId, RoleMessage.user, contenuUtilisateur);
-        MessageAssistantIa messageAssistant = creerMessage(conteDanseId, RoleMessage.assistant, contenuAssistant);
+        MessageAssistantIa messageUtilisateur = creerMessage(
+                conteDanseId, RoleMessage.user, promptAnonymizerService.anonymize(contenuUtilisateur));
+        MessageAssistantIa messageAssistant = creerMessage(
+                conteDanseId, RoleMessage.assistant, promptAnonymizerService.anonymize(contenuAssistant));
 
         return messageRepository.saveAll(List.of(messageUtilisateur, messageAssistant)).stream()
                 .map(this::toDto)
