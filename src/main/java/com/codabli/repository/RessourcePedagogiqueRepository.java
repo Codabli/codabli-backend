@@ -12,6 +12,8 @@ import java.util.UUID;
 
 public interface RessourcePedagogiqueRepository extends JpaRepository<RessourcePedagogique, UUID> {
 
+    boolean existsByFichierMediaId(UUID mediaId);
+
     @Query("SELECT r FROM RessourcePedagogique r WHERE "
             + "(:type IS NULL OR r.type = :type) AND "
             + "(:thematique IS NULL OR LOWER(r.thematique) = LOWER(:thematique)) AND "

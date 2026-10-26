@@ -37,6 +37,10 @@ public class RessourcePedagogique {
     @Column(name = "fichier_url")
     private String fichierUrl;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "fichier_media_id")
+    private Media fichierMedia;
+
     private String thematique;
 
     @Column(name = "niveau_scolaire")

@@ -6,5 +6,8 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <include file="db/changelog/001-schema.xml"/>
+    <include file="db/changelog/002-media.xml"/>
+    <include file="db/changelog/003-ressource-media.xml"/>
+    <include file="db/changelog/004-media-cleanup-index.xml"/>
 
-</databaseChangeLog>   
+</databaseChangeLog>

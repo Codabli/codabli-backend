@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="ressource-pedagogique-media-001" author="codabli">
+        <addColumn tableName="ressources_pedagogiques">
+            <column name="fichier_media_id" type="UUID"/>
+        </addColumn>
+        <addForeignKeyConstraint
+                baseTableName="ressources_pedagogiques"
+                baseColumnNames="fichier_media_id"
+                constraintName="fk_ressources_pedagogiques_fichier_media"
+                referencedTableName="media"
+                referencedColumnNames="id"/>
+        <createIndex
+                tableName="ressources_pedagogiques"
+                indexName="idx_ressources_pedagogiques_fichier_media_id">
+            <column name="fichier_media_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>
