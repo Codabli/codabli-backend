@@ -1,6 +1,11 @@
 spring:
   application:
     name: codabli-backend
+  servlet:
+    multipart:
+      max-file-size: ${S3_MAX_FILE_SIZE:500MB}
+      max-request-size: ${S3_MAX_REQUEST_SIZE:501MB}
+      file-size-threshold: 0B
   datasource:
     url: jdbc:postgresql://localhost:5442/${POSTGRES_DB:codabli_dev}?currentSchema=${POSTGRES_SCHEMA:codabli}
     username: ${POSTGRES_USER:codabli}
@@ -80,3 +85,17 @@ ovh:
     secret-key: ${S3_SECRET_KEY:secret_key}
     region: ${S3_REGION:gra}
     bucket-name: ${S3_BUCKET:codabli}
+    endpoint: ${S3_ENDPOINT:}
+    path-style-access-enabled: ${S3_PATH_STYLE_ACCESS_ENABLED:false}
+    max-file-size: ${S3_MAX_FILE_SIZE:500MB}
+    api-call-timeout: ${S3_API_CALL_TIMEOUT:15m}
+    api-call-attempt-timeout: ${S3_API_CALL_ATTEMPT_TIMEOUT:5m}
+    presigned-url-ttl: ${S3_PRESIGNED_URL_TTL:15m}
+
+media:
+  upload:
+    allow-without-antivirus: ${MEDIA_UPLOAD_ALLOW_WITHOUT_ANTIVIRUS:false}
+  cleanup:
+    enabled: ${MEDIA_CLEANUP_ENABLED:true}
+    fixed-delay-ms: ${MEDIA_CLEANUP_FIXED_DELAY_MS:60000}
+    orphan-age: ${MEDIA_ORPHAN_AGE:24h}

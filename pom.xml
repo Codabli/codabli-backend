@@ -99,6 +99,12 @@
             <artifactId>s3</artifactId>
             <version>2.55.11</version>
         </dependency>
+        <dependency>
+            <groupId>com.adobe.testing</groupId>
+            <artifactId>s3mock-junit5</artifactId>
+            <version>5.2.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

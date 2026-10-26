@@ -91,13 +91,13 @@ services:
         condition: service_healthy
 
   s3mock:
-    image: adobe/s3mock:latest
+    image: adobe/s3mock:5.2.3
     ports:
       - "9090:9090"
     environment:
-      - ACCESS_KEY=${S3_ACCESS_KEY}
-      - SECRET_KEY=${S3_SECRET_KEY}
-      - INITIAL_BUCKETS=${S3_BUCKET}
+      - ACCESS_KEY=${S3_ACCESS_KEY:-codabli}
+      - SECRET_KEY=${S3_SECRET_KEY:-codabli}
+      - INITIAL_BUCKETS=${S3_BUCKET:-codabli_bucket}
     volumes:
       - s3data:/data
     healthcheck:
@@ -128,6 +128,21 @@ services:
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
       # Cle API du LLM souverain (EA-107) : transmise au conteneur depuis le .env.
       OVH_AI_ENDPOINT_API_KEY: ${OVH_AI_ENDPOINT_API_KEY}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-codabli}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-codabli}
+      S3_REGION: ${S3_REGION:-gra}
+      S3_BUCKET: ${S3_BUCKET:-codabli_bucket}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://localhost:9090}
+      S3_PATH_STYLE_ACCESS_ENABLED: ${S3_PATH_STYLE_ACCESS_ENABLED:-true}
+      S3_MAX_FILE_SIZE: ${S3_MAX_FILE_SIZE:-500MB}
+      S3_MAX_REQUEST_SIZE: ${S3_MAX_REQUEST_SIZE:-501MB}
+      S3_API_CALL_TIMEOUT: ${S3_API_CALL_TIMEOUT:-15m}
+      S3_API_CALL_ATTEMPT_TIMEOUT: ${S3_API_CALL_ATTEMPT_TIMEOUT:-5m}
+      S3_PRESIGNED_URL_TTL: ${S3_PRESIGNED_URL_TTL:-15m}
+      MEDIA_UPLOAD_ALLOW_WITHOUT_ANTIVIRUS: ${MEDIA_UPLOAD_ALLOW_WITHOUT_ANTIVIRUS:-false}
+      MEDIA_CLEANUP_ENABLED: ${MEDIA_CLEANUP_ENABLED:-true}
+      MEDIA_CLEANUP_FIXED_DELAY_MS: ${MEDIA_CLEANUP_FIXED_DELAY_MS:-60000}
+      MEDIA_ORPHAN_AGE: ${MEDIA_ORPHAN_AGE:-24h}
     volumes:
       - .:/app
       - codabli-m2:/root/.m2
