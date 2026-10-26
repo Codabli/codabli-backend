@@ -97,5 +97,5 @@ media:
     allow-without-antivirus: ${MEDIA_UPLOAD_ALLOW_WITHOUT_ANTIVIRUS:false}
   cleanup:
     enabled: ${MEDIA_CLEANUP_ENABLED:true}
-    fixed-delay-ms: ${MEDIA_CLEANUP_FIXED_DELAY_MS:60000}
+    fixed-delay-ms: ${MEDIA_CLEANUP_FIXED_DELAY_MS:3600000}
     orphan-age: ${MEDIA_ORPHAN_AGE:24h}

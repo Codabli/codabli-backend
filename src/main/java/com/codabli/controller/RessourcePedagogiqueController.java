@@ -2,6 +2,7 @@ package com.codabli.controller;
 
 import com.codabli.dto.RessourcePedagogiqueRequest;
 import com.codabli.dto.RessourcePedagogiqueResponse;
+import com.codabli.dto.MediaDownloadResponse;
 import com.codabli.entity.enums.TypeRessource;
 import com.codabli.service.RessourcePedagogiqueService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,6 +65,29 @@ public class RessourcePedagogiqueController {
 
         RessourcePedagogiqueResponse response = ressourcePedagogiqueService.getById(id, jwt);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/media/{mediaId}")
+    @PreAuthorize("hasAnyRole('admin', 'comite_lecture')")
+    public ResponseEntity<MediaDownloadResponse> attacherMedia(
+            @PathVariable UUID id,
+            @PathVariable UUID mediaId) {
+        return ResponseEntity.ok(ressourcePedagogiqueService.attacherMedia(id, mediaId));
+    }
+
+    @DeleteMapping("/{id}/media")
+    @PreAuthorize("hasAnyRole('admin', 'comite_lecture')")
+    public ResponseEntity<Void> detacherMedia(@PathVariable UUID id) {
+        ressourcePedagogiqueService.detacherMedia(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/media")
+    @PreAuthorize("hasAnyRole('enseignant', 'professionnel_education', 'admin', 'comite_lecture')")
+    public ResponseEntity<MediaDownloadResponse> getMediaUrl(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(ressourcePedagogiqueService.getMediaUrl(id, jwt));
     }
 
     @PostMapping
