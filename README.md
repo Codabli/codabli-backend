@@ -31,11 +31,11 @@ realm n'est nécessaire : tout est provisionné automatiquement.
 ### Services & ports
 
 | Service        | URL / port hôte                       | Identifiants          |
-| -------------- |---------------------------------------| --------------------- |
+|----------------|---------------------------------------|-----------------------|
 | API backend    | http://localhost:8082                 | —                     |
 | Swagger UI     | http://localhost:8082/swagger-ui.html | —                     |
 | PostgreSQL     | `localhost:5442` (base `codabli_dev`) | `codabli` / `codabli` |
-| Keycloak admin | http://localhost:8081               | `admin` / `admin`     |
+| Keycloak admin | http://localhost:8081                 | `admin` / `admin`     |
 
 > ℹ️ PostgreSQL est exposé sur **5442** (et non 5432) car le port 5432 de l'hôte
 > est susceptible d'être déjà occupé par un autre projet. `application.yml` est
@@ -93,8 +93,8 @@ L'API est accessible sur **http://localhost:8082**, la documentation Swagger sur
 
 Un compte administrateur de test est créé automatiquement dans Keycloak :
 
-| Email               | Mot de passe | Rôles                |
-| ------------------- | ------------ | -------------------- |
+| Email               | Mot de passe | Rôles                  |
+|---------------------|--------------|------------------------|
 | `admin@codabli.dev` | `Admin1234!` | `admin`, `super_admin` |
 
 Pour obtenir un jeton via l'API :
@@ -163,4 +163,5 @@ Documentation complémentaire :
 * [`documentation/LIQUIBASE.md`](documentation/LIQUIBASE.md) — schéma dédié, rôle des fichiers DB et bascule de la recette.
 * [`documentation/DOC_FONCTIONNELLE.md`](documentation/DOC_FONCTIONNELLE.md) — spécification fonctionnelle détaillée.
 * [`documentation/FICHE_TECHNIQUE.md`](documentation/FICHE_TECHNIQUE.md) — fiche technique (entités, sécurité, endpoints).
+* [`documentation/FICHE_TECHNIQUE_MEDIA.md`](documentation/FICHE_TECHNIQUE_MEDIA.md) — exigences de stockage média compatible S3.
 * [`documentation/TESTS.md`](documentation/TESTS.md) — guide d'exécution et d'organisation des tests.
