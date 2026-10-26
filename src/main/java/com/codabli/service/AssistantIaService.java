@@ -18,10 +18,14 @@ public class AssistantIaService {
 
     private final LlmClient llmClient;
     private final MessageAssistantIaService messageService;
+    private final PromptAnonymizerService promptAnonymizerService;
 
-    public AssistantIaService(LlmClient llmClient, MessageAssistantIaService messageService) {
+    public AssistantIaService(LlmClient llmClient,
+                              MessageAssistantIaService messageService,
+                              PromptAnonymizerService promptAnonymizerService) {
         this.llmClient = llmClient;
         this.messageService = messageService;
+        this.promptAnonymizerService = promptAnonymizerService;
     }
 
     public List<MessageIaDto> listerHistorique(UUID conteDanseId, Jwt jwt) {
@@ -33,12 +37,14 @@ public class AssistantIaService {
                                                      Jwt jwt) {
         List<MessageIaDto> historique = messageService.listerHistorique(conteDanseId, jwt);
         List<LlmMessage> messages = new ArrayList<>(historique.size() + 1);
+
+        String nouveauMessage = promptAnonymizerService.anonymize(request.contenu());
         historique.stream()
                 .map(message -> new LlmMessage(message.role().name(), message.contenu()))
                 .forEach(messages::add);
-        messages.add(LlmMessage.user(request.contenu()));
+        messages.add(LlmMessage.user(nouveauMessage));
 
-        return new ConversationPreparee(conteDanseId, request.contenu(), jwt,
+        return new ConversationPreparee(conteDanseId, nouveauMessage, jwt,
                 new LlmRequest(messages, request.temperature()));
     }
 

@@ -37,6 +37,9 @@ class AssistantIaServiceTest {
     private MessageAssistantIaService messageService;
 
     @Mock
+    private PromptAnonymizerService promptAnonymizerService;
+
+    @Mock
     private Jwt jwt;
 
     @InjectMocks
@@ -50,6 +53,7 @@ class AssistantIaServiceTest {
         MessageIaDto ancienneReponse = new MessageIaDto(UUID.randomUUID(), conteDanseId,
                 RoleMessage.assistant, "Réponse précédente", Instant.parse("2026-01-01T10:00:01Z"));
         when(messageService.listerHistorique(conteDanseId, jwt)).thenReturn(List.of(ancienMessage, ancienneReponse));
+        when(promptAnonymizerService.anonymize("Nouvelle question")).thenReturn("Nouvelle question");
         LlmResponse response = LlmResponse.ok("Réponse actuelle", "", "stop", 10, 5);
         AtomicReference<String> fragmentEmis = new AtomicReference<>();
         when(llmClient.stream(any(LlmRequest.class), any())).thenAnswer(invocation -> {
@@ -78,6 +82,7 @@ class AssistantIaServiceTest {
     void streamerConversation_shouldNotPersistFallbackResponse() {
         UUID conteDanseId = UUID.randomUUID();
         when(messageService.listerHistorique(conteDanseId, jwt)).thenReturn(List.of());
+        when(promptAnonymizerService.anonymize("Bonjour")).thenReturn("Bonjour");
         LlmResponse response = LlmResponse.standby("Assistant indisponible");
         when(llmClient.stream(any(LlmRequest.class), any())).thenReturn(response);
 
@@ -87,5 +92,19 @@ class AssistantIaServiceTest {
 
         assertSame(response, result);
         verify(messageService, never()).ajouterTour(eq(conteDanseId), any(), any(), eq(jwt));
+    }
+
+    @Test
+    void preparerConversation_shouldAnonymizePromptBeforeSendingItToLlm() {
+        UUID conteDanseId = UUID.randomUUID();
+        when(messageService.listerHistorique(conteDanseId, jwt)).thenReturn(List.of());
+        when(promptAnonymizerService.anonymize("Écris-moi à enfant@example.com"))
+                .thenReturn("Écris-moi à [EMAIL]");
+
+        AssistantIaService.ConversationPreparee conversation = assistantIaService.preparerConversation(
+                conteDanseId, new AssistantIaRequest("Écris-moi à enfant@example.com", null), jwt);
+
+        assertEquals("Écris-moi à [EMAIL]", conversation.nouveauMessage());
+        assertEquals(List.of(LlmMessage.user("Écris-moi à [EMAIL]")), conversation.requeteLlm().messages());
     }
 }

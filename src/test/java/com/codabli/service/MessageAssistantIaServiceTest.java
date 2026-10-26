@@ -44,6 +44,9 @@ class MessageAssistantIaServiceTest {
     private UtilisateurService utilisateurService;
 
     @Mock
+    private PromptAnonymizerService promptAnonymizerService;
+
+    @Mock
     private Jwt jwt;
 
     @InjectMocks
@@ -68,6 +71,7 @@ class MessageAssistantIaServiceTest {
         when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
         when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
         when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
+        when(promptAnonymizerService.anonymize("Bonjour")).thenReturn("Bonjour");
         when(messageRepository.save(any(MessageAssistantIa.class))).thenAnswer(invocation -> {
             MessageAssistantIa message = invocation.getArgument(0);
             message.setId(UUID.randomUUID());
@@ -103,6 +107,8 @@ class MessageAssistantIaServiceTest {
         when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
         when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
         when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
+        when(promptAnonymizerService.anonymize("Question")).thenReturn("Question");
+        when(promptAnonymizerService.anonymize("Réponse")).thenReturn("Réponse");
 
         messageService.ajouterTour(conteDanseId, "Question", "Réponse", jwt);
 
@@ -118,6 +124,29 @@ class MessageAssistantIaServiceTest {
     }
 
     @Test
+    void ajouterTour_shouldAnonymizeBothMessagesBeforeSaving() {
+        when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
+        when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
+        when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
+        when(promptAnonymizerService.anonymize("Mon email est enfant@example.com"))
+                .thenReturn("Mon email est [EMAIL]");
+        when(promptAnonymizerService.anonymize("Je vous écrirai à enfant@example.com"))
+                .thenReturn("Je vous écrirai à [EMAIL]");
+
+        messageService.ajouterTour(conteDanseId,
+                "Mon email est enfant@example.com",
+                "Je vous écrirai à enfant@example.com",
+                jwt);
+
+        ArgumentCaptor<Iterable<MessageAssistantIa>> messagesCaptor = ArgumentCaptor.forClass(Iterable.class);
+        verify(messageRepository).saveAll(messagesCaptor.capture());
+        List<MessageAssistantIa> messages = new ArrayList<>();
+        messagesCaptor.getValue().forEach(messages::add);
+        assertEquals("Mon email est [EMAIL]", messages.get(0).getContenu());
+        assertEquals("Je vous écrirai à [EMAIL]", messages.get(1).getContenu());
+    }
+
+    @Test
     void ajouterTour_withPublishedConte_shouldNotSaveMessages() {
         conte.setStatut(StatutConte.publie);
         when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
@@ -128,6 +157,26 @@ class MessageAssistantIaServiceTest {
                 () -> messageService.ajouterTour(conteDanseId, "Question", "Réponse", jwt));
 
         verify(messageRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void ajouter_shouldAnonymizeMessageBeforeSaving() {
+        when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
+        when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
+        when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
+        when(promptAnonymizerService.anonymize("Contacte-moi à enfant@example.com"))
+                .thenReturn("Contacte-moi à [EMAIL]");
+        when(messageRepository.save(any(MessageAssistantIa.class))).thenAnswer(invocation -> {
+            MessageAssistantIa message = invocation.getArgument(0);
+            message.setId(UUID.randomUUID());
+            message.setDateCreation(Instant.now());
+            return message;
+        });
+
+        MessageIaDto result = messageService.ajouter(
+                new CreateMessageIaDto(conteDanseId, RoleMessage.user, "Contacte-moi à enfant@example.com"), jwt);
+
+        assertEquals("Contacte-moi à [EMAIL]", result.contenu());
     }
 
     @Test
