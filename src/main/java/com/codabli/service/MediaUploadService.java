@@ -112,7 +112,7 @@ public class MediaUploadService {
                 .build();
 
         try {
-            mediaRepository.saveAndFlush(media);
+            media = mediaRepository.saveAndFlush(media);
         } catch (RuntimeException exception) {
             log.error("Failed to create media metadata for media {}", mediaId, exception);
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,

@@ -164,9 +164,12 @@ public class MediaContentValidator {
         } else if (brand.startsWith("3gp")) {
             detectedExtension = "3gp";
             contentType = "video/3gpp";
-        } else {
+        } else if (matchesExtension(brand, "isom", "iso2", "iso3", "iso4", "iso5", "iso6",
+                "iso7", "iso8", "iso9", "mp41", "mp42", "avc1", "dash")) {
             detectedExtension = "mp4";
             contentType = "video/mp4";
+        } else {
+            return null;
         }
         return extension.equals(detectedExtension)
                 ? new DetectedType(detectedExtension, contentType) : null;

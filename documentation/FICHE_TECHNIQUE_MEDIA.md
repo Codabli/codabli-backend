@@ -41,6 +41,8 @@ Le backend accepte par défaut les formats suivants, uniquement lorsque leur sig
 - **Audio :** MP3, WAV, OGG/OGA, Opus, FLAC, AAC et M4A.
 - **Vidéo :** MP4, MOV, M4V, 3GP, WebM, Matroska (`.mkv`), AVI et MPEG (`.mpg`, `.mpeg`).
 
+Pour les conteneurs ISO Base Media, la présence de `ftyp` seule ne suffit pas : la marque principale doit être reconnue. Les marques MP4 acceptées sont `isom`, `iso2` à `iso9`, `mp41`, `mp42`, `avc1` et `dash`. Les conteneurs M4A, M4V, MOV et 3GP conservent leur extension propre, les marques non prises en charge (notamment AVIF et HEIC) sont rejetées, même si le fichier est renommé en `.mp4`.
+
 Le type MIME envoyé par le navigateur n'est pas utilisé comme preuve du format. Les formats actifs (notamment SVG), les archives et les documents bureautiques ne sont pas acceptés par cette première allowlist. La taille maximale est configurable (`S3_MAX_FILE_SIZE`) et vaut 500 MiB par défaut.
 
 **État de sécurité :** l'antivirus est facultatif via la VE `MEDIA_UPLOAD_ALLOW_WITHOUT_ANTIVIRUS`, désactivée par défaut. En l'absence de scanner, l'upload échoue avec une indisponibilité de service, sauf si ce flag est activé explicitement dans un environnement contrôlé. Ce mode accepte des fichiers sans analyse malware et doit rester temporaire. Ne PAS l'activer en production. Dès qu'un bean `VirusScanner` réel est configuré, le service l'utilise toujours, même si le drapeau de contournement est resté activé. Il faut alors remettre le drapeau à `false` et retirer le mode transitoire.
