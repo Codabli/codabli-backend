@@ -3,7 +3,11 @@ package com.codabli.service;
 import com.codabli.entity.Media;
 import com.codabli.entity.enums.MediaStatus;
 import com.codabli.repository.MediaRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -11,19 +15,30 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 
+@ExtendWith(MockitoExtension.class)
 class MediaCleanupSchedulerTest {
 
-    private final MediaRepository mediaRepository = mock(MediaRepository.class);
-    private final MediaLifecycleService lifecycleService = mock(MediaLifecycleService.class);
-    private final S3MediaStorageService storageService = mock(S3MediaStorageService.class);
-    private final MediaCleanupScheduler scheduler =
-            new MediaCleanupScheduler(mediaRepository, lifecycleService, storageService, Duration.ofDays(1));
+    @Mock
+    private MediaRepository mediaRepository;
+
+    @Mock
+    private MediaLifecycleService lifecycleService;
+
+    @Mock
+    private S3MediaStorageService storageService;
+
+    private MediaCleanupScheduler scheduler;
+
+    @BeforeEach
+    void setUp() {
+        scheduler = new MediaCleanupScheduler(
+                mediaRepository, lifecycleService, storageService, Duration.ofDays(1));
+    }
 
     @Test
     void deletionFailureReturnsDurableItemToRetryQueue() {

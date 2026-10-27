@@ -8,7 +8,11 @@ import com.codabli.entity.enums.MediaStatus;
 import com.codabli.exception.BusinessException;
 import com.codabli.exception.ErrorCode;
 import com.codabli.repository.MediaRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.util.unit.DataSize;
@@ -27,21 +31,39 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class MediaUploadServiceTest {
+
+    @Mock
+    private MediaRepository repository;
+
+    @Mock
+    private S3Client s3Client;
+
+    @Mock
+    private S3Presigner s3Presigner;
+
+    @Mock
+    private VirusScanner scanner;
+
+    @Mock
+    private ObjectProvider<VirusScanner> scannerProvider;
+
+    private S3MediaStorageService storage;
+
+    @BeforeEach
+    void setUp() {
+        storage = new S3MediaStorageService(s3Client, s3Presigner, properties());
+    }
 
     @Test
     void uploadValidatesScansPersistsAndStoresUsingGeneratedKey() {
-        MediaRepository repository = mock(MediaRepository.class);
-        S3Client s3Client = mock(S3Client.class);
-        S3MediaStorageService storage = new S3MediaStorageService(
-                s3Client, mock(S3Presigner.class), properties());
-        VirusScanner scanner = mock(VirusScanner.class);
+        when(repository.saveAndFlush(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
         MediaUploadService service = service(repository, storage, scanner);
         MockMultipartFile file = pngUpload();
 
@@ -63,11 +85,7 @@ class MediaUploadServiceTest {
 
     @Test
     void antivirusUnavailableFailsClosedBeforePersistenceOrS3() {
-        MediaRepository repository = mock(MediaRepository.class);
-        S3Client s3Client = mock(S3Client.class);
-        MediaUploadService service = service(repository,
-                new S3MediaStorageService(s3Client, mock(S3Presigner.class), properties()),
-                null);
+        MediaUploadService service = service(repository, storage, null);
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> service.upload(pngUpload()));
@@ -80,13 +98,10 @@ class MediaUploadServiceTest {
 
     @Test
     void uploadsWithoutAntivirusOnlyWhenExplicitFeatureFlagIsEnabled() {
-        MediaRepository repository = mock(MediaRepository.class);
-        S3Client s3Client = mock(S3Client.class);
+        when(repository.saveAndFlush(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
         MediaUploadProperties uploadProperties = new MediaUploadProperties();
         uploadProperties.setAllowWithoutAntivirus(true);
-        MediaUploadService service = service(repository,
-                new S3MediaStorageService(s3Client, mock(S3Presigner.class), properties()),
-                null, properties(), uploadProperties);
+        MediaUploadService service = service(repository, storage, null, properties(), uploadProperties);
 
         MediaUploadResponse response = service.upload(pngUpload());
 
@@ -98,14 +113,10 @@ class MediaUploadServiceTest {
 
     @Test
     void configuredAntivirusIsAlwaysUsedEvenWhenBypassFlagIsEnabled() {
-        MediaRepository repository = mock(MediaRepository.class);
-        S3Client s3Client = mock(S3Client.class);
-        VirusScanner scanner = mock(VirusScanner.class);
+        when(repository.saveAndFlush(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
         MediaUploadProperties uploadProperties = new MediaUploadProperties();
         uploadProperties.setAllowWithoutAntivirus(true);
-        MediaUploadService service = service(repository,
-                new S3MediaStorageService(s3Client, mock(S3Presigner.class), properties()),
-                scanner, properties(), uploadProperties);
+        MediaUploadService service = service(repository, storage, scanner, properties(), uploadProperties);
 
         service.upload(pngUpload());
 
@@ -116,15 +127,10 @@ class MediaUploadServiceTest {
 
     @Test
     void antivirusFailureBlocksUploadEvenWhenBypassFlagIsEnabled() {
-        MediaRepository repository = mock(MediaRepository.class);
-        S3Client s3Client = mock(S3Client.class);
-        VirusScanner scanner = mock(VirusScanner.class);
         doThrow(new IllegalStateException("scan failed")).when(scanner).scan(any(Path.class));
         MediaUploadProperties uploadProperties = new MediaUploadProperties();
         uploadProperties.setAllowWithoutAntivirus(true);
-        MediaUploadService service = service(repository,
-                new S3MediaStorageService(s3Client, mock(S3Presigner.class), properties()),
-                scanner, properties(), uploadProperties);
+        MediaUploadService service = service(repository, storage, scanner, properties(), uploadProperties);
 
         assertThrows(IllegalStateException.class, () -> service.upload(pngUpload()));
 
@@ -135,21 +141,17 @@ class MediaUploadServiceTest {
 
     @Test
     void storageFailureMarksMetadataFailedAndReturnsServiceUnavailable() {
-        MediaRepository repository = mock(MediaRepository.class);
         List<MediaStatus> persistedStatuses = new ArrayList<>();
         when(repository.saveAndFlush(any(Media.class))).thenAnswer(invocation -> {
             Media media = invocation.getArgument(0);
             persistedStatuses.add(media.getStatus());
             return media;
         });
-        S3Client s3Client = mock(S3Client.class);
         doThrow(S3Exception.builder().message("offline").statusCode(503).build())
                 .when(s3Client).putObject(
                         any(software.amazon.awssdk.services.s3.model.PutObjectRequest.class),
                         any(software.amazon.awssdk.core.sync.RequestBody.class));
-        MediaUploadService service = service(repository,
-                new S3MediaStorageService(s3Client, mock(S3Presigner.class), properties()),
-                mock(VirusScanner.class));
+        MediaUploadService service = service(repository, storage, scanner);
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> service.upload(pngUpload()));
@@ -161,7 +163,6 @@ class MediaUploadServiceTest {
 
     @Test
     void databaseFailureAfterUploadCompensatesByDeletingS3Object() {
-        MediaRepository repository = mock(MediaRepository.class);
         List<MediaStatus> attemptedStatuses = new ArrayList<>();
         when(repository.saveAndFlush(any(Media.class))).thenAnswer(invocation -> {
             Media media = invocation.getArgument(0);
@@ -171,10 +172,7 @@ class MediaUploadServiceTest {
             }
             return media;
         });
-        S3Client s3Client = mock(S3Client.class);
-        MediaUploadService service = service(repository,
-                new S3MediaStorageService(s3Client, mock(S3Presigner.class), properties()),
-                mock(VirusScanner.class));
+        MediaUploadService service = service(repository, storage, scanner);
 
         BusinessException exception = assertThrows(BusinessException.class,
                 () -> service.upload(pngUpload()));
@@ -187,14 +185,12 @@ class MediaUploadServiceTest {
 
     @Test
     void uploadRejectsOversizedFilesBeforeCreatingTemporaryFile() {
-        MediaRepository repository = mock(MediaRepository.class);
         byte[] tooLarge = new byte[1024];
         MockMultipartFile file = new MockMultipartFile(
                 "file", "image.png", "image/png", tooLarge);
         OvhStorageProperties limited = properties();
         limited.setMaxFileSize(DataSize.ofBytes(10));
-        MediaUploadService service = service(repository, mock(S3MediaStorageService.class),
-                mock(VirusScanner.class), limited);
+        MediaUploadService service = service(repository, storage, null, limited);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> service.upload(file));
 
@@ -223,8 +219,6 @@ class MediaUploadServiceTest {
             VirusScanner scanner,
             OvhStorageProperties properties,
             MediaUploadProperties uploadProperties) {
-        @SuppressWarnings("unchecked")
-        ObjectProvider<VirusScanner> scannerProvider = mock(ObjectProvider.class);
         if (scanner != null) {
             when(scannerProvider.getIfAvailable()).thenReturn(scanner);
         }

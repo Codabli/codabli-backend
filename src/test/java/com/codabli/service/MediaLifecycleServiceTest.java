@@ -7,6 +7,10 @@ import com.codabli.exception.ErrorCode;
 import com.codabli.repository.MediaRepository;
 import com.codabli.repository.RessourcePedagogiqueRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
@@ -15,18 +19,22 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class MediaLifecycleServiceTest {
 
-    private final MediaRepository mediaRepository = mock(MediaRepository.class);
-    private final RessourcePedagogiqueRepository resourceRepository =
-            mock(RessourcePedagogiqueRepository.class);
-    private final MediaLifecycleService service =
-            new MediaLifecycleService(mediaRepository, resourceRepository);
+    @Mock
+    private MediaRepository mediaRepository;
+
+    @Mock
+    private RessourcePedagogiqueRepository resourceRepository;
+
+    @InjectMocks
+    private MediaLifecycleService service;
+
     private final UUID mediaId = UUID.randomUUID();
 
     @Test

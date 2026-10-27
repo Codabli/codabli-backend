@@ -9,8 +9,11 @@ import com.codabli.exception.ErrorCode;
 import com.codabli.repository.MediaRepository;
 import com.codabli.repository.RessourceFavoriteRepository;
 import com.codabli.repository.RessourcePedagogiqueRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -23,23 +26,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class RessourcePedagogiqueMediaServiceTest {
 
-    private final RessourcePedagogiqueRepository resourceRepository =
-            mock(RessourcePedagogiqueRepository.class);
-    private final RessourceFavoriteRepository favoriteRepository =
-            mock(RessourceFavoriteRepository.class);
-    private final MediaRepository mediaRepository = mock(MediaRepository.class);
-    private final S3MediaStorageService storageService = mock(S3MediaStorageService.class);
-    private final MediaLifecycleService mediaLifecycleService = mock(MediaLifecycleService.class);
-    private final UtilisateurService utilisateurService = mock(UtilisateurService.class);
-    private final RessourcePedagogiqueService service = new RessourcePedagogiqueService(
-            resourceRepository, favoriteRepository, mediaRepository, storageService,
-            mediaLifecycleService, utilisateurService);
+    @Mock
+    private RessourcePedagogiqueRepository resourceRepository;
+
+    @Mock
+    private MediaRepository mediaRepository;
+
+    @Mock
+    private S3MediaStorageService storageService;
+
+    @Mock
+    private MediaLifecycleService mediaLifecycleService;
+
+    @Mock
+    private UtilisateurService utilisateurService;
+
+    @InjectMocks
+    private RessourcePedagogiqueService service;
 
     private final UUID resourceId = UUID.randomUUID();
     private final UUID mediaId = UUID.randomUUID();
@@ -48,14 +57,10 @@ class RessourcePedagogiqueMediaServiceTest {
             .subject("teacher")
             .build();
 
-    @BeforeEach
-    void configureMedia() {
-        when(storageService.presignDownload(mediaId + ".pdf", "guide.pdf"))
-                .thenReturn("https://storage.example/signed");
-    }
-
     @Test
     void authorizedUserReceivesSignedUrlForActiveResourceMedia() {
+        when(storageService.presignDownload(mediaId + ".pdf", "guide.pdf"))
+                .thenReturn("https://storage.example/signed");
         Media media = media(MediaStatus.AVAILABLE);
         RessourcePedagogique resource = resource(true, media);
         when(resourceRepository.findById(resourceId)).thenReturn(Optional.of(resource));
@@ -92,6 +97,8 @@ class RessourcePedagogiqueMediaServiceTest {
 
     @Test
     void attachMediaStoresReferenceAndReturnsSignedAccess() {
+        when(storageService.presignDownload(mediaId + ".pdf", "guide.pdf"))
+                .thenReturn("https://storage.example/signed");
         Media media = media(MediaStatus.AVAILABLE);
         RessourcePedagogique resource = resource(true, null);
         when(mediaRepository.findByIdForUpdate(mediaId)).thenReturn(Optional.of(media));

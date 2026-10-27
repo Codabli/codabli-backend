@@ -3,7 +3,10 @@ package com.codabli.service;
 import com.codabli.config.OvhStorageConfig;
 import com.codabli.config.OvhStorageProperties;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -19,19 +22,24 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+@ExtendWith(MockitoExtension.class)
 class S3MediaStorageServiceTest {
+
+    @Mock
+    private S3Client s3Client;
+
+    @Mock
+    private S3Presigner s3Presigner;
 
     @TempDir
     Path tempDirectory;
 
     @Test
     void uploadUsesFileBackedRequestAndServerSideEncryption() throws Exception {
-        S3Client s3Client = mock(S3Client.class);
         S3MediaStorageService storage = new S3MediaStorageService(
-                s3Client, mock(S3Presigner.class), properties());
+                s3Client, s3Presigner, properties());
         Path file = tempDirectory.resolve("upload.tmp");
         Files.writeString(file, "file content");
 
@@ -53,7 +61,7 @@ class S3MediaStorageServiceTest {
         AwsCredentialsProvider credentialsProvider = config.s3CredentialsProvider();
         try (S3Presigner presigner = config.s3Presigner(credentialsProvider)) {
             S3MediaStorageService storage = new S3MediaStorageService(
-                    mock(S3Client.class), presigner, properties);
+                    s3Client, presigner, properties);
 
             String url = storage.presignDownload(
                     "media-id.jpg", "..\\private\\photo\r\n.jpg");
