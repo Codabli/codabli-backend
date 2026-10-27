@@ -38,7 +38,7 @@ public class MediaCleanupScheduler {
         this.orphanAge = orphanAge;
     }
 
-    @Scheduled(fixedDelayString = "${media.cleanup.fixed-delay-ms:60000}")
+    @Scheduled(fixedDelayString = "${media.cleanup.fixed-delay-ms:3600000}")
     public void cleanUp() {
         OffsetDateTime cutoff = OffsetDateTime.now().minus(orphanAge);
         List<Media> orphanCandidates = mediaRepository.findTop100ByStatusInAndCreatedAtBeforeOrderByCreatedAtAsc(
