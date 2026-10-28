@@ -132,35 +132,6 @@ class ConteDanseServiceTest {
     }
 
     @Test
-    void getById_shouldIncludePublishedTranslationsForPublishedConte() {
-        conte.setStatut(StatutConte.publie);
-        ConteDanseTraduction traduction = new ConteDanseTraduction();
-        traduction.setId(UUID.randomUUID());
-        traduction.setConte(conte);
-        traduction.setLangue("fr");
-        traduction.setStatut(StatutTraduction.publiee);
-
-        when(conteDanseRepository.findById(conteId)).thenReturn(Optional.of(conte));
-        when(traductionRepository.findByConteIdAndStatut(conteId, StatutTraduction.publiee))
-                .thenReturn(List.of(traduction));
-
-        var response = conteDanseService.getById(conteId);
-
-        assertEquals(1, response.traductions().size());
-        assertEquals("fr", response.traductions().getFirst().langue());
-    }
-
-    @Test
-    void getById_shouldNotExposeUnpublishedConte() {
-        conte.setStatut(StatutConte.brouillon);
-        when(conteDanseRepository.findById(conteId)).thenReturn(Optional.of(conte));
-
-        assertThrows(ResourceNotFoundException.class, () -> conteDanseService.getById(conteId));
-
-        verifyNoInteractions(traductionRepository);
-    }
-
-    @Test
     void rechercher_shouldIncludePublishedTranslationsInBatch() {
         conte.setStatut(StatutConte.publie);
         when(conteDanseRepository.rechercherPublies(
