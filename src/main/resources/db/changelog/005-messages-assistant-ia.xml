@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="002-messages-assistant-ia" author="codabli">
+        <createTable tableName="messages_assistant_ia">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true"
+                             primaryKeyName="messages_assistant_ia_pkey"/>
+            </column>
+            <column name="conte_danse_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="contenu" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+                constraintName="fk_messages_assistant_ia_conte"
+                baseTableName="messages_assistant_ia" baseColumnNames="conte_danse_id"
+                referencedTableName="contes_danses" referencedColumnNames="id"
+                onDelete="CASCADE"/>
+        <createIndex tableName="messages_assistant_ia"
+                     indexName="idx_messages_assistant_ia_conte_date">
+            <column name="conte_danse_id"/>
+            <column name="date_creation"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="messages_assistant_ia"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
