@@ -38,8 +38,13 @@ class RessourcePedagogiqueServiceTest {
     @InjectMocks
     private RessourcePedagogiqueService service;
 
+    @Mock
     private Jwt teacherJwt;
+
+    @Mock
     private Jwt comiteJwt;
+
+    @Mock
     private Jwt adminJwt;
 
     @Test

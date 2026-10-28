@@ -1,10 +1,5 @@
 package com.codabli.service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.function.Consumer;
-
 import com.codabli.dto.AssistantIaRequest;
 import com.codabli.dto.LlmMessage;
 import com.codabli.dto.LlmRequest;
@@ -12,6 +7,11 @@ import com.codabli.dto.LlmResponse;
 import com.codabli.dto.MessageIaDto;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Consumer;
 
 @Service
 public class AssistantIaService {
@@ -35,7 +35,7 @@ public class AssistantIaService {
     public ConversationPreparee preparerConversation(UUID conteDanseId,
                                                      AssistantIaRequest request,
                                                      Jwt jwt) {
-        List<MessageIaDto> historique = messageService.listerHistorique(conteDanseId, jwt);
+        List<MessageIaDto> historique = messageService.listerHistoriquePourConversation(conteDanseId, jwt);
         List<LlmMessage> messages = new ArrayList<>(historique.size() + 1);
 
         String nouveauMessage = promptAnonymizerService.anonymize(request.contenu());

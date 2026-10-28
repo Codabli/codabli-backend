@@ -45,6 +45,7 @@ public enum ErrorCode {
     UNKNOWN_WEBINAIRE_INSCRIPTION("error.unknown.webinaire-inscription", HttpStatus.NOT_FOUND),
 
     //errors 409
+    CONTE_DEJA_PUBLIE("error.conte-already-published", HttpStatus.CONFLICT),
     SOCK_INSUFFISANT("error.stock-insuffisant", HttpStatus.CONFLICT),
     MEDIA_IN_USE("error.media.in-use", HttpStatus.CONFLICT),
 

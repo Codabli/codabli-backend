@@ -9,6 +9,8 @@ import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
 import com.codabli.dto.MessageIaDto;
 import com.codabli.entity.enums.RoleMessage;
+import com.codabli.exception.BusinessException;
+import com.codabli.exception.ErrorCode;
 import com.codabli.service.AssistantIaService;
 import com.codabli.service.LlmClient;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -127,5 +131,24 @@ class AssistantIaControllerTest {
         mockMvc.perform(asyncDispatch(asyncResult))
                 .andExpect(status().isOk());
         verify(assistantIaService).streamerConversation(eq(conversation), any());
+    }
+
+    @Test
+    @WithMockUser
+    void assistantStream_withPublishedConte_shouldReturnConflictBeforeStartingSse() throws Exception {
+        UUID conteDanseId = UUID.randomUUID();
+        when(assistantIaService.preparerConversation(eq(conteDanseId), any(AssistantIaRequest.class),
+                nullable(Jwt.class)))
+                .thenThrow(new BusinessException(ErrorCode.CONTE_DEJA_PUBLIE, "Conte deja publie"));
+
+        mockMvc.perform(post("/api/ia/contes-danses/{id}/assistant-stream", conteDanseId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new AssistantIaRequest("Bonjour", null))))
+                .andExpect(status().isConflict())
+                .andExpect(request().asyncNotStarted())
+                .andExpect(jsonPath("$.error-code").value("error.conte-already-published"));
+
+        verify(assistantIaService, never()).streamerConversation(any(), any());
+        verifyNoInteractions(llmClient);
     }
 }

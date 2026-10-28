@@ -1,10 +1,5 @@
 package com.codabli.service;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import com.codabli.dto.CreateMessageIaDto;
 import com.codabli.dto.MessageIaDto;
 import com.codabli.entity.ConteDanse;
@@ -13,6 +8,8 @@ import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.RoleMessage;
 import com.codabli.entity.enums.StatutConte;
 import com.codabli.event.ConteDansePublieEvent;
+import com.codabli.exception.BusinessException;
+import com.codabli.exception.ErrorCode;
 import com.codabli.repository.MessageAssistantIaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +20,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -68,7 +72,7 @@ class MessageAssistantIaServiceTest {
 
     @Test
     void ajouter_withOwner_shouldSaveAndReturnDto() {
-        when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
+        when(conteDanseService.verrouillerPourHistorique(conteDanseId)).thenReturn(conte);
         when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
         when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
         when(promptAnonymizerService.anonymize("Bonjour")).thenReturn("Bonjour");
@@ -92,7 +96,7 @@ class MessageAssistantIaServiceTest {
     void ajouter_withNonOwner_shouldDenyAccess() {
         Utilisateur autreUtilisateur = new Utilisateur();
         autreUtilisateur.setId(UUID.randomUUID());
-        when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
+        when(conteDanseService.verrouillerPourHistorique(conteDanseId)).thenReturn(conte);
         when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(autreUtilisateur);
         when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
         CreateMessageIaDto request = new CreateMessageIaDto(conteDanseId, RoleMessage.user, "Bonjour");
@@ -104,7 +108,7 @@ class MessageAssistantIaServiceTest {
 
     @Test
     void ajouterTour_shouldSaveUserAndAssistantMessagesTogether() {
-        when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
+        when(conteDanseService.verrouillerPourHistorique(conteDanseId)).thenReturn(conte);
         when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
         when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
         when(promptAnonymizerService.anonymize("Question")).thenReturn("Question");
@@ -121,11 +125,15 @@ class MessageAssistantIaServiceTest {
         assertEquals("Question", messages.get(0).getContenu());
         assertEquals(RoleMessage.assistant, messages.get(1).getRole());
         assertEquals("Réponse", messages.get(1).getContenu());
+        assertEquals(messages.get(0).getDateCreation().plus(1, ChronoUnit.MICROS),
+                messages.get(1).getDateCreation());
+        assertEquals(messages.get(0).getDateCreation().truncatedTo(ChronoUnit.MICROS),
+                messages.get(0).getDateCreation());
     }
 
     @Test
     void ajouterTour_shouldAnonymizeBothMessagesBeforeSaving() {
-        when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
+        when(conteDanseService.verrouillerPourHistorique(conteDanseId)).thenReturn(conte);
         when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
         when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
         when(promptAnonymizerService.anonymize("Mon email est enfant@example.com"))
@@ -149,19 +157,34 @@ class MessageAssistantIaServiceTest {
     @Test
     void ajouterTour_withPublishedConte_shouldNotSaveMessages() {
         conte.setStatut(StatutConte.publie);
-        when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
+        when(conteDanseService.verrouillerPourHistorique(conteDanseId)).thenReturn(conte);
         when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
         when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
 
-        assertThrows(IllegalStateException.class,
+        BusinessException exception = assertThrows(BusinessException.class,
                 () -> messageService.ajouterTour(conteDanseId, "Question", "Réponse", jwt));
 
+        assertEquals(ErrorCode.CONTE_DEJA_PUBLIE, exception.getErrorCode());
         verify(messageRepository, never()).saveAll(any());
     }
 
     @Test
-    void ajouter_shouldAnonymizeMessageBeforeSaving() {
+    void listerHistoriquePourConversation_withPublishedConte_shouldRejectBeforeLoadingMessages() {
+        conte.setStatut(StatutConte.publie);
         when(conteDanseService.findById(conteDanseId)).thenReturn(conte);
+        when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
+        when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> messageService.listerHistoriquePourConversation(conteDanseId, jwt));
+
+        assertEquals(ErrorCode.CONTE_DEJA_PUBLIE, exception.getErrorCode());
+        verify(messageRepository, never()).findByConteDanseIdOrderByDateCreationAscIdAsc(conteDanseId);
+    }
+
+    @Test
+    void ajouter_shouldAnonymizeMessageBeforeSaving() {
+        when(conteDanseService.verrouillerPourHistorique(conteDanseId)).thenReturn(conte);
         when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
         when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
         when(promptAnonymizerService.anonymize("Contacte-moi à enfant@example.com"))
@@ -194,6 +217,7 @@ class MessageAssistantIaServiceTest {
 
     @Test
     void listerHistorique_withOwner_shouldReturnDtosInRepositoryOrder() {
+        conte.setStatut(StatutConte.publie);
         Instant dateCreation = Instant.now();
         MessageAssistantIa message = new MessageAssistantIa();
         message.setId(UUID.randomUUID());
@@ -218,5 +242,27 @@ class MessageAssistantIaServiceTest {
         messageService.supprimerHistoriqueLorsPublication(new ConteDansePublieEvent(conteDanseId));
 
         verify(messageRepository).deleteByConteDanseId(conteDanseId);
+    }
+
+    @Test
+    void ajouterTour_shouldAppendAfterLastMessageEvenIfClockMovesBackwards() {
+        when(conteDanseService.verrouillerPourHistorique(conteDanseId)).thenReturn(conte);
+        when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
+        when(utilisateurService.extractRoles(jwt)).thenReturn(List.of());
+        when(promptAnonymizerService.anonymize("Question")).thenReturn("Question");
+        when(promptAnonymizerService.anonymize("Reponse")).thenReturn("Reponse");
+        MessageAssistantIa precedent = new MessageAssistantIa();
+        precedent.setDateCreation(Instant.parse("2099-01-01T10:00:00Z"));
+        when(messageRepository.findFirstByConteDanseIdOrderByDateCreationDescIdDesc(conteDanseId))
+                .thenReturn(Optional.of(precedent));
+
+        messageService.ajouterTour(conteDanseId, "Question", "Reponse", jwt);
+
+        ArgumentCaptor<Iterable<MessageAssistantIa>> captor = ArgumentCaptor.forClass(Iterable.class);
+        verify(messageRepository).saveAll(captor.capture());
+        List<MessageAssistantIa> messages = new ArrayList<>();
+        captor.getValue().forEach(messages::add);
+        assertEquals(precedent.getDateCreation().plus(1, ChronoUnit.MICROS), messages.get(0).getDateCreation());
+        assertEquals(precedent.getDateCreation().plus(2, ChronoUnit.MICROS), messages.get(1).getDateCreation());
     }
 }
