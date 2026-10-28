@@ -2,12 +2,17 @@ package com.codabli.service;
 
 import com.codabli.dto.RessourcePedagogiqueRequest;
 import com.codabli.dto.RessourcePedagogiqueResponse;
+import com.codabli.dto.MediaDownloadResponse;
+import com.codabli.entity.Media;
 import com.codabli.entity.RessourceFavorite;
 import com.codabli.entity.RessourcePedagogique;
 import com.codabli.entity.Utilisateur;
+import com.codabli.entity.enums.MediaStatus;
 import com.codabli.entity.enums.TypeRessource;
+import com.codabli.exception.BusinessException;
 import com.codabli.exception.ErrorCode;
 import com.codabli.exception.ResourceNotFoundException;
+import com.codabli.repository.MediaRepository;
 import com.codabli.repository.RessourceFavoriteRepository;
 import com.codabli.repository.RessourcePedagogiqueRepository;
 import org.springframework.data.domain.Page;
@@ -30,12 +35,24 @@ public class RessourcePedagogiqueService {
 
     private final RessourcePedagogiqueRepository ressourcePedagogiqueRepository;
     private final RessourceFavoriteRepository ressourceFavoriteRepository;
+    private final MediaRepository mediaRepository;
+    private final S3MediaStorageService mediaStorageService;
+    private final MediaLifecycleService mediaLifecycleService;
 
     private final UtilisateurService utilisateurService;
 
-    public RessourcePedagogiqueService(RessourcePedagogiqueRepository ressourcePedagogiqueRepository, RessourceFavoriteRepository ressourceFavoriteRepository, UtilisateurService utilisateurService) {
+    public RessourcePedagogiqueService(
+            RessourcePedagogiqueRepository ressourcePedagogiqueRepository,
+            RessourceFavoriteRepository ressourceFavoriteRepository,
+            MediaRepository mediaRepository,
+            S3MediaStorageService mediaStorageService,
+            MediaLifecycleService mediaLifecycleService,
+            UtilisateurService utilisateurService) {
         this.ressourcePedagogiqueRepository = ressourcePedagogiqueRepository;
         this.ressourceFavoriteRepository = ressourceFavoriteRepository;
+        this.mediaRepository = mediaRepository;
+        this.mediaStorageService = mediaStorageService;
+        this.mediaLifecycleService = mediaLifecycleService;
         this.utilisateurService = utilisateurService;
     }
 
@@ -110,6 +127,59 @@ public class RessourcePedagogiqueService {
         return toResponse(ressource);
     }
 
+    public MediaDownloadResponse attacherMedia(UUID ressourceId, UUID mediaId) {
+        RessourcePedagogique ressource = findById(ressourceId);
+        Media media = findAvailableMedia(mediaId);
+        Media previousMedia = ressource.getFichierMedia();
+        ressource.setFichierMedia(media);
+        ressourcePedagogiqueRepository.saveAndFlush(ressource);
+        if (previousMedia != null && !previousMedia.getId().equals(mediaId)) {
+            mediaLifecycleService.queueDeletionIfUnreferenced(previousMedia.getId());
+        }
+        return toMediaDownloadResponse(media);
+    }
+
+    public void detacherMedia(UUID ressourceId) {
+        RessourcePedagogique ressource = findById(ressourceId);
+        Media previousMedia = ressource.getFichierMedia();
+        if (previousMedia == null) {
+            return;
+        }
+        ressource.setFichierMedia(null);
+        ressourcePedagogiqueRepository.saveAndFlush(ressource);
+        mediaLifecycleService.queueDeletionIfUnreferenced(previousMedia.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public MediaDownloadResponse getMediaUrl(UUID ressourceId, Jwt jwt) {
+        RessourcePedagogique ressource = findById(ressourceId);
+        if (!ressource.isActif() && !hasWritePermission(jwt)) {
+            throw new AccessDeniedException("Vous n'êtes pas autorisé à accéder à cette ressource inactive.");
+        }
+        Media media = ressource.getFichierMedia();
+        if (media == null || media.getStatus() != MediaStatus.AVAILABLE) {
+            throw new ResourceNotFoundException(ErrorCode.UNKNOWN_MEDIA,
+                    "Aucun média disponible n'est associé à cette ressource.");
+        }
+        return toMediaDownloadResponse(media);
+    }
+
+    private Media findAvailableMedia(UUID mediaId) {
+        Media media = mediaRepository.findByIdForUpdate(mediaId)
+                .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_MEDIA,
+                        "Média non trouvé avec l'ID: " + mediaId));
+        if (media.getStatus() != MediaStatus.AVAILABLE) {
+            throw new BusinessException(ErrorCode.UNKNOWN_MEDIA,
+                    "Le média demandé n'est pas disponible.");
+        }
+        return media;
+    }
+
+    private MediaDownloadResponse toMediaDownloadResponse(Media media) {
+        return new MediaDownloadResponse(media.getId(), media.getOriginalName(),
+                mediaStorageService.presignDownload(media.getStorageKey(), media.getOriginalName()));
+    }
+
     private RessourcePedagogique findById(UUID id) {
         return ressourcePedagogiqueRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_RESSOURCE_PEDAGOGIQUE,
@@ -128,7 +198,7 @@ public class RessourcePedagogiqueService {
                 .fichierUrl(request.fichierUrl())
                 .thematique(request.thematique())
                 .niveauScolaire(request.niveauScolaire())
-                .actif(request.actif() != null ? request.actif() : true)
+                .actif(request.actif() == null || request.actif())
                 .build();
 
         RessourcePedagogique saved = ressourcePedagogiqueRepository.save(ressource);
@@ -166,8 +236,12 @@ public class RessourcePedagogiqueService {
         }
 
         RessourcePedagogique ressource = findById(id);
-
+        Media previousMedia = ressource.getFichierMedia();
         ressourcePedagogiqueRepository.delete(ressource);
+        ressourcePedagogiqueRepository.flush();
+        if (previousMedia != null) {
+            mediaLifecycleService.queueDeletionIfUnreferenced(previousMedia.getId());
+        }
     }
 
     // ────────────────────────────────────────────────────────────────

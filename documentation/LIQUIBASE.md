@@ -104,7 +104,8 @@ Keycloak : seul le stockage applicatif est concerné.
    SELECT table_name FROM information_schema.tables WHERE table_schema = 'codabli';
    ```
 
-   Pour le changelog initial actuel, 97 changesets doivent être enregistrés,
+   Pour le changelog actuel, 100 changesets doivent être enregistrés
+   (97 pour le schema initial et 3 pour les medias),
    et le verrou doit être libéré. Redémarrer le backend et vérifier que
    Liquibase ne réapplique aucun changeset.
 
@@ -134,13 +135,16 @@ corriger l'erreur et relancer la migration avant tout nettoyage.
 
 ## Rôle des fichiers dans src/main/resources/db
 
-| Fichier | Rôle | Exécute automatiquement ? |
-| --- | --- | --- |
-| `changelog/db.changelog-master.xml` | Point d'entree, liste les migrations a executer dans l'ordre. | Oui, au demarrage du backend. |
-| `changelog/001-schema.xml` | Structure initiale : tables, colonnes, cles primaires, contraintes uniques et cles etrangeres. Aucun jeu de donnees metier. | Oui, via le master, une seule fois par changeset. |
-| `changelog/sql/seed-data.sql` | Jeu de demonstration : utilisateurs locaux, contes, produits, etc. Ne cree pas de comptes Keycloak. | Non, chargement manuel facultatif en developpement. |
-| `changelog/sql/fix-check-constraints.sql` | Ancien correctif manuel des contraintes d'enumeration des bases creees par Hibernate. Conserve comme historique, inutile sur le schema Liquibase neuf. | Non. |
-| `changelog/sql/schema.json` | Ancien export descriptif partiel du schema, ni migration ni source de verite. | Non. |
+| Fichier                                   | Rôle                                                                                                                                                   | Exécute automatiquement ?                           |
+|-------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
+| `changelog/db.changelog-master.xml`       | Point d'entree, liste les migrations a executer dans l'ordre.                                                                                          | Oui, au demarrage du backend.                       |
+| `changelog/001-schema.xml`                | Structure initiale : tables, colonnes, cles primaires, contraintes uniques et cles etrangeres. Aucun jeu de donnees metier.                            | Oui, via le master, une seule fois par changeset.   |
+| `changelog/002-media.xml`                 | Metadonnees des médias S3, sans stockage du contenu binaire en base.                                                                                   | Oui.                                                |
+| `changelog/003-ressource-media.xml`       | Relation nullable des ressources pédagogiques vers les médias, sans modifier `fichier_url`.                                                            | Oui.                                                |
+| `changelog/004-media-cleanup-index.xml`   | Index des états et dates pour le nettoyage asynchrone.                                                                                                 | Oui.                                                |
+| `changelog/sql/seed-data.sql`             | Jeu de demonstration : utilisateurs locaux, contes, produits, etc. Ne cree pas de comptes Keycloak.                                                    | Non, chargement manuel facultatif en developpement. |
+| `changelog/sql/fix-check-constraints.sql` | Ancien correctif manuel des contraintes d'enumeration des bases creees par Hibernate. Conserve comme historique, inutile sur le schema Liquibase neuf. | Non.                                                |
+| `changelog/sql/schema.json`               | Ancien export descriptif partiel du schema, ni migration ni source de verite.                                                                          | Non.                                                |
 
 Spring Boot embarque les ressources dans le JAR, mais ne joue pas tous les
 fichiers SQL presents : seuls les fichiers references par le changelog actif
@@ -154,8 +158,8 @@ donnees de demonstration automatiquement en recette.
 
 ## Prochaines evolutions
 
-Ajouter un nouveau changelog (par exemple `002-ajout-colonne.xml`) et l'inclure
-apres `001-schema.xml` dans le master. Ne pas modifier un changeset deja applique :
+Ajouter un nouveau changelog (par exemple `005-ajout-colonne.xml`) et l'inclure
+apres `004-media-cleanup-index.xml` dans le master. Ne pas modifier un changeset deja applique :
 son checksum est enregistré en base. Ne pas reinitialiser les tables de suivi
 pour contourner une erreur de checksum.
 
@@ -164,3 +168,17 @@ externe. Ils verifient la persistance et l'idempotence du meme changelog,
 sans validation de schema par Hibernate. La verification du deploiement
 sur PostgreSQL reste necessaire, car les dialectes et certains types different. Voir
 [TESTS.md](TESTS.md).
+
+## Ajout des medias sur une base deja migree depuis develop
+
+Le changelog initial `001-schema.xml` reste identique a celui de develop.
+Sur une base dont les 97 changesets initiaux ont deja ete appliques dans le
+schema dédié, Liquibase execute uniquement les trois migrations medias
+suivantes, sans baseline ni `changelog-sync`. Les tables de suivi et les
+nouvelles tables restent dans le schema configure par `POSTGRES_SCHEMA`.
+
+Ces migrations sont additives. Elles préservent les données métier et les
+URL historiques. Ne pas modifier les checksums ni réinitialiser l'historique
+Liquibase pour les appliquer. La procédure de première bascule depuis
+`public` reste celle décrite ci-dessus, et non une reprise du schema
+Hibernate historique.
