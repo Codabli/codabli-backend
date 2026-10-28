@@ -58,6 +58,7 @@ public enum ErrorCode {
 
     //errors 422
     MEDIA_INFECTED("error.media.infected", HttpStatus.UNPROCESSABLE_CONTENT),
+    INVALID_TRANSLATION_TRANSITION("error.translation.invalid-transition", HttpStatus.CONFLICT),
 
     //errors 500
     INTERNAL_SERVER_ERROR("error.system.internal", HttpStatus.INTERNAL_SERVER_ERROR);

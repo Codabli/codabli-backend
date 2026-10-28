@@ -19,8 +19,11 @@ import com.codabli.repository.ConteDanseTraductionRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -358,7 +361,7 @@ public class ConteDanseService {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new java.util.ArrayList<>();
             predicates.add(criteriaBuilder.equal(root.get("statut"), StatutConte.publie));
-            ajouterEgaliteIgnoree(predicates, criteriaBuilder, root.get("langueOriginale"), langue);
+            ajouterFiltreLangue(predicates, root, query, criteriaBuilder, langue);
             ajouterEgaliteIgnoree(predicates, criteriaBuilder, root.get("pays"), pays);
 
             if (estRenseigne(thematique)) {
@@ -382,6 +385,30 @@ public class ConteDanseService {
         };
     }
 
+    private void ajouterFiltreLangue(List<Predicate> predicates,
+                                     Root<ConteDanse> conte,
+                                     CriteriaQuery<?> query,
+                                     CriteriaBuilder criteriaBuilder,
+                                     String langue) {
+        if (!estRenseigne(langue)) {
+            return;
+        }
+
+        String langueNormalisee = langue.trim().toLowerCase(java.util.Locale.ROOT);
+        Predicate langueOriginale = criteriaBuilder.equal(
+                criteriaBuilder.lower(conte.get("langueOriginale")), langueNormalisee);
+
+        Subquery<Integer> traductionDansLaLangue = query.subquery(Integer.class);
+        Root<ConteDanseTraduction> traduction = traductionDansLaLangue.from(ConteDanseTraduction.class);
+        traductionDansLaLangue.select(criteriaBuilder.literal(1))
+                .where(
+                        criteriaBuilder.equal(traduction.get("conte"), conte),
+                        criteriaBuilder.equal(criteriaBuilder.lower(traduction.get("langue")), langueNormalisee),
+                        criteriaBuilder.equal(traduction.get("statut"), StatutTraduction.publiee));
+
+        predicates.add(criteriaBuilder.or(langueOriginale, criteriaBuilder.exists(traductionDansLaLangue)));
+    }
+
     private void ajouterEgaliteIgnoree(List<Predicate> predicates,
                                        CriteriaBuilder criteriaBuilder,
                                        Expression<String> expression,
@@ -403,7 +430,9 @@ public class ConteDanseService {
     @Transactional(readOnly = true)
     public ConteDanseResponse getById(UUID id) {
         ConteDanse conte = findById(id);
-        return toResponse(conte);
+        List<ConteDanseTraduction> traductions = traductionRepository.findByConteIdAndStatut(
+                conte.getId(), StatutTraduction.publiee);
+        return toResponse(conte, traductions.stream().map(this::toTraductionResponse).toList());
     }
 
     ConteDanse findById(UUID id) {
@@ -425,9 +454,8 @@ public class ConteDanseService {
 
     @Transactional(readOnly = true)
     public Page<ConteDanseResponse> rechercher(String query, Pageable pageable) {
-        return conteDanseRepository
-                .rechercherPublies(StatutConte.publie, query, pageable)
-                .map(this::toResponse);
+        return ajouterTraductions(conteDanseRepository
+                .rechercherPublies(StatutConte.publie, query, pageable));
     }
 
     // ────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ public interface ConteDanseTraductionRepository extends JpaRepository<ConteDanse
     /**
      * Traductions publiees d'un conte (visibles publiquement, LAN-01/03).
      */
+    @EntityGraph(attributePaths = {"traducteur", "relecteur"})
     List<ConteDanseTraduction> findByConteIdAndStatut(UUID conteId, StatutTraduction statut);
 
     /**
