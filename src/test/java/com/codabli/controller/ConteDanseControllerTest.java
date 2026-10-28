@@ -123,6 +123,20 @@ class ConteDanseControllerTest {
                 .andExpect(jsonPath("$.titre").value("Titre conte"));
     }
 
+    @Test
+    @WithMockUser(roles = "enseignant")
+    void creer_sansTitre_shouldReturn201() throws Exception {
+        // Parcours "Creer mon conte danse" : le brouillon est cree avant d'avoir un titre
+        ConteDanseRequest request = new ConteDanseRequest(null, null, "Le Moyen Age", null, null, "France", null, 6, 8,
+                null, null, null, null, null, null, null);
+        when(conteDanseService.creer(any(), any())).thenReturn(conteDanseResponse());
+
+        mockMvc.perform(post("/api/contes-danses")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+    }
+
     private ConteDanseRequest conteDanseRequest() {
         return new ConteDanseRequest("Titre conte", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }

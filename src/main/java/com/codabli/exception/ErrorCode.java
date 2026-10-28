@@ -6,6 +6,7 @@ public enum ErrorCode {
     //errors 400
     ILLEGAL_ARGUMENT("error.illegal.argument", HttpStatus.BAD_REQUEST),
     INVALID_MEDIA("error.invalid.media", HttpStatus.BAD_REQUEST),
+    TITRE_CONTE_OBLIGATOIRE("error.conte-danse.titre-obligatoire", HttpStatus.BAD_REQUEST),
 
     //errors 403
     ACCESS_DENIED("error.access-denied",HttpStatus.FORBIDDEN),

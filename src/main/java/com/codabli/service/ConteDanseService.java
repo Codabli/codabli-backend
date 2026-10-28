@@ -12,6 +12,7 @@ import com.codabli.entity.enums.AccesConte;
 import com.codabli.entity.enums.StatutConte;
 import com.codabli.entity.enums.StatutTraduction;
 import com.codabli.event.ConteDansePublieEvent;
+import com.codabli.exception.BusinessException;
 import com.codabli.exception.ErrorCode;
 import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ConteDanseRepository;
@@ -124,6 +125,11 @@ public class ConteDanseService {
         // Verification fine : seul l'auteur ou un admin peut modifier
         verifierAuteurOuAdmin(conte, utilisateur, jwt);
 
+        // Le titre n'est facultatif qu'en brouillon
+        if (conte.getStatut() != StatutConte.brouillon) {
+            verifierTitre(request.titre());
+        }
+
         conte.setTitre(request.titre());
         conte.setDescription(request.description());
         conte.setThematique(request.thematique());
@@ -182,6 +188,7 @@ public class ConteDanseService {
             throw new IllegalStateException(
                     "Seul un conte en brouillon ou refuse peut etre soumis a la moderation");
         }
+        verifierTitre(conte.getTitre());
 
         conte.setStatut(StatutConte.en_revision_enseignant);
         conte.setMotifModeration(null);
@@ -293,6 +300,8 @@ public class ConteDanseService {
     }
 
     private void publier(ConteDanse conte, Utilisateur validateur) {
+        // Un admin peut publier directement un brouillon : le titre doit etre pose
+        verifierTitre(conte.getTitre());
         entityManager.lock(conte, LockModeType.PESSIMISTIC_WRITE);
         conte.setStatut(StatutConte.publie);
         eventPublisher.publishEvent(new ConteDansePublieEvent(conte.getId()));
@@ -466,6 +475,17 @@ public class ConteDanseService {
      * Verifie que l'utilisateur est l'auteur du conte ou un admin.
      * Leve AccessDeniedException sinon.
      */
+    /**
+     * Le titre est facultatif en brouillon (parcours "Creer mon conte danse")
+     * mais obligatoire des que le conte en sort.
+     */
+    private void verifierTitre(String titre) {
+        if (titre == null || titre.isBlank()) {
+            throw new BusinessException(ErrorCode.TITRE_CONTE_OBLIGATOIRE,
+                    "Le titre est obligatoire pour sortir du brouillon");
+        }
+    }
+
     private void verifierAuteurOuAdmin(ConteDanse conte, Utilisateur utilisateur, Jwt jwt) {
         Collection<String> roles = utilisateurService.extractRoles(jwt);
         boolean estAuteur = conte.getCreateur().getId().equals(utilisateur.getId());
