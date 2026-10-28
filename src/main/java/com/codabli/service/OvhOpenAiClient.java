@@ -21,6 +21,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -46,6 +47,7 @@ public class OvhOpenAiClient implements LlmClient {
 
     private static final Logger log = LoggerFactory.getLogger(OvhOpenAiClient.class);
     private static final String DONE = "[DONE]";
+    private static final int MAX_HISTORY_MESSAGES = 12;
     private static final ScheduledExecutorService STREAM_TIMEOUT_EXECUTOR = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().daemon().name("llm-stream-timeout").factory());
 
@@ -65,7 +67,7 @@ public class OvhOpenAiClient implements LlmClient {
     @Override
     public LlmResponse complete(LlmRequest request) {
         String appelId = nouvelAppelId();
-        String model = modele(request);
+        String model = properties.model();
         long t0 = System.nanoTime();
         try {
             HttpRequest httpRequest = construireRequete(request, model, false);
@@ -90,13 +92,15 @@ public class OvhOpenAiClient implements LlmClient {
     }
 
     @Override
-    public void stream(LlmRequest request, Consumer<String> onToken) {
+    public LlmResponse stream(LlmRequest request, Consumer<String> onToken) {
         String appelId = nouvelAppelId();
-        String model = modele(request);
+        String model = properties.model();
         long t0 = System.nanoTime();
         String finishReason = null;
         Integer tokensIn = null;
         Integer tokensOut = null;
+        StringBuilder texteGenere = new StringBuilder();
+        boolean marqueurFinRecu = false;
         try {
             HttpRequest httpRequest = construireRequete(request, model, true);
             HttpResponse<InputStream> response = httpClient.send(httpRequest,
@@ -127,6 +131,7 @@ public class OvhOpenAiClient implements LlmClient {
                                 continue;
                             }
                             if (DONE.equals(charge)) {
+                                marqueurFinRecu = true;
                                 break;
                             }
                             JsonNode chunk = objectMapper.readTree(charge);
@@ -146,7 +151,8 @@ public class OvhOpenAiClient implements LlmClient {
                             }
                             String fragment = premier.path("delta").path("content").asText("");
                             if (!fragment.isEmpty()) {
-                                onToken.accept(fragment);
+                                texteGenere.append(fragment);
+                                notifierFragment(onToken, fragment);
                             }
                         }
                     }
@@ -154,11 +160,34 @@ public class OvhOpenAiClient implements LlmClient {
                     bodyTimeout.cancel(false);
                 }
             }
+            if (!marqueurFinRecu) {
+                throw new LlmIndisponibleException("Flux LLM interrompu avant son marqueur de fin");
+            }
             loguerSucces("stream", appelId, model, tokensIn, tokensOut, finishReason, t0);
+            return LlmResponse.ok(texteGenere.toString().strip(), "", finishReason, tokensIn, tokensOut);
+        } catch (StreamConsumerException e) {
+            throw e.cause;
         } catch (Exception e) {
             loguerEchec("stream", appelId, model, t0, e);
-            // Degradation gracieuse : on pousse le message de repli dans le flux.
+            // Le résultat permet à l'appelant de ne pas persister ce fallback comme réponse du modèle.
             onToken.accept(properties.standbyMessage());
+            return LlmResponse.standby(properties.standbyMessage());
+        }
+    }
+
+    private void notifierFragment(Consumer<String> onToken, String fragment) {
+        try {
+            onToken.accept(fragment);
+        } catch (RuntimeException e) {
+            throw new StreamConsumerException(e);
+        }
+    }
+
+    private static final class StreamConsumerException extends RuntimeException {
+        private final RuntimeException cause;
+
+        private StreamConsumerException(RuntimeException cause) {
+            this.cause = cause;
         }
     }
 
@@ -170,14 +199,14 @@ public class OvhOpenAiClient implements LlmClient {
         ObjectNode corps = objectMapper.createObjectNode();
         corps.put("model", model);
         corps.put("temperature", request.temperature() != null ? request.temperature() : properties.temperature());
-        corps.put("max_tokens", request.maxTokens() != null ? request.maxTokens() : properties.maxTokens());
+        corps.put("max_tokens", properties.maxTokens());
         corps.put("stream", stream);
         if (stream) {
             corps.set("stream_options", objectMapper.createObjectNode().put("include_usage", true));
         }
         ArrayNode messages = corps.putArray("messages");
         messages.addObject().put("role", LlmMessage.ROLE_SYSTEM).put("content", properties.systemPrompt());
-        for (LlmMessage m : request.messages()) {
+        for (LlmMessage m : historiqueRecent(request.messages())) {
             messages.addObject().put("role", m.role()).put("content", m.content());
         }
 
@@ -199,8 +228,32 @@ public class OvhOpenAiClient implements LlmClient {
     // Utilitaires
     // ────────────────────────────────────────────────────────────────
 
-    private String modele(LlmRequest request) {
-        return (request.model() != null && !request.model().isBlank()) ? request.model() : properties.model();
+    private static List<LlmMessage> historiqueRecent(List<LlmMessage> messages) {
+        // Le prompt systeme est gere par le backend. On ne garde que les 12 derniers
+        // messages de conversation, bornes par un message utilisateur aux deux extremites.
+        List<LlmMessage> conversation = messages.stream()
+                .filter(message -> !LlmMessage.ROLE_SYSTEM.equalsIgnoreCase(message.role()))
+                .toList();
+
+        int dernierMessageUtilisateur = -1;
+        for (int i = conversation.size() - 1; i >= 0; i--) {
+            if (LlmMessage.ROLE_USER.equalsIgnoreCase(conversation.get(i).role())) {
+                dernierMessageUtilisateur = i;
+                break;
+            }
+        }
+        if (dernierMessageUtilisateur < 0) {
+            throw new IllegalArgumentException("Au moins un message utilisateur est requis");
+        }
+
+        int debut = Math.max(0, dernierMessageUtilisateur - MAX_HISTORY_MESSAGES + 1);
+        if (LlmMessage.ROLE_ASSISTANT.equalsIgnoreCase(conversation.get(debut).role())) {
+            while (debut <= dernierMessageUtilisateur
+                    && !LlmMessage.ROLE_USER.equalsIgnoreCase(conversation.get(debut).role())) {
+                debut++;
+            }
+        }
+        return conversation.subList(debut, dernierMessageUtilisateur + 1);
     }
 
     private void verifierStatut(int statut) {

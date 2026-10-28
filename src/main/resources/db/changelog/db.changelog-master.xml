@@ -9,5 +9,6 @@
     <include file="db/changelog/002-media.xml"/>
     <include file="db/changelog/003-ressource-media.xml"/>
     <include file="db/changelog/004-media-cleanup-index.xml"/>
+    <include file="db/changelog/005-messages-assistant-ia.xml"/>
 
 </databaseChangeLog>

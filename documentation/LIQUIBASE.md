@@ -39,7 +39,18 @@ Pour relancer uniquement le provisioning :
 docker compose run --rm postgres-init
 ```
 
-## Première bascule en recette (données non conservées)
+## Mise a niveau d'une base existante (donnees conservees)
+
+Si `001-schema.xml` est deja enregistre dans `databasechangelog`, deployer
+le backend avec le meme schema et les memes identifiants. Liquibase execute
+uniquement les nouveaux changeset. 
+Ne pas vider le schema, supprimer les tables de suivi, utiliser `changelog-sync` ou 
+appliquer la procedure de premiere bascule ci-dessous pour cette mise a niveau.
+
+## Premiere bascule historique depuis public (donnees non conservees)
+
+**Cette procedure ne concerne pas une base ayant déjà appliqué 001.**
+Elle décrit uniquement l'ancienne installation initiale dans un schema vide.
 
 La recette est gérée par **Codabli/codabli-infra**, pas par le Compose local de
 ce dépôt. Ces opérations nécessitent un accès à la VM et à la base. Le merge
@@ -104,11 +115,6 @@ Keycloak : seul le stockage applicatif est concerné.
    SELECT table_name FROM information_schema.tables WHERE table_schema = 'codabli';
    ```
 
-   Pour le changelog actuel, 100 changesets doivent être enregistrés
-   (97 pour le schema initial et 3 pour les medias),
-   et le verrou doit être libéré. Redémarrer le backend et vérifier que
-   Liquibase ne réapplique aucun changeset.
-
 6. **Nettoyer `public` seulement après vérification.** Identifier les anciennes
    tables Codabli et leurs dépendances, ne pas supprimer des objets partagés,
    extensions ou objets Keycloak. Cette requête génère une liste à examiner,
@@ -142,6 +148,7 @@ corriger l'erreur et relancer la migration avant tout nettoyage.
 | `changelog/002-media.xml`                 | Metadonnees des médias S3, sans stockage du contenu binaire en base.                                                                                   | Oui.                                                |
 | `changelog/003-ressource-media.xml`       | Relation nullable des ressources pédagogiques vers les médias, sans modifier `fichier_url`.                                                            | Oui.                                                |
 | `changelog/004-media-cleanup-index.xml`   | Index des états et dates pour le nettoyage asynchrone.                                                                                                 | Oui.                                                |
+| `changelog/005-messages-assistant-ia.xml` | Historique IA : table des messages, index par conte/date et cle etrangere avec suppression en cascade.                                                 | Oui                                                 |
 | `changelog/sql/seed-data.sql`             | Jeu de demonstration : utilisateurs locaux, contes, produits, etc. Ne cree pas de comptes Keycloak.                                                    | Non, chargement manuel facultatif en developpement. |
 | `changelog/sql/fix-check-constraints.sql` | Ancien correctif manuel des contraintes d'enumeration des bases creees par Hibernate. Conserve comme historique, inutile sur le schema Liquibase neuf. | Non.                                                |
 | `changelog/sql/schema.json`               | Ancien export descriptif partiel du schema, ni migration ni source de verite.                                                                          | Non.                                                |
@@ -158,27 +165,13 @@ donnees de demonstration automatiquement en recette.
 
 ## Prochaines evolutions
 
-Ajouter un nouveau changelog (par exemple `005-ajout-colonne.xml`) et l'inclure
-apres `004-media-cleanup-index.xml` dans le master. Ne pas modifier un changeset deja applique :
-son checksum est enregistré en base. Ne pas reinitialiser les tables de suivi
-pour contourner une erreur de checksum.
+Ajouter un nouveau changelog (par exemple `0xx-ajout-colonne.xml`) et l'inclure
+apres le dernier changeset dans le master. 
+Ne pas modifier un changeset deja appliqué, son checksum est enregistré en base !
+Ne pas reinitialiser les tables de suivi pour contourner une erreur de checksum !
 
 Les tests utilisent H2 en memoire dans le schema `codabli_test`, sans serveur
-externe. Ils verifient la persistance et l'idempotence du meme changelog,
-sans validation de schema par Hibernate. La verification du deploiement
-sur PostgreSQL reste necessaire, car les dialectes et certains types different. Voir
-[TESTS.md](TESTS.md).
-
-## Ajout des medias sur une base deja migree depuis develop
-
-Le changelog initial `001-schema.xml` reste identique a celui de develop.
-Sur une base dont les 97 changesets initiaux ont deja ete appliques dans le
-schema dédié, Liquibase execute uniquement les trois migrations medias
-suivantes, sans baseline ni `changelog-sync`. Les tables de suivi et les
-nouvelles tables restent dans le schema configure par `POSTGRES_SCHEMA`.
-
-Ces migrations sont additives. Elles préservent les données métier et les
-URL historiques. Ne pas modifier les checksums ni réinitialiser l'historique
-Liquibase pour les appliquer. La procédure de première bascule depuis
-`public` reste celle décrite ci-dessus, et non une reprise du schema
-Hibernate historique.
+externe. Ils vérifient la persistance et l'idempotence du meme changelog, sans validation de schema par Hibernate. 
+La verification du deploiement sur PostgreSQL reste necessaire, car les dialectes et certains types different.
+H2 ne remplace pas cette verification PostgreSQL, car les dialectes et certains types different.
+Voir [TESTS.md](TESTS.md).

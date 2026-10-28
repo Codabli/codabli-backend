@@ -14,10 +14,46 @@ changelog que l'application. Aucun serveur PostgreSQL ou Keycloak n'est requis,
 en local comme en CI. Les tests de services Mockito n'ont pas besoin de base.
 
 `LiquibaseMigrationTest` vérifie le schéma dédié, une seconde application sans
-modification de l'historique et la lecture/écriture JPA. Hibernate ne crée,
-ne modifie et ne valide pas les tables (`ddl-auto: none`) ; seul Liquibase gère
+modification de l'historique, la lecture/écriture JPA des produits et messages IA,
+ainsi que la purge de l'historique a la publication (commit et rollback).
+Il couvre aussi les tours concurrents, leur ordre question/reponse, la
+publication pendant un ajout et les filtres/traductions du catalogue sur
+de vraies tables.
+
+`LiquibaseUpgradeTest` couvre installation neuve, mise a niveau depuis 001 avec
+conservation des donnees et checksums, index, rejet des messages orphelins,
+suppression en cascade et idempotence. Hibernate ne crée,
+ne modifie et ne valide pas les tables (`ddl-auto: none`), seul Liquibase gère
 le DDL. H2 ne remplace pas une vérification du déploiement sur PostgreSQL :
 les différences de types et de dialectes restent à prendre en compte.
+
+Les tests `@DataJpaTest` de l'historique conservent la datasource configuree
+avec `@AutoConfigureTestDatabase(replace = NONE)` : la remplacer par une H2
+automatique ferait perdre l'initialisation du schema `codabli_test`.
+
+### Verifier les migrations sur PostgreSQL 16
+
+Utiliser une **base jetable dediee**, jamais une base de recette ou partagee :
+
+```bash
+./mvnw test -Dtest=LiquibaseUpgradeTest \
+  -Dmigration.test.url=jdbc:postgresql://localhost:55432/migration_test \
+  -Dmigration.test.username=migration_test \
+  -Dmigration.test.password=migration_test
+```
+
+Le test cree un schema aleatoire pour chaque scenario et supprime uniquement
+ce schema a la fin. Le role doit pouvoir creer des schemas. La suite ordinaire
+reste autonome sur H2 et ne necessite pas Docker.
+
+Pour verifier tous les mappings Hibernate sur PostgreSQL, provisionner un
+schema `codabli_test` dans cette meme base jetable, puis lancer
+`LiquibaseMigrationTest` en surchargeant `spring.datasource.url` (avec
+`?currentSchema=codabli_test`), `spring.datasource.username`,
+`spring.datasource.password`, `spring.datasource.driver-class-name`
+(`org.postgresql.Driver`) et `spring.jpa.hibernate.ddl-auto=validate`.
+Ne pas activer cette validation sur H2 : Liquibase y traduit `TEXT` en CLOB,
+alors que le mapping Hibernate attend VARCHAR, sans incompatibilite PostgreSQL.
 
 ---
 
@@ -61,35 +97,13 @@ Les rapports détaillés sont générés dans **`../target/surefire-reports`**.
 
 La suite comporte les familles suivantes :
 
-| Famille | Annotation | Base requise ? | Rôle |
-| --- | --- | :---: | --- |
-| Tests de **contrôleurs** | `@SpringBootTest` + `@AutoConfigureMockMvc` | H2 en mémoire | Vérifient les endpoints HTTP (routes, statuts, sécurité par rôle) avec le contexte Spring réel |
-| Tests de **services** | `@ExtendWith(MockitoExtension.class)` | ❌ Non | Vérifient la logique métier isolée (dépôt mocké) : règles d'accès, filtres, calculs |
-| Tests de **migrations** | `@SpringBootTest` | H2 en mémoire | Vérifient schéma dédié, idempotence Liquibase et persistance JPA |
-
-### Inventaire
-
-**Contrôleurs — `@SpringBootTest` (H2 en mémoire) — 27 tests**
-
-| Classe | Nb tests |
-| --- | :---: |
-| `RessourcePedagogiqueControllerTest` | 8 |
-| `GalerieControllerTest` | 6 |
-| `ActualiteControllerTest` | 5 |
-| `CommandeControllerTest` | 5 |
-| `ConteDanseControllerTest` | 3 |
-
-**Services — Mockito (pas de BDD) — 32 tests**
-
-| Classe | Nb tests |
-| --- | :---: |
-| `RessourcePedagogiqueServiceTest` | 9 |
-| `GalerieServiceTest` | 6 |
-| `PanierServiceTest` | 6 |
-| `ProduitServiceTest` | 6 |
-| `CommandeServiceTest` | 3 |
-| `ActualiteServiceTest` | 1 |
-| `ConteDanseServiceTest` | 1 |
+| Famille                    | Annotation                                  |       Base requise ?        | Rôle                                                                                           |
+|----------------------------|---------------------------------------------|:---------------------------:|------------------------------------------------------------------------------------------------|
+| Tests de **contrôleurs**   | `@SpringBootTest` + `@AutoConfigureMockMvc` |        H2 en mémoire        | Vérifient les endpoints HTTP (routes, statuts, sécurité par rôle) avec le contexte Spring réel |
+| Tests de **services**      | `@ExtendWith(MockitoExtension.class)`       |           ❌ Non            | Vérifient la logique métier isolée (dépôt mocké) : règles d'accès, filtres, calculs            |
+| Tests de **migrations**    | `@SpringBootTest`                           |        H2 en mémoire        | Vérifient schéma dédié, idempotence Liquibase et persistance JPA                               |
+| Tests de **mise a niveau** | JUnit + Liquibase/JDBC                      | H2, ou PostgreSQL explicite | Verifient migration additive, conservation des donnees et contraintes reelles                  |
+| Tests de **repositories**  | `@DataJpaTest`                              |        H2 en memoire        | Verifient les requetes sur le schema cree par Liquibase                                        |
 
 ---
 
@@ -108,8 +122,8 @@ La suite comporte les familles suivantes :
 
 ## 🩺 Dépannage
 
-| Symptôme                                                                    | Cause probable | Solution                                                     |
-|-----------------------------------------------------------------------------| --- |--------------------------------------------------------------|
-| Les tests tentent une connexion à PostgreSQL | Configuration de test surchargée | Vérifier les variables `SPRING_DATASOURCE_*` et la configuration IDE ; H2 est le défaut |
-| `release version 25 not supported`                                          | Pas de JDK (seulement un JRE) sur l'hôte | Utiliser l'**option B** (tout Docker) ou installer un JDK 25+ |
-| `UnnecessaryStubbingException`                                              | Stub partagé non utilisé par tous les tests | Passer le stub en `lenient().when(...)`                      |
+| Symptôme                                     | Cause probable                              | Solution                                                                               |
+|----------------------------------------------|---------------------------------------------|----------------------------------------------------------------------------------------|
+| Les tests tentent une connexion à PostgreSQL | Configuration de test surchargée            | Vérifier les variables `SPRING_DATASOURCE_*` et la configuration IDE, H2 est le défaut |
+| `release version 25 not supported`           | Pas de JDK (seulement un JRE) sur l'hôte    | Utiliser l'**option B** (tout Docker) ou installer un JDK 25+                          |
+| `UnnecessaryStubbingException`               | Stub partagé non utilisé par tous les tests | Passer le stub en `lenient().when(...)`                                                |
