@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.Normalizer;
+import java.util.List;
 import java.util.Locale;
 
 @Component
@@ -17,6 +18,28 @@ public class MediaContentValidator {
 
     private static final int SIGNATURE_BYTES = 4096;
     private static final int MAX_FILENAME_CODE_POINTS = 200;
+    private static final List<FileSignature> SIGNATURES = List.of(
+            new FileSignature(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF},
+                    "jpg", "image/jpeg", List.of("jpg", "jpeg")),
+            new FileSignature(new byte[] {
+                    (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+            }, "png", "image/png", List.of("png")),
+            new FileSignature("GIF87a".getBytes(StandardCharsets.US_ASCII),
+                    "gif", "image/gif", List.of("gif")),
+            new FileSignature("GIF89a".getBytes(StandardCharsets.US_ASCII),
+                    "gif", "image/gif", List.of("gif")),
+            new FileSignature("BM".getBytes(StandardCharsets.US_ASCII),
+                    "bmp", "image/bmp", List.of("bmp")),
+            new FileSignature(new byte[] {0x49, 0x49, 0x2A, 0x00},
+                    "tiff", "image/tiff", List.of("tif", "tiff")),
+            new FileSignature(new byte[] {0x4D, 0x4D, 0x00, 0x2A},
+                    "tiff", "image/tiff", List.of("tif", "tiff")),
+            new FileSignature("%PDF-".getBytes(StandardCharsets.US_ASCII),
+                    "pdf", "application/pdf", List.of("pdf")),
+            new FileSignature("ID3".getBytes(StandardCharsets.US_ASCII),
+                    "mp3", "audio/mpeg", List.of("mp3")),
+            new FileSignature("fLaC".getBytes(StandardCharsets.US_ASCII),
+                    "flac", "audio/flac", List.of("flac")));
 
     public ValidatedMediaFile validate(Path file, String untrustedName) {
         String originalName = sanitizeName(untrustedName);
@@ -81,31 +104,18 @@ public class MediaContentValidator {
     }
 
     private DetectedType detect(byte[] bytes, String extension) {
-        if (startsWith(bytes, 0xFF, 0xD8, 0xFF)) {
-            return matchesExtension(extension, "jpg", "jpeg")
-                    ? new DetectedType("jpg", "image/jpeg") : null;
-        }
-        if (startsWith(bytes, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)) {
-            return exact(extension, "png", "image/png");
-        }
-        if (startsWithAscii(bytes, "GIF87a") || startsWithAscii(bytes, "GIF89a")) {
-            return exact(extension, "gif", "image/gif");
+        FileSignature signature = SIGNATURES.stream()
+                .filter(candidate -> startsWith(bytes, candidate.magic()))
+                .findFirst()
+                .orElse(null);
+        if (signature != null) {
+            return signature.acceptedExtensions().contains(extension)
+                    ? new DetectedType(signature.extension(), signature.mimeType()) : null;
         }
         if (startsWithAscii(bytes, "RIFF") && containsAsciiAt(bytes, 8, "WEBP")) {
             return exact(extension, "webp", "image/webp");
         }
-        if (startsWithAscii(bytes, "BM")) {
-            return exact(extension, "bmp", "image/bmp");
-        }
-        if (startsWith(bytes, 0x49, 0x49, 0x2A, 0x00)
-                || startsWith(bytes, 0x4D, 0x4D, 0x00, 0x2A)) {
-            return matchesExtension(extension, "tif", "tiff")
-                    ? new DetectedType("tiff", "image/tiff") : null;
-        }
-        if (startsWithAscii(bytes, "%PDF-")) {
-            return exact(extension, "pdf", "application/pdf");
-        }
-        if (startsWithAscii(bytes, "ID3") || isMpegAudioFrame(bytes)) {
+        if (isMpegAudioFrame(bytes)) {
             return exact(extension, "mp3", "audio/mpeg");
         }
         if (startsWithAscii(bytes, "RIFF") && containsAsciiAt(bytes, 8, "WAVE")) {
@@ -120,9 +130,6 @@ public class MediaContentValidator {
                 return new DetectedType(extension, contentType);
             }
             return null;
-        }
-        if (startsWithAscii(bytes, "fLaC")) {
-            return exact(extension, "flac", "audio/flac");
         }
         if (isAacFrame(bytes)) {
             return exact(extension, "aac", "audio/aac");
@@ -213,6 +220,19 @@ public class MediaContentValidator {
         return true;
     }
 
+    private boolean startsWith(byte[] bytes, byte[] prefix) {
+        if (bytes.length < prefix.length) {
+            return false;
+        }
+
+        for (int index = 0; index < prefix.length; index++) {
+            if (bytes[index] != prefix[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private boolean startsWithAscii(byte[] bytes, String prefix) {
         return containsAsciiAt(bytes, 0, prefix);
     }
@@ -256,5 +276,12 @@ public class MediaContentValidator {
     }
 
     private record DetectedType(String extension, String contentType) {
+    }
+
+    private record FileSignature(
+            byte[] magic,
+            String extension,
+            String mimeType,
+            List<String> acceptedExtensions) {
     }
 }

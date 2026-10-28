@@ -23,6 +23,12 @@ class MediaContentValidatorTest {
         assertType("photo.png", new byte[] {
                 (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
         }, "png", "image/png");
+        assertType("photo.jpeg", new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF},
+                "jpg", "image/jpeg");
+        assertType("photo.gif", "GIF89a".getBytes(), "gif", "image/gif");
+        assertType("photo.bmp", "BM".getBytes(), "bmp", "image/bmp");
+        assertType("photo.tif", new byte[] {0x49, 0x49, 0x2A, 0x00},
+                "tiff", "image/tiff");
         assertType("scan.pdf", "%PDF-1.7".getBytes(), "pdf", "application/pdf");
         assertType("photo.webp", "RIFF1234WEBP".getBytes(), "webp", "image/webp");
     }
@@ -30,6 +36,7 @@ class MediaContentValidatorTest {
     @Test
     void detectsCommonAudioAndVideoContainerSignatures() throws Exception {
         assertType("audio.mp3", "ID3".getBytes(), "mp3", "audio/mpeg");
+        assertType("audio.flac", "fLaC".getBytes(), "flac", "audio/flac");
         assertType("audio.wav", "RIFF1234WAVEfmt ".getBytes(), "wav", "audio/wav");
         assertType("video.mp4", new byte[] {
                 0, 0, 0, 16, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm'

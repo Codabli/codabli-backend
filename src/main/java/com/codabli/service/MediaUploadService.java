@@ -88,7 +88,7 @@ public class MediaUploadService {
             scanner.scan(stagedFile);
             return;
         }
-        if (!uploadProperties.isAllowWithoutAntivirus()) {
+        if (!uploadProperties.allowWithoutAntivirus()) {
             throw new BusinessException(ErrorCode.MEDIA_SCAN_UNAVAILABLE,
                     "Le service de contrôle antivirus n'est pas configuré.");
         }

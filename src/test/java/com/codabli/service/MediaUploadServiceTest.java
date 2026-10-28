@@ -99,8 +99,7 @@ class MediaUploadServiceTest {
     @Test
     void uploadsWithoutAntivirusOnlyWhenExplicitFeatureFlagIsEnabled() {
         when(repository.saveAndFlush(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        MediaUploadProperties uploadProperties = new MediaUploadProperties();
-        uploadProperties.setAllowWithoutAntivirus(true);
+        MediaUploadProperties uploadProperties = new MediaUploadProperties(true);
         MediaUploadService service = service(repository, storage, null, properties(), uploadProperties);
 
         MediaUploadResponse response = service.upload(pngUpload());
@@ -114,8 +113,7 @@ class MediaUploadServiceTest {
     @Test
     void configuredAntivirusIsAlwaysUsedEvenWhenBypassFlagIsEnabled() {
         when(repository.saveAndFlush(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        MediaUploadProperties uploadProperties = new MediaUploadProperties();
-        uploadProperties.setAllowWithoutAntivirus(true);
+        MediaUploadProperties uploadProperties = new MediaUploadProperties(true);
         MediaUploadService service = service(repository, storage, scanner, properties(), uploadProperties);
 
         service.upload(pngUpload());
@@ -128,8 +126,7 @@ class MediaUploadServiceTest {
     @Test
     void antivirusFailureBlocksUploadEvenWhenBypassFlagIsEnabled() {
         doThrow(new IllegalStateException("scan failed")).when(scanner).scan(any(Path.class));
-        MediaUploadProperties uploadProperties = new MediaUploadProperties();
-        uploadProperties.setAllowWithoutAntivirus(true);
+        MediaUploadProperties uploadProperties = new MediaUploadProperties(true);
         MediaUploadService service = service(repository, storage, scanner, properties(), uploadProperties);
 
         assertThrows(IllegalStateException.class, () -> service.upload(pngUpload()));
@@ -210,7 +207,7 @@ class MediaUploadServiceTest {
             S3MediaStorageService storage,
             VirusScanner scanner,
             OvhStorageProperties properties) {
-        return service(repository, storage, scanner, properties, new MediaUploadProperties());
+        return service(repository, storage, scanner, properties, new MediaUploadProperties(false));
     }
 
     private MediaUploadService service(
