@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -74,7 +76,7 @@ public class ConteDanseTraductionController {
             @PathVariable UUID conteId,
             @PathVariable UUID id,
             @Valid @RequestBody ConteDanseTraductionRequest request) {
-        return ResponseEntity.ok(traductionService.modifier(id, request));
+        return ResponseEntity.ok(traductionService.modifier(conteId, id, request));
     }
 
     /**
@@ -86,13 +88,14 @@ public class ConteDanseTraductionController {
     public ResponseEntity<ConteDanseTraductionResponse> changerStatut(
             @PathVariable UUID conteId,
             @PathVariable UUID id,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal Jwt jwt) {
         String statutBrut = body.get("statut");
         if (statutBrut == null || statutBrut.isBlank()) {
             throw new IllegalArgumentException("Le champ 'statut' est obligatoire");
         }
         StatutTraduction statut = StatutTraduction.valueOf(statutBrut);
-        return ResponseEntity.ok(traductionService.changerStatut(id, statut));
+        return ResponseEntity.ok(traductionService.changerStatut(conteId, id, statut, jwt));
     }
 
     /**
@@ -104,7 +107,7 @@ public class ConteDanseTraductionController {
     public ResponseEntity<Void> supprimer(
             @PathVariable UUID conteId,
             @PathVariable UUID id) {
-        traductionService.supprimer(id);
+        traductionService.supprimer(conteId, id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -6,13 +6,17 @@ import com.codabli.entity.ConteDanse;
 import com.codabli.entity.ConteDanseTraduction;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.StatutTraduction;
+import com.codabli.exception.BusinessException;
 import com.codabli.exception.ErrorCode;
 import com.codabli.exception.ResourceNotFoundException;
 import com.codabli.repository.ConteDanseTraductionRepository;
 import jakarta.persistence.EntityManager;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,11 +35,16 @@ public class ConteDanseTraductionService {
     private final ConteDanseTraductionRepository traductionRepository;
     private final EntityManager entityManager;
     private final ConteDanseService conteDanseService;
+    private final UtilisateurService utilisateurService;
 
-    public ConteDanseTraductionService(ConteDanseTraductionRepository traductionRepository, EntityManager entityManager, ConteDanseService conteDanseService) {
+    public ConteDanseTraductionService(ConteDanseTraductionRepository traductionRepository,
+                                       EntityManager entityManager,
+                                       ConteDanseService conteDanseService,
+                                       UtilisateurService utilisateurService) {
         this.traductionRepository = traductionRepository;
         this.entityManager = entityManager;
         this.conteDanseService = conteDanseService;
+        this.utilisateurService = utilisateurService;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -56,6 +65,7 @@ public class ConteDanseTraductionService {
 
     @Transactional(readOnly = true)
     public List<ConteDanseTraductionResponse> listerToutes(UUID conteId) {
+        conteDanseService.findById(conteId);
         return traductionRepository.findByConteId(conteId)
                 .stream()
                 .map(this::toResponse)
@@ -89,8 +99,8 @@ public class ConteDanseTraductionService {
     // MODIFIER
     // ────────────────────────────────────────────────────────────────
 
-    public ConteDanseTraductionResponse modifier(UUID id, ConteDanseTraductionRequest request) {
-        ConteDanseTraduction traduction = findById(id);
+    public ConteDanseTraductionResponse modifier(UUID conteId, UUID id, ConteDanseTraductionRequest request) {
+        ConteDanseTraduction traduction = findById(conteId, id);
 
         traduction.setLangue(request.langue());
         traduction.setVariante(request.variante());
@@ -100,6 +110,7 @@ public class ConteDanseTraductionService {
         traduction.setSousTitresUrl(request.sousTitresUrl());
 
         appliquerIntervenants(traduction, request);
+        traduction.setStatut(StatutTraduction.a_traduire);
 
         ConteDanseTraduction saved = traductionRepository.save(traduction);
         return toResponse(saved);
@@ -110,30 +121,65 @@ public class ConteDanseTraductionService {
     // ────────────────────────────────────────────────────────────────
 
     /**
-     * Change le statut d'une traduction. Regle LAN-03 : seules les versions
-     * deja "validee" (ou deja publiees) peuvent passer a "publiee".
+     * Applique une transition du cycle de vie, en distinguant les actions du
+     * traducteur de celles du comite de lecture.
      */
-    public ConteDanseTraductionResponse changerStatut(UUID id, StatutTraduction nouveauStatut) {
-        ConteDanseTraduction traduction = findById(id);
+    public ConteDanseTraductionResponse changerStatut(UUID conteId,
+                                                      UUID id,
+                                                      StatutTraduction nouveauStatut,
+                                                      Jwt jwt) {
+        ConteDanseTraduction traduction = findById(conteId, id);
+        Collection<String> roles = utilisateurService.extractRoles(jwt);
+        boolean traducteur = roles.contains("traducteur");
+        boolean relecteur = roles.contains("comite_lecture")
+                || roles.contains("admin")
+                || roles.contains("super_admin");
 
-        if (nouveauStatut == StatutTraduction.publiee
-                && traduction.getStatut() != StatutTraduction.validee
-                && traduction.getStatut() != StatutTraduction.publiee) {
-            throw new IllegalStateException(
-                    "Seules les traductions validees peuvent etre publiees (LAN-03)");
+        if (!traducteur && !relecteur) {
+            throw new AccessDeniedException(
+                    "Vous n'etes pas autorise a changer le statut d'une traduction");
         }
 
+        verifierTransitionAutorisee(traduction.getStatut(), nouveauStatut, relecteur);
         traduction.setStatut(nouveauStatut);
         ConteDanseTraduction saved = traductionRepository.save(traduction);
         return toResponse(saved);
+    }
+
+    private void verifierTransitionAutorisee(StatutTraduction statutActuel,
+                                             StatutTraduction nouveauStatut,
+                                             boolean relecteur) {
+        if (nouveauStatut == null) {
+            throw new IllegalArgumentException("Le nouveau statut est obligatoire");
+        }
+
+        if (statutActuel == nouveauStatut) {
+            return;
+        }
+
+        boolean transitionAutorisee = switch (statutActuel) {
+            case a_traduire -> nouveauStatut == StatutTraduction.en_cours;
+            case en_cours -> nouveauStatut == StatutTraduction.relecture;
+            case relecture -> nouveauStatut == StatutTraduction.en_cours
+                    || (relecteur && nouveauStatut == StatutTraduction.validee);
+            case validee -> relecteur && (nouveauStatut == StatutTraduction.publiee
+                    || nouveauStatut == StatutTraduction.relecture);
+            case publiee -> relecteur && nouveauStatut == StatutTraduction.archivee;
+            case archivee -> false;
+        };
+
+        if (!transitionAutorisee) {
+            throw new BusinessException(ErrorCode.INVALID_TRANSLATION_TRANSITION,
+                    "Transition de statut non autorisee : " + statutActuel + " -> " + nouveauStatut);
+        }
     }
 
     // ────────────────────────────────────────────────────────────────
     // SUPPRIMER
     // ────────────────────────────────────────────────────────────────
 
-    public void supprimer(UUID id) {
-        ConteDanseTraduction traduction = findById(id);
+    public void supprimer(UUID conteId, UUID id) {
+        ConteDanseTraduction traduction = findById(conteId, id);
         traductionRepository.delete(traduction);
     }
 
@@ -142,16 +188,17 @@ public class ConteDanseTraductionService {
     // ────────────────────────────────────────────────────────────────
 
     private void appliquerIntervenants(ConteDanseTraduction traduction, ConteDanseTraductionRequest request) {
-        if (request.traducteurId() != null) {
-            traduction.setTraducteur(entityManager.getReference(Utilisateur.class, request.traducteurId()));
-        }
-        if (request.relecteurId() != null) {
-            traduction.setRelecteur(entityManager.getReference(Utilisateur.class, request.relecteurId()));
-        }
+        traduction.setTraducteur(request.traducteurId() == null
+                ? null
+                : entityManager.getReference(Utilisateur.class, request.traducteurId()));
+        traduction.setRelecteur(request.relecteurId() == null
+                ? null
+                : entityManager.getReference(Utilisateur.class, request.relecteurId()));
     }
 
-    private ConteDanseTraduction findById(UUID id) {
+    private ConteDanseTraduction findById(UUID conteId, UUID id) {
         return traductionRepository.findById(id)
+                .filter(traduction -> traduction.getConte().getId().equals(conteId))
                 .orElseThrow(() -> new ResourceNotFoundException(ErrorCode.UNKNOWN_CONTE_TRADUCTION,
                         "Traduction non trouvee avec l'ID: " + id));
     }
