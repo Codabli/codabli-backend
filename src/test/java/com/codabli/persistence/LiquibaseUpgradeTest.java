@@ -67,7 +67,7 @@ class LiquibaseUpgradeTest {
         migrate("classpath:db/changelog/001-schema.xml");
         UUID conteId = insertConte();
         UUID produitId = UUID.randomUUID();
-        int changesetSize = 5;
+        int changesetSize = 6;
         jdbc.update("""
                 INSERT INTO produits (id, nom, prix, type, stock, actif, date_creation, date_mise_a_jour)
                 VALUES (?, 'Produit existant', 12.50, 'produit_physique', 3, TRUE,
