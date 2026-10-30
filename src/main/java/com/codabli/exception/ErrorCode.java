@@ -6,6 +6,8 @@ public enum ErrorCode {
     //errors 400
     ILLEGAL_ARGUMENT("error.illegal.argument", HttpStatus.BAD_REQUEST),
     INVALID_MEDIA("error.invalid.media", HttpStatus.BAD_REQUEST),
+    TITRE_CONTE_OBLIGATOIRE("error.conte-danse.titre-obligatoire", HttpStatus.BAD_REQUEST),
+    ETAPE_PARCOURS_INCONNUE("error.parcours.etape-inconnue", HttpStatus.BAD_REQUEST),
 
     //errors 403
     ACCESS_DENIED("error.access-denied",HttpStatus.FORBIDDEN),
@@ -46,6 +48,7 @@ public enum ErrorCode {
 
     //errors 409
     CONTE_DEJA_PUBLIE("error.conte-already-published", HttpStatus.CONFLICT),
+    PARCOURS_NON_MODIFIABLE("error.parcours.non-modifiable", HttpStatus.CONFLICT),
     SOCK_INSUFFISANT("error.stock-insuffisant", HttpStatus.CONFLICT),
     MEDIA_IN_USE("error.media.in-use", HttpStatus.CONFLICT),
 

@@ -1,6 +1,5 @@
 package com.codabli.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
@@ -10,9 +9,12 @@ import java.util.UUID;
  * <p>
  * Le createur n'est PAS dans le DTO — il est extrait du JWT
  * dans le service (principe de securite).
+ * <p>
+ * Le titre est facultatif tant que le conte est en brouillon (parcours
+ * "Creer mon conte danse") : il est exige a la sortie du brouillon,
+ * verification faite dans le service.
  */
 public record ConteDanseRequest(
-        @NotBlank(message = "Le titre est obligatoire")
         @Size(max = 255)
         String titre,
         String description,
