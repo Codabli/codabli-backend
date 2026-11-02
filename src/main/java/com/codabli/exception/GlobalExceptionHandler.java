@@ -2,6 +2,7 @@ package com.codabli.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -48,6 +49,15 @@ public class GlobalExceptionHandler {
         body.put("path", request.getDescription(false).replace("uri=", ""));
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // JSON mal forme, valeur hors liste, champ inconnu (contenu du parcours)... : sans
+    // ce handler, l'exception tombait dans RuntimeException et donnait un 500.
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadable(
+            HttpMessageNotReadableException ex, WebRequest request) {
+        return buildResponse(ErrorCode.REQUETE_ILLISIBLE,
+                "Corps de requete illisible : JSON mal forme, champ inconnu ou valeur non autorisee", request);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

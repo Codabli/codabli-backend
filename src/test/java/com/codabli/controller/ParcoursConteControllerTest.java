@@ -1,9 +1,11 @@
 package com.codabli.controller;
 
 import com.codabli.dto.ParcoursConteResponse;
+import com.codabli.dto.parcours.CarteUnivers;
+import com.codabli.dto.parcours.RessourceClasse;
+import com.codabli.dto.parcours.RessourcesClasseParcours;
+import com.codabli.dto.parcours.UniversParcours;
 import com.codabli.entity.enums.EspaceRepresentation;
-import com.codabli.exception.BusinessException;
-import com.codabli.exception.ErrorCode;
 import com.codabli.service.ParcoursConteService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +17,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -61,6 +62,10 @@ class ParcoursConteControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.region").value("Bretagne"))
                 .andExpect(jsonPath("$.univers.places[0].name").value("La forêt"))
+                // Le front attend imageId a null, mais pas les champs absents d'une ressource de la classe
+                .andExpect(jsonPath("$.univers.places[0].imageId").hasJsonPath())
+                .andExpect(jsonPath("$.ressourcesClasse.items[0].url").value("https://exemple.fr"))
+                .andExpect(jsonPath("$.ressourcesClasse.items[0].fileId").doesNotHaveJsonPath())
                 .andExpect(jsonPath("$.trame").isEmpty());
     }
 
@@ -95,38 +100,90 @@ class ParcoursConteControllerTest {
 
     @Test
     @WithMockUser(roles = "enseignant")
-    void enregistrerEtape_shouldForwardJsonContent() throws Exception {
-        when(parcoursConteService.enregistrerEtape(eq(CONTE_ID), eq("univers"), any(), any()))
-                .thenReturn(parcours());
+    void enregistrerUnivers_shouldForwardTypedContent() throws Exception {
+        when(parcoursConteService.enregistrerEtape(eq(CONTE_ID), any(), any())).thenReturn(parcours());
 
         mockMvc.perform(put("/api/contes-danses/{id}/parcours/univers", CONTE_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"places": [{"id": "p1", "name": "La forêt"}]}
+                                {"places": [{"id": "p1", "name": "La forêt", "description": "", "imageId": null}],
+                                 "characters": [], "periods": [], "objects": []}
                                 """))
                 .andExpect(status().isOk());
 
-        verify(parcoursConteService).enregistrerEtape(eq(CONTE_ID), eq("univers"),
-                eq(Map.of("places", List.of(Map.of("id", "p1", "name", "La forêt")))), any());
+        verify(parcoursConteService).enregistrerEtape(eq(CONTE_ID), eq(univers()), any());
     }
 
     @Test
     @WithMockUser(roles = "enseignant")
-    void enregistrerEtape_etapeInconnue_shouldReturn400WithErrorCode() throws Exception {
-        when(parcoursConteService.enregistrerEtape(eq(CONTE_ID), eq("inconnue"), any(), any()))
-                .thenThrow(new BusinessException(ErrorCode.ETAPE_PARCOURS_INCONNUE, "Etape inconnue"));
+    void enregistrerEtape_champInconnu_shouldReturn400() throws Exception {
+        mockMvc.perform(put("/api/contes-danses/{id}/parcours/univers", CONTE_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"places": [{"id": "p1", "name": "", "description": "", "couleur": "rouge"}],
+                                 "characters": [], "periods": [], "objects": []}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error-code").value("error.request.unreadable"));
 
+        verify(parcoursConteService, never()).enregistrerEtape(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "enseignant")
+    void enregistrerEtape_valeurHorsListe_shouldReturn400() throws Exception {
+        mockMvc.perform(put("/api/contes-danses/{id}/parcours/trame", CONTE_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"steps": [{"id": "s1", "kind": "epilogue", "title": "", "summary": "",
+                                            "characterIds": []}]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error-code").value("error.request.unreadable"));
+
+        verify(parcoursConteService, never()).enregistrerEtape(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "enseignant")
+    void enregistrerEtape_contenuInvalide_shouldReturn400WithFieldErrors() throws Exception {
+        mockMvc.perform(put("/api/contes-danses/{id}/parcours/mise-en-scene", CONTE_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"scenes": {"s1": {"characters": [], "intention": "", "props": [],
+                                  "dances": [{"id": " ", "danceId": "ronde", "name": "La ronde", "moment": null,
+                                              "style": "traditional",
+                                              "placements": [{"kind": "prop", "ref": "arbre", "x": 120, "y": 50}]}]}}}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors['scenes[s1].dances[0].id']").exists())
+                .andExpect(jsonPath("$.errors['scenes[s1].dances[0].placements[0].x']").exists());
+
+        verify(parcoursConteService, never()).enregistrerEtape(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "enseignant")
+    void enregistrerEtape_etapeInconnue_shouldReturn404() throws Exception {
         mockMvc.perform(put("/api/contes-danses/{id}/parcours/inconnue", CONTE_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error-code").value("error.parcours.etape-inconnue"));
+                .andExpect(status().isNotFound());
+
+        verify(parcoursConteService, never()).enregistrerEtape(any(), any(), any());
+    }
+
+    private UniversParcours univers() {
+        return new UniversParcours(List.of(new CarteUnivers("p1", "La forêt", "", null)),
+                List.of(), List.of(), List.of());
     }
 
     private ParcoursConteResponse parcours() {
         return new ParcoursConteResponse(CONTE_ID, "Bretagne", "Brest", EspaceRepresentation.gymnase,
-                List.of("dragons"), null, null, null,
-                Map.of("places", List.of(Map.of("id", "p1", "name", "La forêt"))),
-                null, null, null, null);
+                List.of("dragons"), null, null,
+                new RessourcesClasseParcours(List.of(new RessourceClasse("r1", RessourceClasse.TypeRessource.link,
+                        "Un site", "2026-10-30T09:00:00.000Z", "private", null, null, null, null, null,
+                        "https://exemple.fr"))),
+                univers(), null, null, null, null);
     }
 }

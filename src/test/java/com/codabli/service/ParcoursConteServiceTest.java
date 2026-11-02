@@ -2,6 +2,11 @@ package com.codabli.service;
 
 import com.codabli.dto.ParcoursConteResponse;
 import com.codabli.dto.ParcoursContexteRequest;
+import com.codabli.dto.parcours.EcritureParcours;
+import com.codabli.dto.parcours.EtapeTrame;
+import com.codabli.dto.parcours.RessourcesClasseParcours;
+import com.codabli.dto.parcours.TrameParcours;
+import com.codabli.dto.parcours.UniversParcours;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.ParcoursConte;
 import com.codabli.entity.Utilisateur;
@@ -122,35 +127,28 @@ class ParcoursConteServiceTest {
         ParcoursConte existant = new ParcoursConte();
         existant.setConteDanseId(conteId);
         existant.setRegion("Bretagne");
-        existant.setUnivers(Map.of("places", List.of()));
+        UniversParcours univers = new UniversParcours(List.of(), List.of(), List.of(), List.of());
+        existant.setUnivers(univers);
         when(parcoursRepository.findByConteDanseId(conteId)).thenReturn(Optional.of(existant));
-        Map<String, Object> trame = Map.of("steps", List.of(Map.of("id", "s1")));
+        TrameParcours trame = new TrameParcours(List.of(
+                new EtapeTrame("s1", EtapeTrame.TypeEtape.trigger, "Le départ", "", List.of())));
 
-        ParcoursConteResponse response = parcoursConteService.enregistrerEtape(conteId, "trame", trame, jwt);
+        ParcoursConteResponse response = parcoursConteService.enregistrerEtape(conteId, trame, jwt);
 
         assertEquals(trame, response.trame());
-        assertEquals(Map.of("places", List.of()), response.univers());
+        assertEquals(univers, response.univers());
         assertEquals("Bretagne", response.region());
     }
 
     @Test
-    void enregistrerEtape_cheminComposé_shouldMapToStep() {
+    void enregistrerEtape_shouldStoreContentInTheMatchingStep() {
         when(parcoursRepository.findByConteDanseId(conteId)).thenReturn(Optional.empty());
-        Map<String, Object> contenu = Map.of("items", List.of());
+        RessourcesClasseParcours contenu = new RessourcesClasseParcours(List.of());
 
-        ParcoursConteResponse response =
-                parcoursConteService.enregistrerEtape(conteId, "ressources-classe", contenu, jwt);
+        ParcoursConteResponse response = parcoursConteService.enregistrerEtape(conteId, contenu, jwt);
 
         assertEquals(contenu, response.ressourcesClasse());
-    }
-
-    @Test
-    void enregistrerEtape_etapeInconnue_shouldThrowBusinessException() {
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> parcoursConteService.enregistrerEtape(conteId, "contexte-bis", Map.of(), jwt));
-
-        assertEquals(ErrorCode.ETAPE_PARCOURS_INCONNUE, ex.getErrorCode());
-        verify(parcoursRepository, never()).save(any());
+        assertNull(response.univers());
     }
 
     @Test
@@ -158,7 +156,8 @@ class ParcoursConteServiceTest {
         conte.setStatut(StatutConte.en_revision_enseignant);
 
         BusinessException ex = assertThrows(BusinessException.class,
-                () -> parcoursConteService.enregistrerEtape(conteId, "univers", Map.of(), jwt));
+                () -> parcoursConteService.enregistrerEtape(conteId,
+                        new UniversParcours(List.of(), List.of(), List.of(), List.of()), jwt));
 
         assertEquals(ErrorCode.PARCOURS_NON_MODIFIABLE, ex.getErrorCode());
         verify(parcoursRepository, never()).save(any());
@@ -169,7 +168,7 @@ class ParcoursConteServiceTest {
         conte.setStatut(StatutConte.refuse);
         when(parcoursRepository.findByConteDanseId(conteId)).thenReturn(Optional.empty());
 
-        parcoursConteService.enregistrerEtape(conteId, "ecriture", Map.of("steps", List.of()), jwt);
+        parcoursConteService.enregistrerEtape(conteId, new EcritureParcours(Map.of()), jwt);
 
         verify(parcoursRepository).save(any());
     }

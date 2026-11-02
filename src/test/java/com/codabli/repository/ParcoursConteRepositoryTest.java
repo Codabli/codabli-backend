@@ -1,10 +1,17 @@
 package com.codabli.repository;
 
+import com.codabli.dto.parcours.CarteUnivers;
+import com.codabli.dto.parcours.DanseScene;
+import com.codabli.dto.parcours.MiseEnSceneParcours;
+import com.codabli.dto.parcours.MomentScene;
+import com.codabli.dto.parcours.PersonnageScene;
+import com.codabli.dto.parcours.PlacementScene;
+import com.codabli.dto.parcours.SceneMiseEnScene;
+import com.codabli.dto.parcours.UniversParcours;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.ParcoursConte;
 import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.EspaceRepresentation;
-import com.codabli.entity.enums.EtapeParcours;
 import com.codabli.entity.enums.RoleUtilisateur;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -47,9 +54,17 @@ class ParcoursConteRepositoryTest {
         parcours.setRegion("Bretagne");
         parcours.setEspaceRepresentation(EspaceRepresentation.gymnase);
         parcours.setIngredientsSecrets(List.of("dragons", "châteaux forts"));
-        parcours.setEtape(EtapeParcours.univers, Map.of(
-                "places", List.of(Map.of("id", "p1", "name", "La forêt")),
-                "characters", List.of()));
+        UniversParcours univers = new UniversParcours(
+                List.of(new CarteUnivers("p1", "La forêt", "", null)), List.of(), List.of(), List.of());
+        parcours.setUnivers(univers);
+        MiseEnSceneParcours miseEnScene = new MiseEnSceneParcours(Map.of("s1", new SceneMiseEnScene(
+                List.of(new PersonnageScene("c1", PersonnageScene.Entree.enters, "au lever du jour",
+                        PersonnageScene.Sortie.stays, null)),
+                "La rencontre", List.of("un arbre"),
+                List.of(new DanseScene("d1", "ronde", "La ronde", MomentScene.middle, DanseScene.Style.traditional,
+                        List.of(new PlacementScene(PlacementScene.TypeElement.character, "c1", 40.0, 60.0)), null)),
+                null)));
+        parcours.setMiseEnScene(miseEnScene);
         repository.saveAndFlush(parcours);
         entityManager.clear();
 
@@ -58,8 +73,8 @@ class ParcoursConteRepositoryTest {
         assertEquals("Bretagne", relu.getRegion());
         assertEquals(EspaceRepresentation.gymnase, relu.getEspaceRepresentation());
         assertEquals(List.of("dragons", "châteaux forts"), relu.getIngredientsSecrets());
-        assertEquals(List.of(Map.of("id", "p1", "name", "La forêt")), relu.getUnivers().get("places"));
-        assertTrue(((List<?>) relu.getUnivers().get("characters")).isEmpty());
+        assertEquals(univers, relu.getUnivers());
+        assertEquals(miseEnScene, relu.getMiseEnScene());
         assertNull(relu.getTrame());
         assertNotNull(relu.getDateCreation());
         assertNotNull(relu.getDateModification());

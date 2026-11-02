@@ -2,10 +2,10 @@ package com.codabli.service;
 
 import com.codabli.dto.ParcoursConteResponse;
 import com.codabli.dto.ParcoursContexteRequest;
+import com.codabli.dto.parcours.ContenuEtapeParcours;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.ParcoursConte;
 import com.codabli.entity.Utilisateur;
-import com.codabli.entity.enums.EtapeParcours;
 import com.codabli.entity.enums.StatutConte;
 import com.codabli.exception.BusinessException;
 import com.codabli.exception.ErrorCode;
@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -62,11 +61,9 @@ public class ParcoursConteService {
         return toResponse(parcoursRepository.save(parcours));
     }
 
-    public ParcoursConteResponse enregistrerEtape(UUID conteDanseId, String chemin, Map<String, Object> contenu,
-                                                  Jwt jwt) {
-        EtapeParcours etape = EtapeParcours.depuisChemin(chemin);
+    public ParcoursConteResponse enregistrerEtape(UUID conteDanseId, ContenuEtapeParcours contenu, Jwt jwt) {
         ParcoursConte parcours = parcoursModifiable(conteDanseId, jwt);
-        parcours.setEtape(etape, contenu);
+        parcours.setEtape(contenu);
         return toResponse(parcoursRepository.save(parcours));
     }
 

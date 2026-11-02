@@ -15,6 +15,8 @@ spring:
     properties:
       hibernate:
         default_schema: codabli_test
+        type:
+          json_format_mapper: com.codabli.config.LectureJsonTolerante
     open-in-view: false
   liquibase:
     enabled: true

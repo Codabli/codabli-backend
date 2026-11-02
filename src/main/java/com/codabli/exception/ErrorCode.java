@@ -7,7 +7,7 @@ public enum ErrorCode {
     ILLEGAL_ARGUMENT("error.illegal.argument", HttpStatus.BAD_REQUEST),
     INVALID_MEDIA("error.invalid.media", HttpStatus.BAD_REQUEST),
     TITRE_CONTE_OBLIGATOIRE("error.conte-danse.titre-obligatoire", HttpStatus.BAD_REQUEST),
-    ETAPE_PARCOURS_INCONNUE("error.parcours.etape-inconnue", HttpStatus.BAD_REQUEST),
+    REQUETE_ILLISIBLE("error.request.unreadable", HttpStatus.BAD_REQUEST),
 
     //errors 403
     ACCESS_DENIED("error.access-denied",HttpStatus.FORBIDDEN),
