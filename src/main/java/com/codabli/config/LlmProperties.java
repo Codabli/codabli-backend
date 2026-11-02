@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.core.io.Resource;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
@@ -22,7 +23,7 @@ import java.time.Duration;
  * @param baseUrl        base URL de l'API compatible OpenAI (OVH AI Endpoints)
  * @param apiKey         cle API (injectee via variable d'environnement)
  * @param model          modele par defaut (surcharged par requete si besoin)
- * @param systemPrompt   prompt systeme ajoute en premiere position a chaque requete
+ * @param systemPrompt   ressource du prompt systeme ajoute en premiere position a chaque requete
  * @param temperature    temperature par defaut
  * @param maxTokens      plafond de tokens de sortie par defaut
  * @param timeout        timeout explicite par appel (pas de retry silencieux)
@@ -34,7 +35,7 @@ public record LlmProperties(
         @NotBlank String baseUrl,
         @NotBlank String apiKey,
         @NotBlank String model,
-        @NotBlank String systemPrompt,
+        @NotNull Resource systemPrompt,
         @NotNull Double temperature,
         @NotNull @Positive Integer maxTokens,
         @NotNull Duration timeout,

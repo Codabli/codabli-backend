@@ -5,12 +5,14 @@ import java.util.List;
 import java.util.UUID;
 
 import com.codabli.dto.AssistantIaRequest;
+import com.codabli.dto.AssistantCreationUniversRequest;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
 import com.codabli.dto.MessageIaDto;
 import com.codabli.entity.enums.RoleMessage;
 import com.codabli.exception.BusinessException;
 import com.codabli.exception.ErrorCode;
+import com.codabli.service.AssistantCreationUniversService;
 import com.codabli.service.AssistantIaService;
 import com.codabli.service.LlmClient;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -51,6 +54,9 @@ class AssistantIaControllerTest {
 
     @MockitoBean
     private AssistantIaService assistantIaService;
+
+    @MockitoBean
+    private AssistantCreationUniversService assistantCreationUniversService;
 
     @MockitoBean
     private LlmClient llmClient;
@@ -131,6 +137,63 @@ class AssistantIaControllerTest {
         mockMvc.perform(asyncDispatch(asyncResult))
                 .andExpect(status().isOk());
         verify(assistantIaService).streamerConversation(eq(conversation), any());
+    }
+
+    @Test
+    @WithMockUser
+    void assistantCreationUnivers_shouldStartSseRoute() throws Exception {
+        UUID conteDanseId = UUID.randomUUID();
+        AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
+                AssistantCreationUniversRequest.Type.Objet, "Une boussole magique");
+        when(assistantCreationUniversService.streamerCreationUnivers(eq(request), any()))
+                .thenAnswer(invocation -> {
+                    invocation.<java.util.function.Consumer<String>>getArgument(1).accept("Que permet-elle ?");
+                    return LlmResponse.ok("Que permet-elle ?", "", "stop", null, null);
+                });
+
+        MvcResult asyncResult = mockMvc.perform(
+                        post("/api/ia/contes-danses/{id}/assistant-creation-univers", conteDanseId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        mockMvc.perform(asyncDispatch(asyncResult))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Que permet-elle ?")));
+        verify(assistantCreationUniversService).streamerCreationUnivers(eq(request), any());
+    }
+
+    @Test
+    @WithMockUser
+    void assistantCreationUnivers_withBlankDescription_shouldReturnBadRequest() throws Exception {
+        UUID conteDanseId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/ia/contes-danses/{id}/assistant-creation-univers", conteDanseId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"Lieu","description":"  "}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(request().asyncNotStarted());
+
+        verifyNoInteractions(assistantCreationUniversService);
+    }
+
+    @Test
+    @WithMockUser
+    void assistantCreationUnivers_withUnknownType_shouldReturnBadRequest() throws Exception {
+        UUID conteDanseId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/ia/contes-danses/{id}/assistant-creation-univers", conteDanseId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"type":"Creature","description":"Une description"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(request().asyncNotStarted());
+
+        verifyNoInteractions(assistantCreationUniversService);
     }
 
     @Test

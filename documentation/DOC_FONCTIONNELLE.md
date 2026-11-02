@@ -2,6 +2,53 @@
 
 Ce guide décrit en détail le fonctionnement métier, les flux d'exécution techniques et les interactions entre les différents modules du backend **Codabli**.
 
+## Assistant IA — aide à la création d'univers
+
+La route authentifiée `POST /api/ia/contes-danses/{conteDanseId}/assistant-creation-univers`
+analyse une description et renvoie des événements SSE nommés `token`. Le corps JSON attend
+un `type` (`Lieu`, `Personnage`, `Epoque` ou `Objet`) et une `description` non vide.
+
+```json
+{
+  "type": "Objet",
+  "description": "Une boussole magique qui réagit à la musique."
+}
+```
+
+Le backend guide l'utilisateur par quelques questions et pistes de réflexion, sans rédiger
+la description à sa place. Le prompt système associe un socle commun à une spécialisation
+selon le type. Dans cette première version, `conteDanseId` est reçu dans l'URL mais les
+informations du conte et son historique ne sont pas consultés.
+
+---
+
+## Assistant IA — aide à la rédaction
+
+La route authentifiée `POST /api/ia/contes-danses/{conteDanseId}/assistant-stream`
+permet de poursuivre une conversation de rédaction liée à un Conte Dansé. Elle est
+accessible à l'auteur du conte ainsi qu'aux utilisateurs ayant le rôle
+`admin`, `super_admin` ou `moderateur`. Le conte doit ne pas être publié.
+
+Le corps JSON contient uniquement le nouveau message de l'utilisateur (`contenu`,
+obligatoire et non vide) et, facultativement, la `temperature` de génération :
+
+```json
+{
+  "contenu": "Peux-tu m'aider à rendre la rencontre entre les deux personnages plus vivante ?",
+  "temperature": 0.7
+}
+```
+
+Le transcript n'est pas envoyé par le client : le backend charge l'historique
+persisté du conte et l'utilise comme contexte, puis ajoute le nouveau message.
+Les données personnelles sont anonymisées avant d'être transmises au modèle.
+La réponse est diffusée au fur et à mesure sous forme d'événements SSE nommés
+`token`, dont les données contiennent les fragments de texte.
+
+Lorsque la génération aboutit normalement, le nouveau message et la réponse de
+l'assistant sont enregistrés dans l'historique pour les échanges suivants. Une
+réponse de repli liée à une indisponibilité du modèle n'est pas enregistrée.
+
 ---
 
 ## 🔐 1. Authentification, Synchronisation & Rôles

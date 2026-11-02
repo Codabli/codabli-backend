@@ -1,9 +1,11 @@
 package com.codabli.controller;
 
 import com.codabli.dto.AssistantIaRequest;
+import com.codabli.dto.AssistantCreationUniversRequest;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
 import com.codabli.dto.MessageIaDto;
+import com.codabli.service.AssistantCreationUniversService;
 import com.codabli.service.AssistantIaService;
 import com.codabli.service.LlmClient;
 import jakarta.validation.Valid;
@@ -42,13 +44,16 @@ public class AssistantIaController {
 
     private final LlmClient llmClient;
     private final AssistantIaService assistantIaService;
+    private final AssistantCreationUniversService assistantCreationUniversService;
     private final ExecutorService llmExecutor;
 
     public AssistantIaController(LlmClient llmClient,
                                  AssistantIaService assistantIaService,
+                                 AssistantCreationUniversService assistantCreationUniversService,
                                  ExecutorService llmExecutor) {
         this.llmClient = llmClient;
         this.assistantIaService = assistantIaService;
+        this.assistantCreationUniversService = assistantCreationUniversService;
         this.llmExecutor = llmExecutor;
     }
 
@@ -95,6 +100,19 @@ public class AssistantIaController {
         AssistantIaService.ConversationPreparee conversation =
                 assistantIaService.preparerConversation(conteDanseId, request, jwt);
         return streamer(onToken -> assistantIaService.streamerConversation(conversation, onToken));
+    }
+
+    /**
+     * POST /api/ia/contes-danses/{conteDanseId}/assistant-creation-univers —
+     * accompagne la description d'un lieu, personnage, époque ou objet via SSE.
+     */
+    @PostMapping(value = "/api/ia/contes-danses/{conteDanseId}/assistant-creation-univers",
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public SseEmitter assistantCreationUnivers(
+            @PathVariable UUID conteDanseId,
+            @Valid @RequestBody AssistantCreationUniversRequest request) {
+        return streamer(onToken -> assistantCreationUniversService.streamerCreationUnivers(request, onToken));
     }
 
     private SseEmitter streamer(Consumer<Consumer<String>> streamOperation) {

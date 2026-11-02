@@ -17,9 +17,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -40,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -69,8 +73,8 @@ class OvhOpenAiClientTest {
         server.start();
 
         String baseUrl = "http://localhost:" + server.getAddress().getPort() + "/v1";
-        LlmProperties props = new LlmProperties(baseUrl, "cle-test", "modele-test", SYSTEM_PROMPT, 0.3, 256,
-                Duration.ofSeconds(5), STANDBY);
+        LlmProperties props = new LlmProperties(baseUrl, "cle-test", "modele-test", promptResource(SYSTEM_PROMPT),
+                0.3, 256, Duration.ofSeconds(5), STANDBY);
 
         client = new OvhOpenAiClient(HttpClient.newHttpClient(), props);
 
@@ -103,6 +107,48 @@ class OvhOpenAiClientTest {
     }
 
     @Test
+    void client_charge_le_prompt_depuis_une_ressource_classpath() throws Exception {
+        repondreSse(List.of("data: [DONE]"));
+        ClassPathResource promptResource = new ClassPathResource("prompts/assistant-ia/system-prompt.txt");
+        String contenuPrompt;
+        try (InputStream input = promptResource.getInputStream()) {
+            contenuPrompt = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        String baseUrl = "http://localhost:" + server.getAddress().getPort() + "/v1";
+        LlmProperties properties = new LlmProperties(baseUrl, "cle-test", "modele-test", promptResource, 0.3, 256,
+                Duration.ofSeconds(5), STANDBY);
+        OvhOpenAiClient clientAvecPromptFichier = new OvhOpenAiClient(HttpClient.newHttpClient(), properties);
+
+        LlmResponse response = clientAvecPromptFichier.stream(LlmRequest.of(PROMPT_SECRET), ignored -> {
+        });
+
+        assertThat(response.degrade()).isFalse();
+        JsonNode messages = new ObjectMapper().readTree(lastRequestBody.get()).path("messages");
+        assertThat(messages.get(0).path("content").asText()).isEqualTo(contenuPrompt);
+    }
+
+    @Test
+    void client_refuse_une_ressource_de_prompt_absente() {
+        LlmProperties properties = new LlmProperties("https://ovh.example/v1", "cle-test", "modele-test",
+                new ClassPathResource("prompts/assistant-ia/introuvable.txt"), 0.3, 256, Duration.ofSeconds(5),
+                STANDBY);
+
+        assertThatThrownBy(() -> new OvhOpenAiClient(HttpClient.newHttpClient(), properties))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Impossible de charger la ressource du prompt systeme");
+    }
+
+    @Test
+    void client_refuse_une_ressource_de_prompt_vide() {
+        LlmProperties properties = new LlmProperties("https://ovh.example/v1", "cle-test", "modele-test",
+                promptResource("  "), 0.3, 256, Duration.ofSeconds(5), STANDBY);
+
+        assertThatThrownBy(() -> new OvhOpenAiClient(HttpClient.newHttpClient(), properties))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("La ressource du prompt systeme est vide");
+    }
+
+    @Test
     void complete_renvoie_le_standby_quand_le_llm_echoue() {
         repondre(500, "erreur interne cote fournisseur");
 
@@ -124,6 +170,35 @@ class OvhOpenAiClientTest {
         assertThat(response.degrade()).isFalse();
         assertThat(response.texte()).isEqualTo("Bonjour petit");
         assertSystemPromptFirst();
+    }
+
+    @Test
+    void stream_utilise_le_prompt_systeme_specifique_sans_modifier_le_prompt_par_defaut() {
+        repondreSse(List.of("data: [DONE]"));
+        String promptSpecifique = "Socle commun\n\nSpecialisation lieu";
+
+        LlmResponse response = client.stream(LlmRequest.of(PROMPT_SECRET), promptSpecifique, ignored -> {
+        });
+
+        assertThat(response.degrade()).isFalse();
+        try {
+            JsonNode messages = new ObjectMapper().readTree(lastRequestBody.get()).path("messages");
+            assertThat(messages.get(0).path("role").asText()).isEqualTo("system");
+            assertThat(messages.get(0).path("content").asText()).isEqualTo(promptSpecifique);
+            assertThat(messages.get(1).path("role").asText()).isEqualTo("user");
+            assertThat(messages.get(1).path("content").asText()).isEqualTo(PROMPT_SECRET);
+        } catch (Exception e) {
+            throw new AssertionError("La requete LLM doit contenir un tableau de messages valide", e);
+        }
+    }
+
+    @Test
+    void stream_refuse_un_prompt_systeme_specifique_vide() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                        () -> client.stream(LlmRequest.of(PROMPT_SECRET), "  ", ignored -> {
+                        }))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Le prompt systeme est obligatoire");
     }
 
     @Test
@@ -151,7 +226,8 @@ class OvhOpenAiClientTest {
             }
         });
         LlmProperties shortTimeout = new LlmProperties("http://localhost:" + server.getAddress().getPort() + "/v1",
-                "cle-test", "modele-test", "system-prompt", 0.3, 256, Duration.ofSeconds(1), STANDBY);
+                "cle-test", "modele-test", promptResource("system-prompt"), 0.3, 256, Duration.ofSeconds(1),
+                STANDBY);
         OvhOpenAiClient timeoutClient = new OvhOpenAiClient(HttpClient.newHttpClient(), shortTimeout);
 
         List<String> fragments = new ArrayList<>();
@@ -330,8 +406,8 @@ class OvhOpenAiClientTest {
         doReturn(reponseHttp(responseBody)).when(mockedHttpClient).send(any(HttpRequest.class), any());
 
         OvhOpenAiClient unitClient = new OvhOpenAiClient(mockedHttpClient,
-                new LlmProperties("https://ovh.example/v1", "cle-test", "modele-test", SYSTEM_PROMPT, 0.3, 256,
-                        Duration.ofSeconds(5), STANDBY));
+                new LlmProperties("https://ovh.example/v1", "cle-test", "modele-test",
+                        promptResource(SYSTEM_PROMPT), 0.3, 256, Duration.ofSeconds(5), STANDBY));
         if (stream) {
             unitClient.stream(request, ignored -> {
             });
@@ -355,6 +431,10 @@ class OvhOpenAiClientTest {
         assertThat(sentMessages.get(1).path("role").asText()).isEqualTo(LlmMessage.ROLE_USER);
         assertThat(sentMessages.get(sentMessages.size() - 1).path("role").asText())
                 .isEqualTo(LlmMessage.ROLE_USER);
+    }
+
+    private static ByteArrayResource promptResource(String prompt) {
+        return new ByteArrayResource(prompt.getBytes(StandardCharsets.UTF_8));
     }
 
     private static HttpResponse<Object> reponseHttp(Object body) {

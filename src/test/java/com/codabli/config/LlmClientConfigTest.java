@@ -1,7 +1,9 @@
 package com.codabli.config;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ByteArrayResource;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -23,7 +25,8 @@ class LlmClientConfigTest {
     }
 
     private static LlmProperties properties(String baseUrl) {
-        return new LlmProperties(baseUrl, "test-key", "test-model", "system-promp", 0.3, 256, Duration.ofSeconds(5),
-                "standby");
+        return new LlmProperties(baseUrl, "test-key", "test-model",
+                new ByteArrayResource("system-prompt".getBytes(StandardCharsets.UTF_8)), 0.3, 256,
+                Duration.ofSeconds(5), "standby");
     }
 }

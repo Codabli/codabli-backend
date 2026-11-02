@@ -32,4 +32,14 @@ public interface LlmClient {
      * @param onToken consommateur appele pour chaque fragment de texte
      */
     LlmResponse stream(LlmRequest request, Consumer<String> onToken);
+
+    /**
+     * Appel en streaming avec un prompt systeme specifique a cette requete.
+     * Le prompt par defaut des appels existants reste inchange.
+     *
+     * @param request requete contenant les messages utilisateur
+     * @param systemPrompt prompt systeme interne au backend
+     * @param onToken consommateur appele pour chaque fragment de texte
+     */
+    LlmResponse stream(LlmRequest request, String systemPrompt, Consumer<String> onToken);
 }
