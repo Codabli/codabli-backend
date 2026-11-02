@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -54,6 +53,10 @@ public class ConducteurSpectacleService {
 
     /** Limite du rideau, en pourcentage de la profondeur : meme valeur que CURTAIN_LINE dans le front. */
     static final double LIGNE_RIDEAU = 80;
+
+    /** Couleurs des personnages sur le plateau, dans l'ordre de la scene : memes que CHARACTER_COLORS dans le front. */
+    private static final List<String> COULEURS_PERSONNAGES =
+            List.of("#1f7a55", "#4b4bc4", "#a3480a", "#a8326a", "#16679a", "#6342d4");
 
     // Texte de l'ecran 7 (editeur enrichi) : mise en forme simple et titres, sans image ni style.
     private static final Safelist TEXTE_AUTORISE = Safelist.basic()
@@ -159,9 +162,9 @@ public class ConducteurSpectacleService {
 
     private Danse danse(DanseScene danse, List<PersonnageScene> presents, List<String> decors,
                         Map<String, PersonnageUnivers> personnagesParId) {
-        Set<String> personnagesPresents = presents.stream()
+        List<String> personnagesPresents = presents.stream()
                 .map(PersonnageScene::characterId)
-                .collect(Collectors.toSet());
+                .toList();
         // Seuls les elements encore presents dans la scene figurent sur le plan
         List<PlacementScene> places = liste(danse.placements()).stream()
                 .filter(p -> p.kind() == PlacementScene.TypeElement.character
@@ -175,8 +178,11 @@ public class ConducteurSpectacleService {
             boolean estPersonnage = place.kind() == PlacementScene.TypeElement.character;
             String libelle = estPersonnage ? nom(personnagesParId.get(place.ref())) : place.ref();
             String repere = estPersonnage ? initiales(libelle) : String.valueOf(++numeroDecor);
+            String couleur = estPersonnage
+                    ? COULEURS_PERSONNAGES.get(personnagesPresents.indexOf(place.ref()) % COULEURS_PERSONNAGES.size())
+                    : null;
             plateau.add(new ElementPlateau(libelle, estPersonnage, place.x(), place.y(),
-                    zone(place.x(), place.y()), repere));
+                    zone(place.x(), place.y()), repere, couleur));
         }
 
         return new Danse(texte(danse.name()), moment(danse.moment()), style(danse.style()),

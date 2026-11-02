@@ -94,75 +94,160 @@
     .danse .details { margin-bottom: 2mm; }
     .danse .details span { margin-right: 6mm; }
 
-    table.placement, table.placement td { border: none; padding: 0; }
-    table.placement td.plan { width: 92mm; padding-right: 5mm; }
-
-    .reperes { font-size: 8pt; text-align: center; color: #333333; }
-
-    /* Plateau vu de dessus : fond de scene en haut, public en bas, jardin a gauche. */
-    .plateau {
-      position: relative;
-      width: 90mm;
-      height: 50mm;
-      border: 1pt solid #102b54;
-      background-color: #f4f4f4;
-      margin: 1mm 0;
+    /*
+     * Plateau vu de dessus, dessine comme l'espace scenique de l'ecran 8 (scene-stage du front) :
+     * coulisses en haut, cote jardin a gauche, rideau, avant-scene, rampe puis public.
+     * Aire de jeu au format 16/9 ; les positions sont en pourcentage, comme dans le front.
+     */
+    .theatre {
+      width: 140mm;
+      margin: 2mm auto 3mm;
+      padding: 2mm;
+      font-size: 6.5pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5pt;
+      color: #333333;
+      background-color: #f8f6fd;
     }
+
+    .coulisses, .aile, .rampe { border: 1pt solid #c9b7ff; }
+
+    .coulisses {
+      padding: 1mm;
+      text-align: center;
+      border-bottom: none;
+      background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAPklEQVR4Xn3LQREAMAyAMDxPXDVU1aoA+OZg5z+kMq0mNQXCFAhTIEyBMAXCFGjTalJTIEyBMAXCFAhTwO0AndJSeUjuo/AAAAAASUVORK5CYII=');
+    }
+
+    table.rangee { margin: 0; }
+    table.rangee td { padding: 0; border: none; }
+
+    .aile {
+      position: relative;
+      width: 7mm;
+      height: 70mm;
+      background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAAPklEQVR4Xn3LQREAMAyAMDxPXDVU1aoA+OZg5z+kMq0mNQXCFAhTIEyBMAXCFGjTalJTIEyBMAXCFAhTwO0AndJSeUjuo/AAAAAASUVORK5CYII=');
+    }
+
+    td.jardin .aile { border-right: none; }
+    td.cour .aile { border-left: none; }
+
+    /* Libelle vertical, lu de bas en haut comme dans le front. */
+    .aile span {
+      position: absolute;
+      width: 70mm;
+      height: 7mm;
+      left: -31.5mm;
+      top: 31.5mm;
+      line-height: 7mm;
+      text-align: center;
+      transform: rotate(-90deg);
+    }
+
+    .aire {
+      position: relative;
+      width: 124mm;
+      height: 70mm;
+      background-color: #ffffff;
+    }
+
+    .fond, .pendrillon, .rideau, .avant-scene { position: absolute; }
+
+    .fond {
+      top: 6%;
+      left: 12%;
+      right: 12%;
+      padding-top: 0.8mm;
+      text-align: center;
+      border-top: 2pt solid #d9776b;
+    }
+
+    .pendrillon { width: 9%; border-top: 2pt solid #d9776b; }
+    .pendrillon.gauche { left: 1%; transform: rotate(-35deg); }
+    .pendrillon.droite { right: 1%; transform: rotate(35deg); }
+    .pendrillon.haut { top: 30%; }
+    .pendrillon.bas { top: 52%; }
 
     .rideau {
-      position: absolute;
       left: 0;
       right: 0;
-      border-top: 1.25pt dashed #102b54;
+      padding: 0.5mm 1.5mm 0;
+      text-align: right;
+      border-top: 1.5pt dashed #d9776b;
     }
 
-    .rideau span {
-      position: absolute;
-      right: 1mm;
-      top: -4mm;
-      font-size: 7pt;
+    .avant-scene { bottom: 0.8mm; left: 1.5mm; white-space: nowrap; }
+
+    .rampe {
+      padding: 0.6mm;
+      text-align: center;
+      border-top: none;
+      background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAECAYAAACzzX7wAAAAF0lEQVR4XmNgwAFulmcXgzC6OBxQTwEAs0kRcdnAe3gAAAAASUVORK5CYII=');
     }
 
-    .cote {
-      position: absolute;
-      top: 1mm;
-      font-size: 7pt;
-    }
+    .public { padding-top: 1.2mm; text-align: center; }
 
-    .cote.jardin { left: 1mm; }
-    .cote.cour { right: 1mm; }
-
-    .element {
+    /* Pastilles : personnage rond aux initiales, decor carre arrondi jaune et numerote. */
+    .pastille {
       position: absolute;
       width: 7mm;
       height: 7mm;
       margin-left: -3.5mm;
       margin-top: -3.5mm;
-      font-size: 7pt;
-      font-weight: bold;
+      font-size: 7.5pt;
+      letter-spacing: 0;
       line-height: 7mm;
       text-align: center;
-    }
-
-    .element.personnage {
-      border-radius: 3.5mm;
-      background-color: #102b54;
+      text-transform: none;
       color: #ffffff;
+      background-color: #5b0ebf;
+      border-radius: 3.5mm;
     }
 
-    .element.decor {
-      border: 1pt solid #102b54;
-      background-color: #ffffff;
+    .pastille.decor {
+      color: #102b54;
+      background-color: #fff699;
+      border: 0.75pt solid #102b54;
+      border-radius: 1.5mm;
+    }
+
+    .nom {
+      position: absolute;
+      width: 30mm;
+      margin-left: -15mm;
+      margin-top: 4.2mm;
+      font-size: 6pt;
+      letter-spacing: 0;
+      line-height: 1.1;
+      text-align: center;
+      text-transform: none;
       color: #102b54;
     }
 
     ul.liste-plateau { margin: 0; padding: 0; list-style: none; }
-    ul.liste-plateau li { margin-bottom: 1mm; }
+    ul.liste-plateau li { margin-bottom: 1.5mm; }
 
     .repere {
       display: inline-block;
-      min-width: 5mm;
+      width: 5mm;
+      height: 5mm;
+      margin-right: 1.5mm;
+      font-size: 6.5pt;
       font-weight: bold;
+      line-height: 5mm;
+      text-align: center;
+      vertical-align: middle;
+      color: #ffffff;
+      background-color: #5b0ebf;
+      border-radius: 2.5mm;
+    }
+
+    .repere.decor {
+      color: #102b54;
+      background-color: #fff699;
+      border: 0.75pt solid #102b54;
+      border-radius: 1mm;
     }
   </style>
 </head>
@@ -262,31 +347,48 @@
 
       <p><strong>Placement au début de la danse</strong></p>
       <p class="vide" th:if="${danse.plateau.isEmpty()}">Non renseigné</p>
-      <table class="placement" th:if="${!danse.plateau.isEmpty()}">
-        <tr>
-          <td class="plan">
-            <p class="reperes">Fond de scène</p>
-            <div class="plateau">
-              <span class="cote jardin">Jardin</span>
-              <span class="cote cour">Cour</span>
-              <div class="rideau" th:style="'top: ' + ${ligneRideau} + '%'"><span>Rideau</span></div>
-              <div th:each="element : ${danse.plateau}"
-                   th:class="'element ' + (${element.personnage} ? 'personnage' : 'decor')"
-                   th:style="'left: ' + ${element.x} + '%; top: ' + ${element.y} + '%'"
-                   th:text="${element.repere}">A</div>
-            </div>
-            <p class="reperes">Public</p>
-          </td>
-          <td>
-            <ul class="liste-plateau">
-              <li th:each="element : ${danse.plateau}">
-                <span class="repere" th:text="${element.repere}">A</span>
-                <span th:text="(${element.personnage} ? '' : 'Décor : ') + ${element.libelle} + ' : ' + ${element.zone}">Arthur : Milieu, côté jardin</span>
-              </li>
-            </ul>
-          </td>
-        </tr>
-      </table>
+      <th:block th:if="${!danse.plateau.isEmpty()}">
+        <div class="theatre">
+          <div class="coulisses">Coulisses</div>
+          <table class="rangee">
+            <tr>
+              <td class="jardin"><div class="aile"><span>Côté jardin</span></div></td>
+              <td>
+                <div class="aire">
+                  <div class="fond">Fond de scène</div>
+                  <div class="pendrillon gauche haut"></div>
+                  <div class="pendrillon gauche bas"></div>
+                  <div class="pendrillon droite haut"></div>
+                  <div class="pendrillon droite bas"></div>
+                  <div class="rideau" th:style="'top: ' + ${ligneRideau} + '%'">Rideau</div>
+                  <div class="avant-scene">Avant-scène</div>
+                  <th:block th:each="element : ${danse.plateau}">
+                    <div th:class="'pastille ' + (${element.personnage} ? 'personnage' : 'decor')"
+                         th:style="'left: ' + ${element.x} + '%; top: ' + ${element.y} + '%'
+                                   + (${element.couleur} != null ? '; background-color: ' + ${element.couleur} : '')"
+                         th:text="${element.repere}">A</div>
+                    <div class="nom"
+                         th:style="'left: ' + ${element.x} + '%; top: ' + ${element.y} + '%'"
+                         th:text="${element.libelle}">Arthur</div>
+                  </th:block>
+                </div>
+              </td>
+              <td class="cour"><div class="aile"><span>Côté cour</span></div></td>
+            </tr>
+          </table>
+          <div class="rampe">Rampe</div>
+          <div class="public">Public</div>
+        </div>
+
+        <ul class="liste-plateau">
+          <li th:each="element : ${danse.plateau}">
+            <span th:class="'repere ' + (${element.personnage} ? 'personnage' : 'decor')"
+                  th:style="${element.couleur} != null ? 'background-color: ' + ${element.couleur} : null"
+                  th:text="${element.repere}">A</span>
+            <span th:text="(${element.personnage} ? '' : 'Décor : ') + ${element.libelle} + ' : ' + ${element.zone}">Arthur : Milieu, côté jardin</span>
+          </li>
+        </ul>
+      </th:block>
     </div>
   </div>
 </body>

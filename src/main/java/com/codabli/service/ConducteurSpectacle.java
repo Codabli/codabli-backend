@@ -64,7 +64,9 @@ public record ConducteurSpectacle(
      * @param y     du fond de scene vers le public, en pourcentage
      * @param zone  une des 9 zones du plateau, ex. "Milieu, cote jardin"
      * @param repere initiales d'un personnage ou numero d'un decor, affiche sur le plan
+     * @param couleur couleur de la pastille d'un personnage, la meme que sur le plateau du front ; null pour un decor
      */
-    public record ElementPlateau(String libelle, boolean personnage, double x, double y, String zone, String repere) {
+    public record ElementPlateau(String libelle, boolean personnage, double x, double y, String zone, String repere,
+                                 String couleur) {
     }
 }

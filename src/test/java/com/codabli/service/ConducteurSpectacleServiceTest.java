@@ -111,9 +111,9 @@ class ConducteurSpectacleServiceTest {
         assertEquals("Début", danse.musiques().getFirst().moment());
         // "fantome" n'est plus dans l'univers et "une lance" n'est plus dans les decors de la scene
         assertEquals(List.of(
-                        new ElementPlateau("Arthur", true, 20.0, 50.0, "Milieu, côté jardin", "A"),
-                        new ElementPlateau("Merlin", true, 50.0, 90.0, "Avant-scène, au centre", "M"),
-                        new ElementPlateau("un arbre", false, 80.0, 10.0, "Fond, côté cour", "1")),
+                        new ElementPlateau("Arthur", true, 20.0, 50.0, "Milieu, côté jardin", "A", "#1f7a55"),
+                        new ElementPlateau("Merlin", true, 50.0, 90.0, "Avant-scène, au centre", "M", "#4b4bc4"),
+                        new ElementPlateau("un arbre", false, 80.0, 10.0, "Fond, côté cour", "1", null)),
                 danse.plateau());
     }
 
