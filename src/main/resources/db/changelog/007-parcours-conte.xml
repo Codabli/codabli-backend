@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- JSONB sous PostgreSQL ; JSON sous H2 (tests), qui ne connait pas JSONB. -->
+    <property name="type.json" value="JSONB" dbms="postgresql"/>
+    <property name="type.json" value="JSON" dbms="h2"/>
+
+    <!-- Parcours "Creer mon conte danse" : travail en cours d'un conte danse (1-1).
+         Contexte de l'ecran 1 en colonnes, etapes suivantes en JSON. -->
+    <changeSet id="parcours-conte-001" author="codabli">
+        <createTable tableName="parcours_conte">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="parcours_conte_pkey"/>
+            </column>
+            <column name="conte_danse_id" type="UUID">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_parcours_conte_conte"/>
+            </column>
+            <column name="region" type="VARCHAR(150)"/>
+            <column name="ville" type="VARCHAR(150)"/>
+            <column name="espace_representation" type="VARCHAR(32)"/>
+            <column name="ingredients_secrets" type="${type.json}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="decouverte" type="${type.json}"/>
+            <column name="ressources" type="${type.json}"/>
+            <column name="ressources_classe" type="${type.json}"/>
+            <column name="univers" type="${type.json}"/>
+            <column name="trame" type="${type.json}"/>
+            <column name="ecriture" type="${type.json}"/>
+            <column name="mise_en_scene" type="${type.json}"/>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_modification" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+                constraintName="fk_parcours_conte_conte"
+                baseTableName="parcours_conte" baseColumnNames="conte_danse_id"
+                referencedTableName="contes_danses" referencedColumnNames="id"
+                onDelete="CASCADE"/>
+        <rollback>
+            <dropTable tableName="parcours_conte"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

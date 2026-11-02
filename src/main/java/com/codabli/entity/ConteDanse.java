@@ -49,7 +49,8 @@ public class ConteDanse {
     @JoinColumn(name = "createur_id", nullable = false)
     private Utilisateur createur;
 
-    @Column(nullable = false, length = 255)
+    // Facultatif en brouillon, exige a la sortie du brouillon (ConteDanseService).
+    @Column(length = 255)
     private String titre;
 
     @Column(columnDefinition = "text")

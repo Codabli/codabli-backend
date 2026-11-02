@@ -89,6 +89,24 @@ Catalogue de contes disponibles sous forme textuelle, audio ou vidéo.
   * Consultation publique (paginée) des contes au statut `publie`.
   * Création ouverte à tout utilisateur authentifié.
   * Modification et suppression limitées à l'auteur du conte ou à l'administrateur.
+  * Le `titre` est facultatif tant que le conte est en `brouillon` ; il est exigé à la soumission, à la publication et à toute modification hors brouillon (`error.conte-danse.titre-obligatoire`, 400).
+
+#### Parcours « Créer mon conte dansé » (`/api/contes-danses/{id}/parcours`)
+
+Travail en cours de l'enseignant sur un conte en brouillon, enregistré étape par étape (epic SCRUM-29).
+* **Entité `ParcoursConte`** (table `parcours_conte`, 1-1 avec `contes_danses`, supprimée avec le conte) :
+  * Contexte de l'écran 1 en colonnes : `region`, `ville`, `espaceRepresentation` (`salle_spectacle`, `gymnase`, `classe`, `exterieur`), `ingredientsSecrets` (liste JSON). Pays, thématique et âges restent portés par `ConteDanse`.
+  * Une colonne JSON (`jsonb`) par étape : `decouverte`, `ressources`, `ressourcesClasse`, `univers`, `trame`, `ecriture`, `miseEnScene`. Leur contenu est typé par les records de `dto/parcours` (un par étape et par sous-objet), dont les champs reprennent les noms du JSON du front.
+* **Contrôles du contenu d'une étape** :
+  * Bean Validation : identifiants obligatoires, tailles maximales alignées sur le front, valeurs fixes en enums (type d'étape de la trame, style de danse, moment...), positions sur le plateau entre 0 et 100. Erreur : 400 avec `errors` par champ (ex. `scenes[s1].dances[0].id`).
+  * Un brouillon est incomplet par nature : les textes peuvent être vides. Les règles métier strictes iront à la soumission du conte, comme pour le titre.
+  * Champ inconnu, valeur hors liste ou JSON mal formé : `error.request.unreadable` (400). Le refus des champs inconnus ne vaut que pour `dto/parcours` (`JacksonConfig`) ; le reste de l'API les ignore toujours.
+  * À la lecture en base, un champ qui n'existe plus dans le modèle est ignoré (`LectureJsonTolerante`, `hibernate.type.json_format_mapper`) : une évolution du modèle ne rend pas illisibles les contes déjà enregistrés.
+* **Endpoints** (authentifié ; auteur du conte, admin ou modérateur) :
+  * `GET /api/contes-danses/{id}/parcours` : état complet (étapes jamais enregistrées à `null`).
+  * `PUT /api/contes-danses/{id}/parcours/contexte` : contexte de l'écran 1 (`region` obligatoire).
+  * `PUT /api/contes-danses/{id}/parcours/{decouverte|ressources|ressources-classe|univers|trame|ecriture|mise-en-scene}` : remplace le contenu d'une étape. Une étape inconnue n'a pas de route (404).
+  * Écriture possible seulement en `brouillon` ou `refuse` ; sinon `error.parcours.non-modifiable` (409).
 
 ---
 

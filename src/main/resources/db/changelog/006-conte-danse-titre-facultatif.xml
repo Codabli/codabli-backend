@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Parcours "Creer mon conte danse" : le conte est cree en brouillon des l'ecran 1,
+         avant d'avoir un titre. Le titre reste exige a la sortie du brouillon (service). -->
+    <changeSet id="conte-danse-titre-facultatif-001" author="codabli">
+        <dropNotNullConstraint tableName="contes_danses" columnName="titre" columnDataType="VARCHAR(255)"/>
+    </changeSet>
+</databaseChangeLog>

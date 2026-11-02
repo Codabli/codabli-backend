@@ -23,7 +23,7 @@ services:
     image: postgres:16-alpine
     container_name: codabli-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-codabli-dev}
+      POSTGRES_DB: ${POSTGRES_DB:-codabli_dev}
       POSTGRES_USER: ${POSTGRES_USER:-codabli}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codabli}
     # Le port 5432 de l'hôte est déjà occupé par un autre projet :
@@ -43,7 +43,7 @@ services:
     image: postgres:16-alpine
     environment:
       PGHOST: postgres
-      PGDATABASE: ${POSTGRES_DB:-codabli-dev}
+      PGDATABASE: ${POSTGRES_DB:-codabli_dev}
       PGUSER: ${POSTGRES_USER:-codabli}
       PGPASSWORD: ${POSTGRES_PASSWORD:-codabli}
       POSTGRES_SCHEMA: ${POSTGRES_SCHEMA:-codabli}
@@ -123,7 +123,7 @@ services:
       # pour rester cohérent avec les identifiants de PostgreSQL et Keycloak.
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-codabli}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-codabli}
-      POSTGRES_DB: ${POSTGRES_DB:-codabli-dev}
+      POSTGRES_DB: ${POSTGRES_DB:-codabli_dev}
       POSTGRES_SCHEMA: ${POSTGRES_SCHEMA:-codabli}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
       # Cle API du LLM souverain (EA-107) : transmise au conteneur depuis le .env.
