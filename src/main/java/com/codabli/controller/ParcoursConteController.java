@@ -10,8 +10,12 @@ import com.codabli.dto.parcours.RessourcesClasseParcours;
 import com.codabli.dto.parcours.RessourcesParcours;
 import com.codabli.dto.parcours.TrameParcours;
 import com.codabli.dto.parcours.UniversParcours;
+import com.codabli.service.ConducteurSpectacleService;
 import com.codabli.service.ParcoursConteService;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -34,6 +39,7 @@ import java.util.UUID;
  * - PUT /decouverte, /ressources, /ressources-classe, /univers, /trame,
  * /ecriture, /mise-en-scene : contenu d'une etape (dto.parcours), qui
  * remplace le precedent
+ * - GET /conducteur.pdf : conducteur du spectacle (ecran 8), en telechargement
  * <p>
  * Utilisateur authentifie ; verification auteur ou admin dans le service.
  */
@@ -43,9 +49,12 @@ import java.util.UUID;
 public class ParcoursConteController {
 
     private final ParcoursConteService parcoursConteService;
+    private final ConducteurSpectacleService conducteurSpectacleService;
 
-    public ParcoursConteController(ParcoursConteService parcoursConteService) {
+    public ParcoursConteController(ParcoursConteService parcoursConteService,
+                                   ConducteurSpectacleService conducteurSpectacleService) {
         this.parcoursConteService = parcoursConteService;
+        this.conducteurSpectacleService = conducteurSpectacleService;
     }
 
     @GetMapping
@@ -53,6 +62,20 @@ public class ParcoursConteController {
             @PathVariable UUID conteDanseId,
             @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(parcoursConteService.lire(conteDanseId, jwt));
+    }
+
+    @GetMapping(value = "/conducteur.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> telechargerConducteur(
+            @PathVariable UUID conteDanseId,
+            @AuthenticationPrincipal Jwt jwt) {
+        ConducteurSpectacleService.ConducteurPdf pdf = conducteurSpectacleService.genererPdf(conteDanseId, jwt);
+        ContentDisposition piece = ContentDisposition.attachment()
+                .filename(pdf.nomFichier(), StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, piece.toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf.contenu());
     }
 
     @PutMapping("/contexte")

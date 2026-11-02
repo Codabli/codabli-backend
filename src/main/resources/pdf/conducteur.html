@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="'Conducteur du spectacle - ' + (${conducteur.titre} ?: 'Conte sans titre')">Conducteur du spectacle</title>
+  <meta name="subject" content="Conducteur du spectacle"/>
+  <meta name="author" content="Codabli"/>
+  <style>
+    /* Charte Codabli. Lisible imprime en noir et blanc : aucune information portee par la seule couleur. */
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm 16mm;
+      @bottom-left {
+        content: element(pied);
+      }
+      @bottom-right {
+        content: "Page " counter(page) " / " counter(pages);
+        font-family: 'Lato';
+        font-size: 8pt;
+        color: #333333;
+      }
+    }
+
+    body {
+      font-family: 'Lato';
+      font-size: 10pt;
+      line-height: 1.4;
+      color: #102b54;
+    }
+
+    #pied {
+      position: running(pied);
+      font-size: 8pt;
+      color: #333333;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Baloo 2';
+      font-weight: normal;
+      line-height: 1.15;
+      margin: 0;
+    }
+
+    h1 { font-size: 30pt; margin-bottom: 4mm; }
+    h2 { font-size: 20pt; margin-bottom: 3mm; }
+    h3 { font-size: 13pt; margin: 6mm 0 2mm; padding-bottom: 1mm; border-bottom: 1.5pt solid #5b0ebf; page-break-after: avoid; }
+    h4 { font-size: 12pt; margin-bottom: 2mm; }
+
+    p { margin: 0 0 2mm; }
+
+    .surtitre {
+      font-size: 11pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1pt;
+      color: #5b0ebf;
+      margin-bottom: 2mm;
+    }
+
+    .bandeau {
+      background-color: #fff699;
+      border-left: 4pt solid #102b54;
+      padding: 6mm 6mm 4mm;
+      margin-bottom: 8mm;
+    }
+
+    .vide { font-style: italic; color: #333333; }
+
+    table { width: 100%; border-collapse: collapse; margin-bottom: 2mm; }
+    th, td { text-align: left; vertical-align: top; padding: 1.5mm 2mm; border: 0.75pt solid #9a9a9a; }
+    th { background-color: #a6f5d8; font-weight: bold; }
+
+    table.infos th { width: 45mm; }
+
+    .scene { page-break-before: always; }
+
+    .resume { font-style: italic; }
+
+    .texte { border-left: 2pt solid #c9b7ff; padding-left: 3mm; }
+    .texte h1, .texte h2, .texte h3, .texte h4 {
+      font-size: 11pt;
+      border: none;
+      margin: 2mm 0 1mm;
+      padding: 0;
+    }
+
+    .danse {
+      page-break-inside: avoid;
+      border: 0.75pt solid #9a9a9a;
+      padding: 3mm 4mm;
+      margin-bottom: 4mm;
+    }
+
+    .danse .details { margin-bottom: 2mm; }
+    .danse .details span { margin-right: 6mm; }
+
+    table.placement, table.placement td { border: none; padding: 0; }
+    table.placement td.plan { width: 92mm; padding-right: 5mm; }
+
+    .reperes { font-size: 8pt; text-align: center; color: #333333; }
+
+    /* Plateau vu de dessus : fond de scene en haut, public en bas, jardin a gauche. */
+    .plateau {
+      position: relative;
+      width: 90mm;
+      height: 50mm;
+      border: 1pt solid #102b54;
+      background-color: #f4f4f4;
+      margin: 1mm 0;
+    }
+
+    .rideau {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-top: 1.25pt dashed #102b54;
+    }
+
+    .rideau span {
+      position: absolute;
+      right: 1mm;
+      top: -4mm;
+      font-size: 7pt;
+    }
+
+    .cote {
+      position: absolute;
+      top: 1mm;
+      font-size: 7pt;
+    }
+
+    .cote.jardin { left: 1mm; }
+    .cote.cour { right: 1mm; }
+
+    .element {
+      position: absolute;
+      width: 7mm;
+      height: 7mm;
+      margin-left: -3.5mm;
+      margin-top: -3.5mm;
+      font-size: 7pt;
+      font-weight: bold;
+      line-height: 7mm;
+      text-align: center;
+    }
+
+    .element.personnage {
+      border-radius: 3.5mm;
+      background-color: #102b54;
+      color: #ffffff;
+    }
+
+    .element.decor {
+      border: 1pt solid #102b54;
+      background-color: #ffffff;
+      color: #102b54;
+    }
+
+    ul.liste-plateau { margin: 0; padding: 0; list-style: none; }
+    ul.liste-plateau li { margin-bottom: 1mm; }
+
+    .repere {
+      display: inline-block;
+      min-width: 5mm;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="pied" th:text="'Conducteur du spectacle - ' + (${conducteur.titre} ?: 'Conte sans titre')">Pied de page</div>
+
+  <!-- Page de garde -->
+  <div class="bandeau">
+    <p class="surtitre">Conducteur du spectacle</p>
+    <h1 th:text="${conducteur.titre} ?: 'Conte sans titre'">Titre du conte</h1>
+  </div>
+
+  <table class="infos">
+    <tr><th scope="row">Thème</th><td th:text="${conducteur.theme} ?: 'Non renseigné'">Thème</td></tr>
+    <tr><th scope="row">Âge des acteurs</th><td th:text="${conducteur.ages} ?: 'Non renseigné'">Âge</td></tr>
+    <tr><th scope="row">Lieu</th><td th:text="${conducteur.lieu} ?: 'Non renseigné'">Lieu</td></tr>
+    <tr><th scope="row">Espace de représentation</th><td th:text="${conducteur.espace} ?: 'Non renseigné'">Espace</td></tr>
+    <tr><th scope="row">Date d'édition</th><td th:text="${conducteur.dateEdition}">Date</td></tr>
+  </table>
+
+  <h3>Distribution</h3>
+  <table th:if="${!conducteur.distribution.isEmpty()}">
+    <thead><tr><th scope="col">Personnage</th><th scope="col">Rôle</th></tr></thead>
+    <tbody>
+      <tr th:each="personnage : ${conducteur.distribution}">
+        <td th:text="${personnage.nom} ?: 'Personnage sans nom'">Nom</td>
+        <td th:text="${personnage.role} ?: 'Non renseigné'">Rôle</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="vide" th:if="${conducteur.distribution.isEmpty()}">Aucun personnage dans l'univers du conte.</p>
+
+  <h3>Scènes</h3>
+  <ol th:if="${!conducteur.scenes.isEmpty()}">
+    <li th:each="scene : ${conducteur.scenes}" th:text="${scene.titre} ?: 'Scène sans titre'">Scène</li>
+  </ol>
+  <p class="vide" th:if="${conducteur.scenes.isEmpty()}">La trame du récit n'est pas encore renseignée.</p>
+
+  <!-- Une page par scene -->
+  <div class="scene" th:each="scene : ${conducteur.scenes}">
+    <p class="surtitre" th:text="'Scène ' + ${scene.numero}">Scène 1</p>
+    <h2 th:text="${scene.titre} ?: 'Scène sans titre'">Titre de la scène</h2>
+    <p class="resume" th:text="${scene.resume} ?: 'Résumé non renseigné'">Résumé</p>
+
+    <h3>Texte de la scène</h3>
+    <div class="texte" th:if="${scene.texteHtml != null}" th:utext="${scene.texteHtml}">Texte</div>
+    <p class="vide" th:if="${scene.texteHtml == null}">Non renseigné</p>
+
+    <h3>Sur scène</h3>
+    <table th:if="${!scene.presences.isEmpty()}">
+      <thead><tr><th scope="col">Personnage</th><th scope="col">Entrée</th><th scope="col">Sortie</th></tr></thead>
+      <tbody>
+        <tr th:each="presence : ${scene.presences}">
+          <td th:text="${presence.personnage}">Personnage</td>
+          <td th:text="${presence.entree}">Entrée</td>
+          <td th:text="${presence.sortie}">Sortie</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="vide" th:if="${scene.presences.isEmpty()}">Non renseigné</p>
+
+    <h3>Intention théâtrale</h3>
+    <p th:if="${scene.intention != null}" th:text="${scene.intention}">Intention</p>
+    <p class="vide" th:if="${scene.intention == null}">Non renseigné</p>
+
+    <h3>Décors et accessoires</h3>
+    <p th:if="${!scene.decors.isEmpty()}" th:text="${#strings.listJoin(scene.decors, ', ')}">Décors</p>
+    <p class="vide" th:if="${scene.decors.isEmpty()}">Non renseigné</p>
+
+    <h3>Bruitages et ambiance</h3>
+    <table th:if="${!scene.sons.isEmpty()}">
+      <thead><tr><th scope="col">Titre</th><th scope="col">Type</th><th scope="col">Moment</th></tr></thead>
+      <tbody>
+        <tr th:each="son : ${scene.sons}">
+          <td th:text="${son.titre} ?: 'Son sans titre'">Titre</td>
+          <td th:text="${son.type}">Type</td>
+          <td th:text="${son.moment}">Moment</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="vide" th:if="${scene.sons.isEmpty()}">Non renseigné</p>
+
+    <h3>Danses</h3>
+    <p class="vide" th:if="${scene.danses.isEmpty()}">Aucune danse dans cette scène.</p>
+    <div class="danse" th:each="danse : ${scene.danses}">
+      <h4 th:text="${danse.nom} ?: 'Danse sans nom'">Nom de la danse</h4>
+      <p class="details">
+        <span><strong>Moment :</strong> <span th:text="${danse.moment}">Moment</span></span>
+        <span><strong>Typologie :</strong> <span th:text="${danse.style}">Style</span></span>
+      </p>
+      <p>
+        <strong>Musique :</strong>
+        <span th:if="${danse.musiques.isEmpty()}" class="vide">Non renseigné</span>
+        <span th:each="son, etat : ${danse.musiques}"
+              th:text="(${son.titre} ?: 'Son sans titre') + ' (' + ${son.type} + ', ' + ${son.moment} + ')' + (${etat.last} ? '' : ' ; ')">Musique</span>
+      </p>
+
+      <p><strong>Placement au début de la danse</strong></p>
+      <p class="vide" th:if="${danse.plateau.isEmpty()}">Non renseigné</p>
+      <table class="placement" th:if="${!danse.plateau.isEmpty()}">
+        <tr>
+          <td class="plan">
+            <p class="reperes">Fond de scène</p>
+            <div class="plateau">
+              <span class="cote jardin">Jardin</span>
+              <span class="cote cour">Cour</span>
+              <div class="rideau" th:style="'top: ' + ${ligneRideau} + '%'"><span>Rideau</span></div>
+              <div th:each="element : ${danse.plateau}"
+                   th:class="'element ' + (${element.personnage} ? 'personnage' : 'decor')"
+                   th:style="'left: ' + ${element.x} + '%; top: ' + ${element.y} + '%'"
+                   th:text="${element.repere}">A</div>
+            </div>
+            <p class="reperes">Public</p>
+          </td>
+          <td>
+            <ul class="liste-plateau">
+              <li th:each="element : ${danse.plateau}">
+                <span class="repere" th:text="${element.repere}">A</span>
+                <span th:text="(${element.personnage} ? '' : 'Décor : ') + ${element.libelle} + ' : ' + ${element.zone}">Arthur : Milieu, côté jardin</span>
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

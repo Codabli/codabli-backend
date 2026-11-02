@@ -107,6 +107,12 @@ Travail en cours de l'enseignant sur un conte en brouillon, enregistré étape p
   * `PUT /api/contes-danses/{id}/parcours/contexte` : contexte de l'écran 1 (`region` obligatoire).
   * `PUT /api/contes-danses/{id}/parcours/{decouverte|ressources|ressources-classe|univers|trame|ecriture|mise-en-scene}` : remplace le contenu d'une étape. Une étape inconnue n'a pas de route (404).
   * Écriture possible seulement en `brouillon` ou `refuse` ; sinon `error.parcours.non-modifiable` (409).
+  * `GET /api/contes-danses/{id}/parcours/conducteur.pdf` : conducteur du spectacle (écran 8), en téléchargement (`Content-Disposition: attachment`, `conducteur-<titre>.pdf`). Mêmes droits que la lecture du parcours.
+* **Conducteur du spectacle** (`ConducteurSpectacleService`, `ConducteurPdfGenerator`, SCRUM-135) :
+  * A4, généré à la demande depuis le parcours : page de garde (titre, thème, âge des acteurs, lieu, espace, date d'édition, distribution), puis une page par étape de la trame (résumé, texte de l'écran 7, personnages sur scène avec entrée et sortie, intention, décors, bruitages, danses).
+  * Pour chaque danse : moment, typologie, musique, et placement au début de la danse en plan du plateau et en liste (mêmes 9 zones que le front). Seuls les personnages et décors encore présents dans la scène figurent ; une danse n'est pas coupée entre deux pages ; un champ vide est affiché « Non renseigné ».
+  * Gabarit HTML/CSS Thymeleaf (`resources/pdf/conducteur.html`) converti par OpenHTMLtoPDF en PDF balisé (PDF/UA), texte sélectionnable. Polices de la charte embarquées (Lato, Baloo 2, licence OFL, `resources/pdf/fonts`). Le texte HTML de l'écran 7 est nettoyé par jsoup (mise en forme simple et titres seulement).
+  * Lisible imprimé en noir et blanc : personnages en ronds avec leurs initiales, décors en carrés numérotés, aucune information portée par la seule couleur.
 
 ---
 
