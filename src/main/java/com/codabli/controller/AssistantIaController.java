@@ -111,9 +111,12 @@ public class AssistantIaController {
     @PreAuthorize("isAuthenticated()")
     public SseEmitter assistantCreationUnivers(
             @PathVariable UUID conteDanseId,
-            @Valid @RequestBody AssistantCreationUniversRequest request) {
+            @Valid @RequestBody AssistantCreationUniversRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        AssistantCreationUniversService.ConversationPreparee conversation =
+                assistantCreationUniversService.preparerCreationUnivers(conteDanseId, request, jwt);
         return streamer(onToken ->
-                assistantCreationUniversService.streamerCreationUnivers(conteDanseId, request, onToken));
+                assistantCreationUniversService.streamerCreationUnivers(conversation, onToken));
     }
 
     private SseEmitter streamer(Consumer<Consumer<String>> streamOperation) {

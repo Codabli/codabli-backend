@@ -5,18 +5,15 @@ import com.codabli.dto.ParcoursContexteRequest;
 import com.codabli.dto.parcours.ContenuEtapeParcours;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.ParcoursConte;
-import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.StatutConte;
 import com.codabli.exception.BusinessException;
 import com.codabli.exception.ErrorCode;
 import com.codabli.repository.ParcoursConteRepository;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,19 +31,19 @@ public class ParcoursConteService {
 
     private final ParcoursConteRepository parcoursRepository;
     private final ConteDanseService conteDanseService;
-    private final UtilisateurService utilisateurService;
+    private final ConteDanseAccesService conteDanseAccesService;
 
     public ParcoursConteService(ParcoursConteRepository parcoursRepository,
                                 ConteDanseService conteDanseService,
-                                UtilisateurService utilisateurService) {
+                                ConteDanseAccesService conteDanseAccesService) {
         this.parcoursRepository = parcoursRepository;
         this.conteDanseService = conteDanseService;
-        this.utilisateurService = utilisateurService;
+        this.conteDanseAccesService = conteDanseAccesService;
     }
 
     @Transactional(readOnly = true)
     public ParcoursConteResponse lire(UUID conteDanseId, Jwt jwt) {
-        verifierAcces(conteDanseService.findById(conteDanseId), jwt);
+        conteDanseAccesService.verifierAcces(conteDanseId, jwt);
         return parcoursRepository.findByConteDanseId(conteDanseId)
                 .map(this::toResponse)
                 .orElseGet(() -> parcoursVide(conteDanseId));
@@ -69,7 +66,7 @@ public class ParcoursConteService {
 
     private ParcoursConte parcoursModifiable(UUID conteDanseId, Jwt jwt) {
         ConteDanse conte = conteDanseService.findById(conteDanseId);
-        verifierAcces(conte, jwt);
+        conteDanseAccesService.verifierAcces(conte, jwt);
         if (conte.getStatut() != StatutConte.brouillon && conte.getStatut() != StatutConte.refuse) {
             throw new BusinessException(ErrorCode.PARCOURS_NON_MODIFIABLE,
                     "Le parcours d'un conte en moderation ou publie ne peut plus etre modifie");
@@ -79,18 +76,6 @@ public class ParcoursConteService {
             nouveau.setConteDanseId(conteDanseId);
             return nouveau;
         });
-    }
-
-    private void verifierAcces(ConteDanse conte, Jwt jwt) {
-        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
-        Collection<String> roles = utilisateurService.extractRoles(jwt);
-
-        boolean estAuteur = conte.getCreateur().getId().equals(utilisateur.getId());
-        boolean estAdmin = roles.contains("admin") || roles.contains("super_admin") || roles.contains("moderateur");
-
-        if (!estAuteur && !estAdmin) {
-            throw new AccessDeniedException("Vous ne pouvez acceder qu'au parcours de vos propres contes danses");
-        }
     }
 
     private ParcoursConteResponse parcoursVide(UUID conteDanseId) {

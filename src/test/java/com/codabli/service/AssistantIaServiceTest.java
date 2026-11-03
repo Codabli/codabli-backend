@@ -1,6 +1,7 @@
 package com.codabli.service;
 
 import com.codabli.dto.AssistantIaRequest;
+import com.codabli.dto.ConteContextData;
 import com.codabli.dto.LlmMessage;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
@@ -27,9 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -57,6 +58,15 @@ class AssistantIaServiceTest {
     private PromptAnonymizerService promptAnonymizerService;
 
     @Mock
+    private ConteContextService conteContextService;
+
+    @Mock
+    private ConteContextFormatter conteContextFormatter;
+
+    @Mock
+    private LlmSystemPromptService systemPromptService;
+
+    @Mock
     private Jwt jwt;
 
     @InjectMocks
@@ -77,10 +87,13 @@ class AssistantIaServiceTest {
                 .thenReturn(Optional.empty());
         LlmResponse response = LlmResponse.ok("Réponse actuelle", "", "stop", 10, 5);
         AtomicReference<String> fragmentEmis = new AtomicReference<>();
-        when(llmClient.stream(any(LlmRequest.class), any())).thenAnswer(invocation -> {
-            invocation.<java.util.function.Consumer<String>>getArgument(1).accept("Réponse actuelle");
+        when(llmClient.stream(any(LlmRequest.class), anyString(), any())).thenAnswer(invocation -> {
+            invocation.<java.util.function.Consumer<String>>getArgument(2).accept("Réponse actuelle");
             return response;
         });
+        stubConteContext(conteDanseId);
+        when(systemPromptService.prompt()).thenReturn("Prompt système");
+        when(conteContextFormatter.ajouterAuPrompt(anyString(), any())).thenReturn("Prompt système contextualisé");
         AssistantIaRequest request = new AssistantIaRequest("Nouvelle question", 0.4);
 
         AssistantIaService.ConversationPreparee conversation =
@@ -88,7 +101,7 @@ class AssistantIaServiceTest {
         LlmResponse result = assistantIaService.streamerConversation(conversation, fragmentEmis::set);
 
         ArgumentCaptor<LlmRequest> requestCaptor = ArgumentCaptor.forClass(LlmRequest.class);
-        verify(llmClient).stream(requestCaptor.capture(), any());
+        verify(llmClient).stream(requestCaptor.capture(), eq("Prompt système contextualisé"), any());
         assertEquals(List.of(
                 LlmMessage.user("Question précédente"),
                 LlmMessage.assistant("Réponse précédente"),
@@ -109,7 +122,10 @@ class AssistantIaServiceTest {
         when(promptModerationService.moderer(eq("assistant-ia"), eq(conteDanseId), eq("Bonjour"), any()))
                 .thenReturn(Optional.empty());
         LlmResponse response = LlmResponse.standby("Assistant indisponible");
-        when(llmClient.stream(any(LlmRequest.class), any())).thenReturn(response);
+        when(llmClient.stream(any(LlmRequest.class), anyString(), any())).thenReturn(response);
+        stubConteContext(conteDanseId);
+        when(systemPromptService.prompt()).thenReturn("Prompt système");
+        when(conteContextFormatter.ajouterAuPrompt(anyString(), any())).thenReturn("Prompt système contextualisé");
 
         AssistantIaService.ConversationPreparee conversation = assistantIaService.preparerConversation(
                 conteDanseId, new AssistantIaRequest("Bonjour", null), jwt);
@@ -171,6 +187,9 @@ class AssistantIaServiceTest {
     void preparerConversation_shouldAnonymizePromptBeforeSendingItToLlm() {
         UUID conteDanseId = UUID.randomUUID();
         when(messageService.listerHistoriquePourConversation(conteDanseId, jwt)).thenReturn(List.of());
+        stubConteContext(conteDanseId);
+        when(systemPromptService.prompt()).thenReturn("Prompt système");
+        when(conteContextFormatter.ajouterAuPrompt(anyString(), any())).thenReturn("Prompt système contextualisé");
         when(promptAnonymizerService.anonymize("Écris-moi à enfant@example.com"))
                 .thenReturn("Écris-moi à [EMAIL]");
 
@@ -194,8 +213,13 @@ class AssistantIaServiceTest {
     }
 
     private AssistantIaService.ConversationPreparee conversation(UUID conteDanseId, String prompt) {
-        return new AssistantIaService.ConversationPreparee(conteDanseId, prompt, jwt,
-                LlmRequest.of(prompt));
+        return new AssistantIaService.ConversationPreparee(
+                conteDanseId, prompt, jwt, LlmRequest.of(prompt), "Prompt système contextualisé");
+    }
+
+    private void stubConteContext(UUID conteDanseId) {
+        when(conteContextService.charger(conteDanseId, jwt))
+                .thenReturn(new ConteContextData("Titre", "Thématique", List.of(), "Pays", "Culture", 4, 12));
     }
 
     private void stubModerationResponse(UUID conteDanseId, String prompt, String message, boolean degrade) {

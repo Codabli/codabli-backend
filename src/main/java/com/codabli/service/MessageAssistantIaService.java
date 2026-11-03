@@ -4,14 +4,12 @@ import com.codabli.dto.CreateMessageIaDto;
 import com.codabli.dto.MessageIaDto;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.MessageAssistantIa;
-import com.codabli.entity.Utilisateur;
 import com.codabli.entity.enums.RoleMessage;
 import com.codabli.entity.enums.StatutConte;
 import com.codabli.event.ConteDansePublieEvent;
 import com.codabli.exception.BusinessException;
 import com.codabli.exception.ErrorCode;
 import com.codabli.repository.MessageAssistantIaRepository;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +18,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,16 +27,16 @@ public class MessageAssistantIaService {
 
     private final MessageAssistantIaRepository messageRepository;
     private final ConteDanseService conteDanseService;
-    private final UtilisateurService utilisateurService;
+    private final ConteDanseAccesService conteDanseAccesService;
     private final PromptAnonymizerService promptAnonymizerService;
 
     public MessageAssistantIaService(MessageAssistantIaRepository messageRepository,
                                      ConteDanseService conteDanseService,
-                                     UtilisateurService utilisateurService,
+                                     ConteDanseAccesService conteDanseAccesService,
                                      PromptAnonymizerService promptAnonymizerService) {
         this.messageRepository = messageRepository;
         this.conteDanseService = conteDanseService;
-        this.utilisateurService = utilisateurService;
+        this.conteDanseAccesService = conteDanseAccesService;
         this.promptAnonymizerService = promptAnonymizerService;
     }
 
@@ -62,7 +59,8 @@ public class MessageAssistantIaService {
     }
 
     public MessageIaDto ajouter(CreateMessageIaDto request, Jwt jwt) {
-        ConteDanse conte = verifierAcces(conteDanseService.verrouillerPourHistorique(request.conteDanseId()), jwt);
+        ConteDanse conte = conteDanseAccesService.verifierAcces(
+                conteDanseService.verrouillerPourHistorique(request.conteDanseId()), jwt);
         verifierConteNonPublie(conte);
 
         MessageAssistantIa message = new MessageAssistantIa();
@@ -78,7 +76,8 @@ public class MessageAssistantIaService {
                                           String contenuUtilisateur,
                                           String contenuAssistant,
                                           Jwt jwt) {
-        ConteDanse conte = verifierAcces(conteDanseService.verrouillerPourHistorique(conteDanseId), jwt);
+        ConteDanse conte = conteDanseAccesService.verifierAcces(
+                conteDanseService.verrouillerPourHistorique(conteDanseId), jwt);
         verifierConteNonPublie(conte);
 
         MessageAssistantIa messageUtilisateur = creerMessage(
@@ -104,20 +103,7 @@ public class MessageAssistantIaService {
     }
 
     private ConteDanse verifierAcces(UUID conteDanseId, Jwt jwt) {
-        return verifierAcces(conteDanseService.findById(conteDanseId), jwt);
-    }
-
-    private ConteDanse verifierAcces(ConteDanse conte, Jwt jwt) {
-        Utilisateur utilisateur = utilisateurService.getUtilisateurFromJwt(jwt);
-        Collection<String> roles = utilisateurService.extractRoles(jwt);
-
-        boolean estAuteur = conte.getCreateur().getId().equals(utilisateur.getId());
-        boolean estAdmin = roles.contains("admin") || roles.contains("super_admin") || roles.contains("moderateur");
-
-        if (!estAuteur && !estAdmin) {
-            throw new AccessDeniedException("Vous ne pouvez acceder qu'a l'historique de vos propres contes danses");
-        }
-        return conte;
+        return conteDanseAccesService.verifierAcces(conteDanseId, jwt);
     }
 
     private void verifierConteNonPublie(ConteDanse conte) {

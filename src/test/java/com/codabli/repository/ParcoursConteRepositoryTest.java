@@ -1,5 +1,6 @@
 package com.codabli.repository;
 
+import com.codabli.dto.ConteContextData;
 import com.codabli.dto.parcours.CarteUnivers;
 import com.codabli.dto.parcours.DanseScene;
 import com.codabli.dto.parcours.MiseEnSceneParcours;
@@ -22,6 +23,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -87,6 +89,39 @@ class ParcoursConteRepositoryTest {
 
         assertThrows(DataIntegrityViolationException.class,
                 () -> repository.saveAndFlush(nouveauParcours(conteDanseId)));
+    }
+
+    @Test
+    void findConteContextDataById_shouldJoinConteAndParcoursAndApplyAgeDefaults() {
+        Utilisateur auteur = utilisateurRepository.saveAndFlush(Utilisateur.builder()
+                .nom("Auteur").prenom("Test").role(RoleUtilisateur.enseignant).build());
+        ConteDanse conte = conteRepository.saveAndFlush(ConteDanse.builder()
+                .createur(auteur)
+                .titre("Le voyage")
+                .thematique("Amitié")
+                .pays("France")
+                .culture("Bretonne")
+                .ageMin(6)
+                .build());
+        ParcoursConte parcours = new ParcoursConte();
+        parcours.setConteDanseId(conte.getId());
+        parcours.setIngredientsSecrets(List.of("une clé", "un secret"));
+        repository.saveAndFlush(parcours);
+        entityManager.clear();
+
+        ConteContextData context = conteRepository.findConteContextDataById(conte.getId()).orElseThrow();
+
+        assertEquals(new ConteContextData("Le voyage", "Amitié", List.of("une clé", "un secret"),
+                "France", "Bretonne", 6, 12), context);
+    }
+
+    @Test
+    void findConteContextDataById_withoutParcours_shouldReturnEmptyIngredientsAndDefaultAgeRange() {
+        UUID conteDanseId = creerConte();
+
+        ConteContextData context = conteRepository.findConteContextDataById(conteDanseId).orElseThrow();
+
+        assertEquals(new ConteContextData(null, null, List.of(), null, null, 4, 12), context);
     }
 
     @Test

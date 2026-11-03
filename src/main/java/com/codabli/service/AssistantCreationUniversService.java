@@ -1,12 +1,14 @@
 package com.codabli.service;
 
 import com.codabli.dto.AssistantCreationUniversRequest;
+import com.codabli.dto.ConteContextData;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -26,20 +28,33 @@ public class AssistantCreationUniversService {
     private final AssistantPromptModerationService promptModerationService;
     private final PromptAnonymizerService promptAnonymizerService;
     private final ResourceLoader resourceLoader;
+    private final ConteContextService conteContextService;
+    private final ConteContextFormatter conteContextFormatter;
 
     public AssistantCreationUniversService(LlmClient llmClient,
                                            AssistantPromptModerationService promptModerationService,
                                            PromptAnonymizerService promptAnonymizerService,
-                                           ResourceLoader resourceLoader) {
+                                           ResourceLoader resourceLoader,
+                                           ConteContextService conteContextService,
+                                           ConteContextFormatter conteContextFormatter) {
         this.llmClient = llmClient;
         this.promptModerationService = promptModerationService;
         this.promptAnonymizerService = promptAnonymizerService;
         this.resourceLoader = resourceLoader;
+        this.conteContextService = conteContextService;
+        this.conteContextFormatter = conteContextFormatter;
     }
 
-    public LlmResponse streamerCreationUnivers(UUID conteDanseId,
-                                               AssistantCreationUniversRequest request,
-                                               Consumer<String> onToken) {
+    public ConversationPreparee preparerCreationUnivers(UUID conteDanseId,
+                                                        AssistantCreationUniversRequest request,
+                                                        Jwt jwt) {
+        ConteContextData contexteConte = conteContextService.charger(conteDanseId, jwt);
+        return new ConversationPreparee(conteDanseId, request, contexteConte);
+    }
+
+    public LlmResponse streamerCreationUnivers(ConversationPreparee conversation, Consumer<String> onToken) {
+        UUID conteDanseId = conversation.conteDanseId();
+        AssistantCreationUniversRequest request = conversation.request();
         String descriptionAnonymisee = promptAnonymizerService.anonymize(request.description());
         Optional<LlmResponse> moderationResponse =
                 promptModerationService.moderer("assistant-creation-univers", conteDanseId,
@@ -47,8 +62,15 @@ public class AssistantCreationUniversService {
         if (moderationResponse.isPresent()) {
             return moderationResponse.get();
         }
-        String systemPrompt = composerPrompt(request.type());
+        String systemPrompt = conteContextFormatter.ajouterAuPrompt(
+                composerPrompt(request.type()), conversation.contexteConte());
         return llmClient.stream(LlmRequest.of(descriptionAnonymisee), systemPrompt, onToken);
+    }
+
+    public record ConversationPreparee(
+            UUID conteDanseId,
+            AssistantCreationUniversRequest request,
+            ConteContextData contexteConte) {
     }
 
     String composerPrompt(AssistantCreationUniversRequest.Type type) {

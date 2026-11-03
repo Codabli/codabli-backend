@@ -10,11 +10,10 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -62,10 +61,17 @@ public class OvhOpenAiClient implements LlmClient {
     private final LlmProperties properties;
     private final String systemPrompt;
 
-    public OvhOpenAiClient(HttpClient llmHttpClient, LlmProperties properties) {
+    @Autowired
+    public OvhOpenAiClient(HttpClient llmHttpClient,
+                           LlmProperties properties,
+                           LlmSystemPromptService systemPromptService) {
         this.httpClient = llmHttpClient;
         this.properties = properties;
-        this.systemPrompt = chargerPromptSysteme(properties.systemPrompt());
+        this.systemPrompt = systemPromptService.prompt();
+    }
+
+    public OvhOpenAiClient(HttpClient llmHttpClient, LlmProperties properties) {
+        this(llmHttpClient, properties, new LlmSystemPromptService(properties));
     }
 
     @Override
@@ -234,18 +240,6 @@ public class OvhOpenAiClient implements LlmClient {
                 .header("Content-Type", "application/json")
                 .header("Accept", stream ? "text/event-stream" : "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8)).build();
-    }
-
-    private static String chargerPromptSysteme(Resource resource) {
-        try (InputStream input = resource.getInputStream()) {
-            String prompt = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-            if (prompt.isBlank()) {
-                throw new IllegalStateException("La ressource du prompt systeme est vide");
-            }
-            return prompt;
-        } catch (IOException e) {
-            throw new IllegalStateException("Impossible de charger la ressource du prompt systeme", e);
-        }
     }
 
     // ────────────────────────────────────────────────────────────────

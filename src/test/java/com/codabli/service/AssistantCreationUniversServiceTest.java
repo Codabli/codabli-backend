@@ -1,11 +1,14 @@
 package com.codabli.service;
 
 import com.codabli.dto.AssistantCreationUniversRequest;
+import com.codabli.dto.ConteContextData;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,14 +34,19 @@ class AssistantCreationUniversServiceTest {
     private final AssistantPromptModerationService promptModerationService =
             mock(AssistantPromptModerationService.class);
     private final PromptAnonymizerService promptAnonymizerService = mock(PromptAnonymizerService.class);
+    private final ConteContextService conteContextService = mock(ConteContextService.class);
+    private final ConteContextFormatter conteContextFormatter = new ConteContextFormatter();
+    private final Jwt jwt = mock(Jwt.class);
     private final AssistantCreationUniversService service = new AssistantCreationUniversService(
-            llmClient, promptModerationService, promptAnonymizerService, new DefaultResourceLoader());
+            llmClient, promptModerationService, promptAnonymizerService, new DefaultResourceLoader(),
+            conteContextService, conteContextFormatter);
 
     @BeforeEach
     void setUp() {
         when(promptAnonymizerService.anonymize(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(promptModerationService.moderer(anyString(), any(), anyString(), any()))
                 .thenReturn(Optional.empty());
+        when(conteContextService.charger(eq(CONTE_DANSE_ID), eq(jwt))).thenReturn(context());
     }
 
     @Test
@@ -63,13 +71,16 @@ class AssistantCreationUniversServiceTest {
             AssistantCreationUniversRequest request = requests.get(i);
             String specialisation = specialisations.get(i);
 
-            assertThat(service.streamerCreationUnivers(CONTE_DANSE_ID, request, ignored -> {}))
+            assertThat(streamer(request, ignored -> {}))
                     .isSameAs(expectedResponse);
 
             verify(llmClient).stream(eq(LlmRequest.of(request.description())),
                     org.mockito.ArgumentMatchers.argThat(prompt ->
                             prompt.contains("Tu es l'assistant pédagogique")
-                                    && prompt.contains(specialisation)), any());
+                                    && prompt.contains(specialisation)
+                                    && prompt.startsWith("<conte_context>")
+                                    && prompt.contains("<ingredients_secrets>")
+                                    && prompt.contains("Bretonne")), any());
         }
 
         verify(llmClient, times(4)).stream(any(), anyString(), any());
@@ -81,7 +92,7 @@ class AssistantCreationUniversServiceTest {
         AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
                 AssistantCreationUniversRequest.Type.Lieu, "Contact enfant@example.com pour ce lieu");
         when(promptAnonymizerService.anonymize(request.description())).thenReturn(descriptionAnonymisee);
-        service.streamerCreationUnivers(CONTE_DANSE_ID, request, ignored -> {});
+        streamer(request, ignored -> {});
 
         var ordre = inOrder(promptAnonymizerService, promptModerationService, llmClient);
         ordre.verify(promptAnonymizerService).anonymize(request.description());
@@ -99,7 +110,7 @@ class AssistantCreationUniversServiceTest {
         stubModerationResponse(descriptionAnonymisee,
                 "Votre demande contient des thématiques inadaptées. Merci de proposer un autre sujet.", false);
 
-        LlmResponse response = service.streamerCreationUnivers(CONTE_DANSE_ID, request, ignored -> {});
+        LlmResponse response = streamer(request, ignored -> {});
 
         assertThat(response.texte())
                 .isEqualTo("Votre demande contient des thématiques inadaptées. Merci de proposer un autre sujet.");
@@ -115,7 +126,7 @@ class AssistantCreationUniversServiceTest {
         stubModerationResponse(request.description(),
                 "Merci de reformuler votre demande en évitant les sujets sensibles.", false);
 
-        LlmResponse response = service.streamerCreationUnivers(CONTE_DANSE_ID, request, ignored -> {});
+        LlmResponse response = streamer(request, ignored -> {});
 
         assertThat(response.texte()).isEqualTo("Merci de reformuler votre demande en évitant les sujets sensibles.");
         verifyNoInteractions(llmClient);
@@ -130,7 +141,7 @@ class AssistantCreationUniversServiceTest {
         stubModerationResponse(descriptionAnonymisee,
                 "Le contrôle de sécurité est temporairement indisponible. Merci de réessayer.", true);
 
-        LlmResponse response = service.streamerCreationUnivers(CONTE_DANSE_ID, request, ignored -> {});
+        LlmResponse response = streamer(request, ignored -> {});
 
         assertThat(response.texte())
                 .isEqualTo("Le contrôle de sécurité est temporairement indisponible. Merci de réessayer.");
@@ -147,7 +158,7 @@ class AssistantCreationUniversServiceTest {
         stubModerationResponse(request.description(),
                 "Le contrôle de sécurité est temporairement indisponible. Merci de réessayer.", true);
 
-        LlmResponse response = service.streamerCreationUnivers(CONTE_DANSE_ID, request, ignored -> {});
+        LlmResponse response = streamer(request, ignored -> {});
 
         assertThat(response.texte())
                 .isEqualTo("Le contrôle de sécurité est temporairement indisponible. Merci de réessayer.");
@@ -163,7 +174,7 @@ class AssistantCreationUniversServiceTest {
         stubModerationResponse(request.description(),
                 "Votre demande contient des thématiques inadaptées. Merci de proposer un autre sujet.", false);
 
-        service.streamerCreationUnivers(CONTE_DANSE_ID, request, tokens::add);
+        streamer(request, tokens::add);
 
         assertThat(tokens).containsExactly(
                 "Votre demande contient des thématiques inadaptées. Merci de proposer un autre sujet.");
@@ -179,5 +190,29 @@ class AssistantCreationUniversServiceTest {
                     invocation.<java.util.function.Consumer<String>>getArgument(3).accept(message);
                     return Optional.of(response);
                 });
+    }
+
+    @Test
+    void refuse_un_conte_inaccessible_avant_toute_communication_avec_le_llm() {
+        AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
+                AssistantCreationUniversRequest.Type.Lieu, "Un jardin");
+        org.mockito.Mockito.doThrow(new AccessDeniedException("Accès refusé"))
+                .when(conteContextService).charger(CONTE_DANSE_ID, jwt);
+
+        org.junit.jupiter.api.Assertions.assertThrows(AccessDeniedException.class,
+                () -> service.preparerCreationUnivers(CONTE_DANSE_ID, request, jwt));
+
+        verifyNoInteractions(llmClient, promptAnonymizerService, promptModerationService);
+    }
+
+    private LlmResponse streamer(AssistantCreationUniversRequest request,
+                                 java.util.function.Consumer<String> onToken) {
+        return service.streamerCreationUnivers(
+                service.preparerCreationUnivers(CONTE_DANSE_ID, request, jwt), onToken);
+    }
+
+    private static ConteContextData context() {
+        return new ConteContextData("Le conte", "Amitié", List.of("une clé", "un secret"),
+                "France", "Bretonne", 6, 10);
     }
 }
