@@ -3,6 +3,7 @@ package com.codabli.service;
 import com.codabli.dto.AssistantCreationUniversRequest;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 
@@ -12,20 +13,32 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 class AssistantCreationUniversServiceTest {
 
+    private final LlmClient llmClient = mock(LlmClient.class);
+    private final QwenGuardClient qwenGuardClient = mock(QwenGuardClient.class);
+    private final PromptAnonymizerService promptAnonymizerService = mock(PromptAnonymizerService.class);
+    private final AssistantCreationUniversService service = new AssistantCreationUniversService(
+            llmClient, qwenGuardClient, promptAnonymizerService, new DefaultResourceLoader());
+
+    @BeforeEach
+    void setUp() {
+        when(promptAnonymizerService.anonymize(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(qwenGuardClient.analyser(anyString())).thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.SAFE));
+    }
+
     @Test
     void compose_le_socle_commun_avec_la_specialisation_et_transmet_la_description() {
-        LlmClient llmClient = mock(LlmClient.class);
         LlmResponse expectedResponse = LlmResponse.ok("Question de réflexion", "", "stop", null, null);
         when(llmClient.stream(any(), anyString(), any())).thenReturn(expectedResponse);
-        AssistantCreationUniversService service =
-                new AssistantCreationUniversService(llmClient, new DefaultResourceLoader());
         List<AssistantCreationUniversRequest> requests = List.of(
                 new AssistantCreationUniversRequest(AssistantCreationUniversRequest.Type.Lieu, "Lieu à préciser"),
                 new AssistantCreationUniversRequest(AssistantCreationUniversRequest.Type.Personnage,
@@ -53,5 +66,102 @@ class AssistantCreationUniversServiceTest {
         }
 
         verify(llmClient, times(4)).stream(any(), anyString(), any());
+    }
+
+    @Test
+    void anonymise_avant_qwenGuard_et_transmet_la_description_anonymisee_au_llm() {
+        String descriptionAnonymisee = "Contact [EMAIL_1] pour ce lieu";
+        AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
+                AssistantCreationUniversRequest.Type.Lieu, "Contact enfant@example.com pour ce lieu");
+        when(promptAnonymizerService.anonymize(request.description())).thenReturn(descriptionAnonymisee);
+        when(qwenGuardClient.analyser(descriptionAnonymisee))
+                .thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.SAFE));
+
+        service.streamerCreationUnivers(request, ignored -> {});
+
+        var ordre = inOrder(promptAnonymizerService, qwenGuardClient, llmClient);
+        ordre.verify(promptAnonymizerService).anonymize(request.description());
+        ordre.verify(qwenGuardClient).analyser(descriptionAnonymisee);
+        ordre.verify(llmClient).stream(eq(LlmRequest.of(descriptionAnonymisee)), anyString(), any());
+    }
+
+    @Test
+    void refuse_une_description_unsafe_sans_appeler_le_llm() {
+        AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
+                AssistantCreationUniversRequest.Type.Personnage, "Contact enfant@example.com");
+        String descriptionAnonymisee = "Contact [EMAIL_1]";
+        when(promptAnonymizerService.anonymize(request.description())).thenReturn(descriptionAnonymisee);
+        when(qwenGuardClient.analyser(descriptionAnonymisee))
+                .thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.UNSAFE));
+
+        LlmResponse response = service.streamerCreationUnivers(request, ignored -> {});
+
+        assertThat(response.texte())
+                .isEqualTo("Votre demande contient des thématiques inadaptées. Merci de proposer un autre sujet.");
+        verify(qwenGuardClient).analyser(descriptionAnonymisee);
+        verifyNoInteractions(llmClient);
+    }
+
+    @Test
+    void refuse_une_description_controversial_sans_appeler_le_llm() {
+        AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
+                AssistantCreationUniversRequest.Type.Personnage, "description anonymisée");
+        when(qwenGuardClient.analyser(request.description()))
+                .thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.CONTROVERSIAL));
+
+        LlmResponse response = service.streamerCreationUnivers(request, ignored -> {});
+
+        assertThat(response.texte()).isEqualTo("Merci de reformuler votre demande en évitant les sujets sensibles.");
+        verifyNoInteractions(llmClient);
+    }
+
+    @Test
+    void interrompt_le_traitement_si_qwenGuard_est_indisponible() {
+        AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
+                AssistantCreationUniversRequest.Type.Lieu, "Contact enfant@example.com");
+        String descriptionAnonymisee = "Contact [EMAIL_1]";
+        when(promptAnonymizerService.anonymize(request.description())).thenReturn(descriptionAnonymisee);
+        when(qwenGuardClient.analyser(descriptionAnonymisee))
+                .thenThrow(new QwenGuardIndisponibleException("QwenGuard indisponible"));
+
+        LlmResponse response = service.streamerCreationUnivers(request, ignored -> {});
+
+        assertThat(response.texte())
+                .isEqualTo("Le contrôle de sécurité est temporairement indisponible. Merci de réessayer.");
+        assertThat(response.degrade()).isTrue();
+        verify(qwenGuardClient).analyser(descriptionAnonymisee);
+        verify(llmClient, never()).stream(any(), anyString(), any());
+    }
+
+    @Test
+    void interrompt_le_traitement_si_qwenGuard_ne_retourne_aucun_statut() {
+        AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
+                AssistantCreationUniversRequest.Type.Lieu, "description anonymisée");
+        when(qwenGuardClient.analyser(request.description())).thenReturn(null);
+
+        LlmResponse response = service.streamerCreationUnivers(request, ignored -> {});
+
+        assertThat(response.texte())
+                .isEqualTo("Le contrôle de sécurité est temporairement indisponible. Merci de réessayer.");
+        assertThat(response.degrade()).isTrue();
+        verify(llmClient, never()).stream(any(), anyString(), any());
+    }
+
+    @Test
+    void transmet_le_message_de_refus_sur_le_flux_sse() {
+        AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
+                AssistantCreationUniversRequest.Type.Objet, "description anonymisée");
+        when(qwenGuardClient.analyser(request.description()))
+                .thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.UNSAFE));
+        var tokens = new java.util.ArrayList<String>();
+
+        service.streamerCreationUnivers(request, tokens::add);
+
+        assertThat(tokens).containsExactly(
+                "Votre demande contient des thématiques inadaptées. Merci de proposer un autre sujet.");
+    }
+
+    private QwenGuardClient.SafetyAnalysis qwenGuardAnalysis(QwenGuardClient.SafetyStatus status) {
+        return new QwenGuardClient.SafetyAnalysis(status, "Safety: " + status);
     }
 }

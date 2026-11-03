@@ -18,7 +18,7 @@ import java.util.concurrent.Executors;
  * regle heritee du prototype Python), et aucune dependance supplementaire.
  */
 @Configuration
-@EnableConfigurationProperties(LlmProperties.class)
+@EnableConfigurationProperties({LlmProperties.class, QwenGuardProperties.class})
 public class LlmClientConfig {
 
     public LlmClientConfig(LlmProperties properties) {

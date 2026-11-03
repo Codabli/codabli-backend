@@ -46,6 +46,9 @@ codabli:
     max-tokens: 256
     timeout: 5s
     standby-message: Test standby message
+  qwen-guard:
+    model: Qwen3Guard-Gen-0.6B
+    timeout: 5s
 
 ovh:
   storage:

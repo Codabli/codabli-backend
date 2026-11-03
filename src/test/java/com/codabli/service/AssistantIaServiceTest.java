@@ -24,9 +24,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -34,8 +36,18 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AssistantIaServiceTest {
 
+    private static final String MESSAGE_UNSAFE =
+            "Votre demande contient des thématiques inadaptées. Merci de proposer un autre sujet.";
+    private static final String MESSAGE_CONTROVERSIAL =
+            "Merci de reformuler votre demande en évitant les sujets sensibles.";
+    private static final String MESSAGE_QWEN_GUARD_INDISPONIBLE =
+            "Le contrôle de sécurité est temporairement indisponible. Merci de réessayer.";
+
     @Mock
     private LlmClient llmClient;
+
+    @Mock
+    private QwenGuardClient qwenGuardClient;
 
     @Mock
     private MessageAssistantIaService messageService;
@@ -59,6 +71,8 @@ class AssistantIaServiceTest {
         when(messageService.listerHistoriquePourConversation(conteDanseId, jwt))
                 .thenReturn(List.of(ancienMessage, ancienneReponse));
         when(promptAnonymizerService.anonymize("Nouvelle question")).thenReturn("Nouvelle question");
+        when(qwenGuardClient.analyser("Nouvelle question"))
+                .thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.SAFE));
         LlmResponse response = LlmResponse.ok("Réponse actuelle", "", "stop", 10, 5);
         AtomicReference<String> fragmentEmis = new AtomicReference<>();
         when(llmClient.stream(any(LlmRequest.class), any())).thenAnswer(invocation -> {
@@ -88,6 +102,8 @@ class AssistantIaServiceTest {
         UUID conteDanseId = UUID.randomUUID();
         when(messageService.listerHistoriquePourConversation(conteDanseId, jwt)).thenReturn(List.of());
         when(promptAnonymizerService.anonymize("Bonjour")).thenReturn("Bonjour");
+        when(qwenGuardClient.analyser("Bonjour"))
+                .thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.SAFE));
         LlmResponse response = LlmResponse.standby("Assistant indisponible");
         when(llmClient.stream(any(LlmRequest.class), any())).thenReturn(response);
 
@@ -98,6 +114,54 @@ class AssistantIaServiceTest {
 
         assertSame(response, result);
         verify(messageService, never()).ajouterTour(eq(conteDanseId), any(), any(), eq(jwt));
+    }
+
+    @Test
+    void streamerConversation_shouldRejectUnsafePromptWithoutCallingLlm() {
+        UUID conteDanseId = UUID.randomUUID();
+        AssistantIaService.ConversationPreparee conversation = conversation(conteDanseId, "prompt anonymise");
+        when(qwenGuardClient.analyser("prompt anonymise"))
+                .thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.UNSAFE));
+        AtomicReference<String> emittedMessage = new AtomicReference<>();
+
+        LlmResponse response = assistantIaService.streamerConversation(conversation, emittedMessage::set);
+
+        assertEquals(MESSAGE_UNSAFE, emittedMessage.get());
+        assertEquals(MESSAGE_UNSAFE, response.texte());
+        verifyNoInteractions(llmClient);
+        verify(messageService).ajouterTour(conteDanseId, "prompt anonymise", MESSAGE_UNSAFE, jwt);
+    }
+
+    @Test
+    void streamerConversation_shouldRejectControversialPromptWithoutCallingLlm() {
+        UUID conteDanseId = UUID.randomUUID();
+        AssistantIaService.ConversationPreparee conversation = conversation(conteDanseId, "prompt anonymise");
+        when(qwenGuardClient.analyser("prompt anonymise"))
+                .thenReturn(qwenGuardAnalysis(QwenGuardClient.SafetyStatus.CONTROVERSIAL));
+        AtomicReference<String> emittedMessage = new AtomicReference<>();
+
+        LlmResponse response = assistantIaService.streamerConversation(conversation, emittedMessage::set);
+
+        assertEquals(MESSAGE_CONTROVERSIAL, emittedMessage.get());
+        assertEquals(MESSAGE_CONTROVERSIAL, response.texte());
+        verifyNoInteractions(llmClient);
+        verify(messageService).ajouterTour(conteDanseId, "prompt anonymise", MESSAGE_CONTROVERSIAL, jwt);
+    }
+
+    @Test
+    void streamerConversation_shouldStopWhenQwenGuardIsUnavailable() {
+        UUID conteDanseId = UUID.randomUUID();
+        AssistantIaService.ConversationPreparee conversation = conversation(conteDanseId, "prompt anonymise");
+        when(qwenGuardClient.analyser("prompt anonymise"))
+                .thenThrow(new QwenGuardIndisponibleException("QwenGuard indisponible"));
+        AtomicReference<String> emittedMessage = new AtomicReference<>();
+
+        LlmResponse response = assistantIaService.streamerConversation(conversation, emittedMessage::set);
+
+        assertEquals(MESSAGE_QWEN_GUARD_INDISPONIBLE, emittedMessage.get());
+        assertEquals(MESSAGE_QWEN_GUARD_INDISPONIBLE, response.texte());
+        assertTrue(response.degrade());
+        verifyNoInteractions(llmClient, messageService);
     }
 
     @Test
@@ -124,5 +188,14 @@ class AssistantIaServiceTest {
                 conteDanseId, new AssistantIaRequest("Bonjour", null), jwt));
 
         verifyNoInteractions(llmClient, promptAnonymizerService);
+    }
+
+    private AssistantIaService.ConversationPreparee conversation(UUID conteDanseId, String prompt) {
+        return new AssistantIaService.ConversationPreparee(conteDanseId, prompt, jwt,
+                LlmRequest.of(prompt));
+    }
+
+    private QwenGuardClient.SafetyAnalysis qwenGuardAnalysis(QwenGuardClient.SafetyStatus status) {
+        return new QwenGuardClient.SafetyAnalysis(status, "Safety: " + status);
     }
 }
