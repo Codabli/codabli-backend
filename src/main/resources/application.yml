@@ -58,7 +58,8 @@ codabli:
     standby-message: "Oups, la magie fait une petite pause. Reessaie dans un instant !"
   qwen-guard:
     model: ${OVH_AI_SAFELLM:Qwen3Guard-Gen-8B}
-    timeout: 6s
+    timeout: 10s
+    max-tokens: 1024
 
 # Ne jamais exposer la configuration (dont la cle API) via Actuator (RGPD/securite).
 management:

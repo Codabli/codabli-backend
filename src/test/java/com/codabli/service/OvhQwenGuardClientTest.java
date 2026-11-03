@@ -10,6 +10,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.DefaultResourceLoader;
 
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
@@ -50,7 +51,8 @@ class OvhQwenGuardClientTest {
                 new ByteArrayResource("system prompt".getBytes(StandardCharsets.UTF_8)),
                 0.3, 256, Duration.ofSeconds(5), "standby");
         client = new OvhQwenGuardClient(HttpClient.newHttpClient(), llmProperties,
-                new QwenGuardProperties("Qwen3Guard-Gen-0.6B", Duration.ofSeconds(5)));
+                new QwenGuardProperties("Qwen3Guard-Gen-0.6B", Duration.ofSeconds(5), 128),
+                new DefaultResourceLoader());
     }
 
     @AfterEach
@@ -67,7 +69,16 @@ class OvhQwenGuardClientTest {
         JsonNode request = new ObjectMapper().readTree(requestBody.get());
         assertThat(request.path("model").asText()).isEqualTo("Qwen3Guard-Gen-0.6B");
         assertThat(request.path("temperature").asInt()).isZero();
-        assertThat(request.path("messages").get(0).path("content").asText()).isEqualTo(PROMPT);
+        assertThat(request.path("max_tokens").asInt()).isEqualTo(128);
+        assertThat(request.path("messages")).hasSize(2);
+        assertThat(request.path("messages").get(0).path("role").asText()).isEqualTo("system");
+        String systemPrompt = request.path("messages").get(0).path("content").asText();
+        assertThat(systemPrompt)
+                .contains("enfants de 4 a 12 ans", "concepts adultes",
+                        "meme lorsqu'il est mentionne seul",
+                        "Safety: <Safe|Unsafe|Controversial>");
+        assertThat(request.path("messages").get(1).path("role").asText()).isEqualTo("user");
+        assertThat(request.path("messages").get(1).path("content").asText()).isEqualTo(PROMPT);
         assertThat(authorization.get()).isEqualTo("Bearer test-api-key");
     }
 
@@ -82,9 +93,9 @@ class OvhQwenGuardClientTest {
     }
 
     @Test
-    void analyser_shouldParseControversedStatus() {
+    void analyser_shouldParseControversialStatus() {
         responseContent.set("""
-                {"choices":[{"message":{"content":"Safety: Controversed\\nCategories: sensitive"}}]}""");
+                {"choices":[{"message":{"content":"Safety: Controversial\\nCategories: sensitive"}}]}""");
 
         QwenGuardClient.SafetyAnalysis result = client.analyser(PROMPT);
         assertThat(result.status()).isEqualTo(SafetyStatus.CONTROVERSIAL);

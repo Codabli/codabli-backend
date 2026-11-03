@@ -145,9 +145,9 @@ class AssistantIaControllerTest {
         UUID conteDanseId = UUID.randomUUID();
         AssistantCreationUniversRequest request = new AssistantCreationUniversRequest(
                 AssistantCreationUniversRequest.Type.Objet, "Une boussole magique");
-        when(assistantCreationUniversService.streamerCreationUnivers(eq(request), any()))
+        when(assistantCreationUniversService.streamerCreationUnivers(eq(conteDanseId), eq(request), any()))
                 .thenAnswer(invocation -> {
-                    invocation.<java.util.function.Consumer<String>>getArgument(1).accept("Que permet-elle ?");
+                    invocation.<java.util.function.Consumer<String>>getArgument(2).accept("Que permet-elle ?");
                     return LlmResponse.ok("Que permet-elle ?", "", "stop", null, null);
                 });
 
@@ -161,7 +161,7 @@ class AssistantIaControllerTest {
         mockMvc.perform(asyncDispatch(asyncResult))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Que permet-elle ?")));
-        verify(assistantCreationUniversService).streamerCreationUnivers(eq(request), any());
+        verify(assistantCreationUniversService).streamerCreationUnivers(eq(conteDanseId), eq(request), any());
     }
 
     @Test

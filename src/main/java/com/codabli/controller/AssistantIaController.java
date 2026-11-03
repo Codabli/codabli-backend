@@ -112,7 +112,8 @@ public class AssistantIaController {
     public SseEmitter assistantCreationUnivers(
             @PathVariable UUID conteDanseId,
             @Valid @RequestBody AssistantCreationUniversRequest request) {
-        return streamer(onToken -> assistantCreationUniversService.streamerCreationUnivers(request, onToken));
+        return streamer(onToken ->
+                assistantCreationUniversService.streamerCreationUnivers(conteDanseId, request, onToken));
     }
 
     private SseEmitter streamer(Consumer<Consumer<String>> streamOperation) {

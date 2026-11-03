@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="008-refus-moderation-qwen-guard" author="codabli">
+        <createTable tableName="refus_moderation_qwen_guard">
+            <column name="id" type="UUID">
+                <constraints nullable="false" primaryKey="true"
+                             primaryKeyName="refus_moderation_qwen_guard_pkey"/>
+            </column>
+            <column name="conte_danse_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assistant" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="statut" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="prompt_initial" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="retour_qwen_guard" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_creation" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+                constraintName="fk_refus_qwen_guard_conte"
+                baseTableName="refus_moderation_qwen_guard" baseColumnNames="conte_danse_id"
+                referencedTableName="contes_danses" referencedColumnNames="id"
+                onDelete="CASCADE"/>
+        <createIndex tableName="refus_moderation_qwen_guard"
+                     indexName="idx_refus_qwen_guard_conte_date">
+            <column name="conte_danse_id"/>
+            <column name="date_creation"/>
+        </createIndex>
+        <createIndex tableName="refus_moderation_qwen_guard"
+                     indexName="idx_refus_qwen_guard_statut_date">
+            <column name="statut"/>
+            <column name="date_creation"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="refus_moderation_qwen_guard"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

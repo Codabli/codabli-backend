@@ -49,6 +49,7 @@ codabli:
   qwen-guard:
     model: Qwen3Guard-Gen-0.6B
     timeout: 5s
+    max-tokens: 512
 
 ovh:
   storage:
