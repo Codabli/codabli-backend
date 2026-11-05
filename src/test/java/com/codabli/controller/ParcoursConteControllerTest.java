@@ -6,6 +6,7 @@ import com.codabli.dto.parcours.RessourceClasse;
 import com.codabli.dto.parcours.RessourcesClasseParcours;
 import com.codabli.dto.parcours.UniversParcours;
 import com.codabli.entity.enums.EspaceRepresentation;
+import com.codabli.service.ConducteurSpectacleService;
 import com.codabli.service.ParcoursConteService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -26,6 +29,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,6 +48,9 @@ class ParcoursConteControllerTest {
 
     @MockitoBean
     private ParcoursConteService parcoursConteService;
+
+    @MockitoBean
+    private ConducteurSpectacleService conducteurSpectacleService;
 
     @Test
     void lire_sansAuthentification_shouldBeRejected() throws Exception {
@@ -171,6 +179,31 @@ class ParcoursConteControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(parcoursConteService, never()).enregistrerEtape(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "enseignant")
+    void telechargerConducteur_shouldReturnPdfAttachment() throws Exception {
+        byte[] pdf = "%PDF-1.7".getBytes();
+        when(conducteurSpectacleService.genererPdf(eq(CONTE_ID), any()))
+                .thenReturn(new ConducteurSpectacleService.ConducteurPdf("conducteur-arthur.pdf", pdf));
+
+        mockMvc.perform(get("/api/contes-danses/{id}/parcours/conducteur.pdf", CONTE_ID))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string("Content-Disposition",
+                        startsWith("attachment; filename=")))
+                .andExpect(header().string("Content-Disposition",
+                        containsString("conducteur-arthur.pdf")))
+                .andExpect(content().bytes(pdf));
+    }
+
+    @Test
+    void telechargerConducteur_sansAuthentification_shouldBeRejected() throws Exception {
+        mockMvc.perform(get("/api/contes-danses/{id}/parcours/conducteur.pdf", CONTE_ID))
+                .andExpect(status().isForbidden());
+
+        verify(conducteurSpectacleService, never()).genererPdf(any(), any());
     }
 
     private UniversParcours univers() {
