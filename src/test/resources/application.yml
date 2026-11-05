@@ -41,11 +41,15 @@ codabli:
     base-url: https://test.ai.cloud.ovh.net/v1
     api-key: test-api-key
     model: test-model
-    system-prompt: Test system prompt
+    system-prompt: classpath:prompts/assistant-ia/system-prompt.txt
     temperature: 0.3
     max-tokens: 256
     timeout: 5s
     standby-message: Test standby message
+  qwen-guard:
+    model: Qwen3Guard-Gen-0.6B
+    timeout: 5s
+    max-tokens: 512
 
 ovh:
   storage:

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -58,10 +59,19 @@ public class OvhOpenAiClient implements LlmClient {
 
     private final HttpClient httpClient;
     private final LlmProperties properties;
+    private final String systemPrompt;
 
-    public OvhOpenAiClient(HttpClient llmHttpClient, LlmProperties properties) {
+    @Autowired
+    public OvhOpenAiClient(HttpClient llmHttpClient,
+                           LlmProperties properties,
+                           LlmSystemPromptService systemPromptService) {
         this.httpClient = llmHttpClient;
         this.properties = properties;
+        this.systemPrompt = systemPromptService.prompt();
+    }
+
+    public OvhOpenAiClient(HttpClient llmHttpClient, LlmProperties properties) {
+        this(llmHttpClient, properties, new LlmSystemPromptService(properties));
     }
 
     @Override
@@ -70,7 +80,7 @@ public class OvhOpenAiClient implements LlmClient {
         String model = properties.model();
         long t0 = System.nanoTime();
         try {
-            HttpRequest httpRequest = construireRequete(request, model, false);
+            HttpRequest httpRequest = construireRequete(request, model, false, systemPrompt);
             HttpResponse<String> response = httpClient.send(httpRequest,
                     HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             verifierStatut(response.statusCode());
@@ -93,6 +103,14 @@ public class OvhOpenAiClient implements LlmClient {
 
     @Override
     public LlmResponse stream(LlmRequest request, Consumer<String> onToken) {
+        return stream(request, systemPrompt, onToken);
+    }
+
+    @Override
+    public LlmResponse stream(LlmRequest request, String systemPrompt, Consumer<String> onToken) {
+        if (systemPrompt == null || systemPrompt.isBlank()) {
+            throw new IllegalArgumentException("Le prompt systeme est obligatoire");
+        }
         String appelId = nouvelAppelId();
         String model = properties.model();
         long t0 = System.nanoTime();
@@ -102,7 +120,7 @@ public class OvhOpenAiClient implements LlmClient {
         StringBuilder texteGenere = new StringBuilder();
         boolean marqueurFinRecu = false;
         try {
-            HttpRequest httpRequest = construireRequete(request, model, true);
+            HttpRequest httpRequest = construireRequete(request, model, true, systemPrompt);
             HttpResponse<InputStream> response = httpClient.send(httpRequest,
                     HttpResponse.BodyHandlers.ofInputStream());
 
@@ -195,7 +213,7 @@ public class OvhOpenAiClient implements LlmClient {
     // Construction de la requete (format compatible OpenAI)
     // ────────────────────────────────────────────────────────────────
 
-    private HttpRequest construireRequete(LlmRequest request, String model, boolean stream) {
+    private HttpRequest construireRequete(LlmRequest request, String model, boolean stream, String systemPrompt) {
         ObjectNode corps = objectMapper.createObjectNode();
         corps.put("model", model);
         corps.put("temperature", request.temperature() != null ? request.temperature() : properties.temperature());
@@ -205,7 +223,7 @@ public class OvhOpenAiClient implements LlmClient {
             corps.set("stream_options", objectMapper.createObjectNode().put("include_usage", true));
         }
         ArrayNode messages = corps.putArray("messages");
-        messages.addObject().put("role", LlmMessage.ROLE_SYSTEM).put("content", properties.systemPrompt());
+        messages.addObject().put("role", LlmMessage.ROLE_SYSTEM).put("content", systemPrompt);
         for (LlmMessage m : historiqueRecent(request.messages())) {
             messages.addObject().put("role", m.role()).put("content", m.content());
         }

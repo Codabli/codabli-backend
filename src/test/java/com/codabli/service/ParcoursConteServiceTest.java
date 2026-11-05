@@ -18,7 +18,6 @@ import com.codabli.repository.ParcoursConteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
@@ -50,7 +49,6 @@ class ParcoursConteServiceTest {
     @Mock
     private Jwt jwt;
 
-    @InjectMocks
     private ParcoursConteService parcoursConteService;
 
     private Utilisateur auteur;
@@ -72,6 +70,8 @@ class ParcoursConteServiceTest {
         lenient().when(utilisateurService.getUtilisateurFromJwt(jwt)).thenReturn(auteur);
         lenient().when(utilisateurService.extractRoles(jwt)).thenReturn(List.of("enseignant"));
         lenient().when(parcoursRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        parcoursConteService = new ParcoursConteService(parcoursRepository, conteDanseService,
+                new ConteDanseAccesService(conteDanseService, utilisateurService));
     }
 
     @Test

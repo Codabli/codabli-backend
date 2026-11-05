@@ -1,6 +1,7 @@
 package com.codabli.service;
 
 import com.codabli.dto.AssistantIaRequest;
+import com.codabli.dto.ConteContextData;
 import com.codabli.dto.LlmMessage;
 import com.codabli.dto.LlmRequest;
 import com.codabli.dto.LlmResponse;
@@ -18,13 +19,16 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -34,14 +38,33 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AssistantIaServiceTest {
 
+    private static final String MESSAGE_UNSAFE =
+            "Votre demande contient des thématiques inadaptées. Merci de proposer un autre sujet.";
+    private static final String MESSAGE_CONTROVERSIAL =
+            "Merci de reformuler votre demande en évitant les sujets sensibles.";
+    private static final String MESSAGE_QWEN_GUARD_INDISPONIBLE =
+            "Le contrôle de sécurité est temporairement indisponible. Merci de réessayer.";
+
     @Mock
     private LlmClient llmClient;
+
+    @Mock
+    private AssistantPromptModerationService promptModerationService;
 
     @Mock
     private MessageAssistantIaService messageService;
 
     @Mock
     private PromptAnonymizerService promptAnonymizerService;
+
+    @Mock
+    private ConteContextService conteContextService;
+
+    @Mock
+    private ConteContextFormatter conteContextFormatter;
+
+    @Mock
+    private LlmSystemPromptService systemPromptService;
 
     @Mock
     private Jwt jwt;
@@ -59,12 +82,18 @@ class AssistantIaServiceTest {
         when(messageService.listerHistoriquePourConversation(conteDanseId, jwt))
                 .thenReturn(List.of(ancienMessage, ancienneReponse));
         when(promptAnonymizerService.anonymize("Nouvelle question")).thenReturn("Nouvelle question");
+        when(promptModerationService.moderer(eq("assistant-ia"), eq(conteDanseId),
+                eq("Nouvelle question"), any()))
+                .thenReturn(Optional.empty());
         LlmResponse response = LlmResponse.ok("Réponse actuelle", "", "stop", 10, 5);
         AtomicReference<String> fragmentEmis = new AtomicReference<>();
-        when(llmClient.stream(any(LlmRequest.class), any())).thenAnswer(invocation -> {
-            invocation.<java.util.function.Consumer<String>>getArgument(1).accept("Réponse actuelle");
+        when(llmClient.stream(any(LlmRequest.class), anyString(), any())).thenAnswer(invocation -> {
+            invocation.<java.util.function.Consumer<String>>getArgument(2).accept("Réponse actuelle");
             return response;
         });
+        stubConteContext(conteDanseId);
+        when(systemPromptService.prompt()).thenReturn("Prompt système");
+        when(conteContextFormatter.ajouterAuPrompt(anyString(), any())).thenReturn("Prompt système contextualisé");
         AssistantIaRequest request = new AssistantIaRequest("Nouvelle question", 0.4);
 
         AssistantIaService.ConversationPreparee conversation =
@@ -72,7 +101,7 @@ class AssistantIaServiceTest {
         LlmResponse result = assistantIaService.streamerConversation(conversation, fragmentEmis::set);
 
         ArgumentCaptor<LlmRequest> requestCaptor = ArgumentCaptor.forClass(LlmRequest.class);
-        verify(llmClient).stream(requestCaptor.capture(), any());
+        verify(llmClient).stream(requestCaptor.capture(), eq("Prompt système contextualisé"), any());
         assertEquals(List.of(
                 LlmMessage.user("Question précédente"),
                 LlmMessage.assistant("Réponse précédente"),
@@ -80,6 +109,8 @@ class AssistantIaServiceTest {
         assertEquals(0.4, requestCaptor.getValue().temperature());
         assertEquals("Réponse actuelle", fragmentEmis.get());
         assertSame(response, result);
+        verify(promptModerationService).moderer(eq("assistant-ia"), eq(conteDanseId),
+                eq("Nouvelle question"), any());
         verify(messageService).ajouterTour(conteDanseId, "Nouvelle question", "Réponse actuelle", jwt);
     }
 
@@ -88,8 +119,13 @@ class AssistantIaServiceTest {
         UUID conteDanseId = UUID.randomUUID();
         when(messageService.listerHistoriquePourConversation(conteDanseId, jwt)).thenReturn(List.of());
         when(promptAnonymizerService.anonymize("Bonjour")).thenReturn("Bonjour");
+        when(promptModerationService.moderer(eq("assistant-ia"), eq(conteDanseId), eq("Bonjour"), any()))
+                .thenReturn(Optional.empty());
         LlmResponse response = LlmResponse.standby("Assistant indisponible");
-        when(llmClient.stream(any(LlmRequest.class), any())).thenReturn(response);
+        when(llmClient.stream(any(LlmRequest.class), anyString(), any())).thenReturn(response);
+        stubConteContext(conteDanseId);
+        when(systemPromptService.prompt()).thenReturn("Prompt système");
+        when(conteContextFormatter.ajouterAuPrompt(anyString(), any())).thenReturn("Prompt système contextualisé");
 
         AssistantIaService.ConversationPreparee conversation = assistantIaService.preparerConversation(
                 conteDanseId, new AssistantIaRequest("Bonjour", null), jwt);
@@ -101,9 +137,59 @@ class AssistantIaServiceTest {
     }
 
     @Test
+    void streamerConversation_shouldRejectUnsafePromptWithoutCallingLlm() {
+        UUID conteDanseId = UUID.randomUUID();
+        AssistantIaService.ConversationPreparee conversation = conversation(conteDanseId, "prompt anonymise");
+        stubModerationResponse(conteDanseId, "prompt anonymise", MESSAGE_UNSAFE, false);
+        AtomicReference<String> emittedMessage = new AtomicReference<>();
+
+        LlmResponse response = assistantIaService.streamerConversation(conversation, emittedMessage::set);
+
+        assertEquals(MESSAGE_UNSAFE, emittedMessage.get());
+        assertEquals(MESSAGE_UNSAFE, response.texte());
+        verifyNoInteractions(llmClient);
+        verify(promptModerationService).moderer(eq("assistant-ia"), eq(conteDanseId),
+                eq("prompt anonymise"), any());
+        verify(messageService, never()).ajouterTour(eq(conteDanseId), any(), any(), eq(jwt));
+    }
+
+    @Test
+    void streamerConversation_shouldRejectControversialPromptWithoutCallingLlm() {
+        UUID conteDanseId = UUID.randomUUID();
+        AssistantIaService.ConversationPreparee conversation = conversation(conteDanseId, "prompt anonymise");
+        stubModerationResponse(conteDanseId, "prompt anonymise", MESSAGE_CONTROVERSIAL, false);
+        AtomicReference<String> emittedMessage = new AtomicReference<>();
+
+        LlmResponse response = assistantIaService.streamerConversation(conversation, emittedMessage::set);
+
+        assertEquals(MESSAGE_CONTROVERSIAL, emittedMessage.get());
+        assertEquals(MESSAGE_CONTROVERSIAL, response.texte());
+        verifyNoInteractions(llmClient);
+        verify(messageService, never()).ajouterTour(eq(conteDanseId), any(), any(), eq(jwt));
+    }
+
+    @Test
+    void streamerConversation_shouldStopWhenQwenGuardIsUnavailable() {
+        UUID conteDanseId = UUID.randomUUID();
+        AssistantIaService.ConversationPreparee conversation = conversation(conteDanseId, "prompt anonymise");
+        stubModerationResponse(conteDanseId, "prompt anonymise", MESSAGE_QWEN_GUARD_INDISPONIBLE, true);
+        AtomicReference<String> emittedMessage = new AtomicReference<>();
+
+        LlmResponse response = assistantIaService.streamerConversation(conversation, emittedMessage::set);
+
+        assertEquals(MESSAGE_QWEN_GUARD_INDISPONIBLE, emittedMessage.get());
+        assertEquals(MESSAGE_QWEN_GUARD_INDISPONIBLE, response.texte());
+        assertTrue(response.degrade());
+        verifyNoInteractions(llmClient, messageService);
+    }
+
+    @Test
     void preparerConversation_shouldAnonymizePromptBeforeSendingItToLlm() {
         UUID conteDanseId = UUID.randomUUID();
         when(messageService.listerHistoriquePourConversation(conteDanseId, jwt)).thenReturn(List.of());
+        stubConteContext(conteDanseId);
+        when(systemPromptService.prompt()).thenReturn("Prompt système");
+        when(conteContextFormatter.ajouterAuPrompt(anyString(), any())).thenReturn("Prompt système contextualisé");
         when(promptAnonymizerService.anonymize("Écris-moi à enfant@example.com"))
                 .thenReturn("Écris-moi à [EMAIL]");
 
@@ -124,5 +210,26 @@ class AssistantIaServiceTest {
                 conteDanseId, new AssistantIaRequest("Bonjour", null), jwt));
 
         verifyNoInteractions(llmClient, promptAnonymizerService);
+    }
+
+    private AssistantIaService.ConversationPreparee conversation(UUID conteDanseId, String prompt) {
+        return new AssistantIaService.ConversationPreparee(
+                conteDanseId, prompt, jwt, LlmRequest.of(prompt), "Prompt système contextualisé");
+    }
+
+    private void stubConteContext(UUID conteDanseId) {
+        when(conteContextService.charger(conteDanseId, jwt))
+                .thenReturn(new ConteContextData("Titre", "Thématique", List.of(), "Pays", "Culture", 4, 12));
+    }
+
+    private void stubModerationResponse(UUID conteDanseId, String prompt, String message, boolean degrade) {
+        LlmResponse response = degrade
+                ? LlmResponse.standby(message)
+                : LlmResponse.ok(message, "", "stop", null, null);
+        when(promptModerationService.moderer(eq("assistant-ia"), eq(conteDanseId), eq(prompt), any()))
+                .thenAnswer(invocation -> {
+            invocation.<java.util.function.Consumer<String>>getArgument(3).accept(message);
+            return Optional.of(response);
+        });
     }
 }

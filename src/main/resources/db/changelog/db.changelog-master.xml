@@ -12,5 +12,6 @@
     <include file="db/changelog/005-messages-assistant-ia.xml"/>
     <include file="db/changelog/006-conte-danse-titre-facultatif.xml"/>
     <include file="db/changelog/007-parcours-conte.xml"/>
+    <include file="db/changelog/008-refus-moderation-qwen-guard.xml"/>
 
 </databaseChangeLog>

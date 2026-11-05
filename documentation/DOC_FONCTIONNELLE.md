@@ -2,6 +2,147 @@
 
 Ce guide décrit en détail le fonctionnement métier, les flux d'exécution techniques et les interactions entre les différents modules du backend **Codabli**.
 
+## Assistant IA — aide à la création d'univers
+
+La route authentifiée `POST /api/ia/contes-danses/{conteDanseId}/assistant-creation-univers`
+analyse une description et renvoie des événements SSE nommés `token`. Le corps JSON attend
+un `type` (`Lieu`, `Personnage`, `Epoque` ou `Objet`) et une `description` non vide.
+
+```json
+{
+  "type": "Objet",
+  "description": "Une boussole magique qui réagit à la musique."
+}
+```
+
+Le backend guide l'utilisateur par quelques questions et pistes de réflexion, sans rédiger
+la description à sa place. Le prompt système associe un socle commun à une spécialisation
+selon le type. Dans cette première version, `conteDanseId` est reçu dans l'URL mais les
+informations du conte et son historique ne sont pas consultés pour générer la réponse.
+
+---
+
+## Assistant IA — aide à la rédaction
+
+La route authentifiée `POST /api/ia/contes-danses/{conteDanseId}/assistant-stream`
+permet de poursuivre une conversation de rédaction liée à un Conte Dansé. Elle est
+accessible à l'auteur du conte ainsi qu'aux utilisateurs ayant le rôle
+`admin`, `super_admin` ou `moderateur`. Le conte doit ne pas être publié.
+
+Le corps JSON contient uniquement le nouveau message de l'utilisateur (`contenu`,
+obligatoire et non vide) et, facultativement, la `temperature` de génération :
+
+```json
+{
+  "contenu": "Peux-tu m'aider à rendre la rencontre entre les deux personnages plus vivante ?",
+  "temperature": 0.7
+}
+```
+
+Le transcript n'est pas envoyé par le client : le backend charge l'historique
+persisté du conte et l'utilise comme contexte, puis ajoute le nouveau message.
+Les données personnelles sont anonymisées avant d'être transmises au modèle.
+La réponse est diffusée au fur et à mesure sous forme d'événements SSE nommés
+`token`, dont les données contiennent les fragments de texte.
+
+Lorsque la génération aboutit normalement, le nouveau message et la réponse de
+l'assistant sont enregistrés dans l'historique pour les échanges suivants. Une
+réponse de repli liée à une indisponibilité du modèle n'est pas enregistrée.
+
+---
+
+## Politique de vérification des prompts des assistants
+
+Les routes `assistant-stream` et `assistant-creation-univers` font vérifier le nouveau
+prompt par QwenGuard avant tout appel au modèle de génération principal. Les deux flux
+suivent le même principe : anonymisation par les règles configurées, contrôle QwenGuard,
+puis poursuite vers le LLM uniquement si le statut est `SAFE`.
+
+### Anonymisation avant le contrôle
+
+Le backend applique `PromptAnonymizerService` au nouveau contenu avant de l'envoyer à
+QwenGuard. Les règles actives remplacent les URL, adresses e-mail, numéros de téléphone
+français et adresses IP reconnues par des marqueurs tels que `[EMAIL_1]`. La règle
+`PERSONNE` (noms précédés d'un titre) est actuellement désactivée : cette étape ne
+constitue donc pas une anonymisation générale de toutes les données personnelles.
+
+Le prompt conservé dans le journal des refus est cette version anonymisée, c'est-à-dire
+le contenu transmis à QwenGuard, et non le texte brut de la requête.
+
+### Contenu et interprétation du contrôle QwenGuard
+
+Le backend envoie le prompt anonymisé à QwenGuard avec un message système demandant une
+modération prudente adaptée aux enfants de 4 à 12 ans. Il demande notamment de classer
+les contenus liés à des concepts adultes comme `UNSAFE` ou `CONTROVERSIAL`, même lorsqu'un
+terme apparaît isolément. La réponse attendue est une ligne au format
+`Safety: <Safe|Unsafe|Controversial>`.
+
+Le backend extrait et interprète ce statut. Le retour brut est conservé comme détail de
+l'analyse, mais le format de réponse imposé à QwenGuard ne demande pas de justification
+textuelle : à ce jour, le champ « retour QwenGuard » contient généralement le statut,
+pas une explication métier détaillée du refus. Une réponse HTTP en erreur, illisible,
+sans statut reconnu ou avec un statut inconnu est traitée comme un contrôle indisponible.
+
+### Cheminement de `assistant-stream` (aide à la rédaction)
+
+1. Le backend charge l'historique du conte, anonymise le nouveau message et construit le
+   contexte de conversation avec cet historique et le nouveau message.
+2. Seul le nouveau message anonymisé est transmis à QwenGuard.
+3. Si QwenGuard répond `SAFE`, le backend envoie la conversation au LLM principal. Si la
+   génération aboutit normalement, le nouveau message et la réponse sont ajoutés à
+   l'historique. Une réponse de repli du LLM n'est pas enregistrée.
+4. Si QwenGuard répond `UNSAFE` ou `CONTROVERSIAL`, le backend enregistre le refus dans le
+   journal dédié, renvoie un message de refus via SSE et n'appelle pas le LLM. Le prompt
+   refusé et le message de refus ne sont pas ajoutés à l'historique conversationnel.
+5. Si QwenGuard est indisponible ou ne renvoie pas de statut exploitable, le backend
+   renvoie le message d'indisponibilité via SSE, n'appelle pas le LLM et ne crée pas
+   d'entrée dans le journal des refus.
+
+### Cheminement de `assistant-creation-univers`
+
+1. Le backend anonymise la `description` de la requête, puis la transmet à QwenGuard avec
+   le `conteDanseId` fourni dans l'URL.
+2. Si le statut est `SAFE`, le backend compose le prompt système commun et la
+   spécialisation correspondant au type demandé (`Lieu`, `Personnage`, `Epoque` ou
+   `Objet`), puis appelle le LLM principal avec la description anonymisée.
+3. Si le statut est `UNSAFE` ou `CONTROVERSIAL`, le backend enregistre le refus avec le
+   conte associé, renvoie le message correspondant via SSE et n'appelle pas le LLM.
+4. Si QwenGuard est indisponible ou si son statut n'est pas exploitable, le backend
+   renvoie le message d'indisponibilité via SSE et n'appelle pas le LLM.
+
+La réponse de l'assistant univers n'est pas enregistrée dans l'historique de rédaction.
+Le `conteDanseId` est utilisé pour rattacher un refus à son conte ; les informations du
+conte ne sont pas injectées dans le prompt de génération. L'autorisation spécifique au
+conte pour cette route reste à traiter séparément.
+
+### Journalisation des refus
+
+Seuls les résultats `UNSAFE` et `CONTROVERSIAL` sont enregistrés dans la table
+`refus_moderation_qwen_guard`. Chaque entrée contient :
+
+* la date et l'heure de création ;
+* le `conteDanseId` ;
+* l'identifiant fonctionnel de l'assistant (`assistant-ia` ou
+  `assistant-creation-univers`) ;
+* le statut QwenGuard ;
+* le prompt anonymisé transmis à QwenGuard ;
+* le retour brut de QwenGuard.
+
+Les résultats `SAFE` et les contrôles indisponibles ne sont pas consignés dans cette
+table. La suppression d'un conte supprime également ses entrées de refus. À ce stade,
+aucun endpoint de consultation ni contrôle d'accès administrateur dédié à ce journal
+n'est fourni.
+
+Si l'enregistrement d'un refus échoue, l'erreur est journalisée côté serveur ; le
+backend renvoie tout de même le refus à l'utilisateur et ne poursuit pas vers le LLM.
+Les logs de modération contiennent aussi le statut et les détails bruts du retour
+QwenGuard.
+
+Les routes techniques `/api/ia/test-completion` et `/api/ia/test-stream` ne passent pas
+par cette politique de vérification : elles appellent directement le client LLM.
+
+***ATTENTION : aucune purge implémentée pour l'instant ***
+
 ---
 
 ## 🔐 1. Authentification, Synchronisation & Rôles

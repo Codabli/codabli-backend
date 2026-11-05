@@ -15,7 +15,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
@@ -53,7 +52,6 @@ class MessageAssistantIaServiceTest {
     @Mock
     private Jwt jwt;
 
-    @InjectMocks
     private MessageAssistantIaService messageService;
 
     private UUID conteDanseId;
@@ -68,6 +66,8 @@ class MessageAssistantIaServiceTest {
         conte = new ConteDanse();
         conte.setId(conteDanseId);
         conte.setCreateur(auteur);
+        messageService = new MessageAssistantIaService(messageRepository, conteDanseService,
+                new ConteDanseAccesService(conteDanseService, utilisateurService), promptAnonymizerService);
     }
 
     @Test

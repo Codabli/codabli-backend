@@ -1,5 +1,6 @@
 package com.codabli.repository;
 
+import com.codabli.dto.ConteContextData;
 import com.codabli.entity.ConteDanse;
 import com.codabli.entity.enums.AccesConte;
 import com.codabli.entity.enums.StatutConte;
@@ -12,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -24,6 +26,16 @@ import java.util.UUID;
  */
 @Repository
 public interface ConteDanseRepository extends JpaRepository<ConteDanse, UUID>, JpaSpecificationExecutor<ConteDanse> {
+
+    @Query("""
+            SELECT new com.codabli.dto.ConteContextData(
+                c.titre, c.thematique, p.ingredientsSecrets, c.pays, c.culture,
+                COALESCE(c.ageMin, 4), COALESCE(c.ageMax, 12))
+            FROM ConteDanse c
+            LEFT JOIN ParcoursConte p ON p.conteDanseId = c.id
+            WHERE c.id = :conteDanseId
+            """)
+    Optional<ConteContextData> findConteContextDataById(@Param("conteDanseId") UUID conteDanseId);
 
     /**
      * Liste paginee des contes publies, tries par date de publication descendante.
